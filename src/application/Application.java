@@ -28,6 +28,8 @@ public class Application {
         // Index the documents of the corpus.
         Index index = indexCorpus(corpus);
 
+        System.out.println("Vocabulary:\n" + index.getVocabulary());
+
         Scanner in = new Scanner(System.in);
 
         System.out.print("Enter the search term:\n >> ");
@@ -38,7 +40,7 @@ public class Application {
         QueryComponent parsedQuery = parser.parseQuery(query);
         System.out.println("Parsed query: " + parsedQuery);
 
-        for (Posting posting : index.getPostings(query)) {
+        for (Posting posting : parsedQuery.getPostings(index)) {
             System.out.println("Document " + corpus.getDocument(posting.getDocumentId()).getTitle());
             System.out.println("Term: " + parsedQuery + ", doc id: " + posting.getDocumentId() +
                     ", positions: " + posting.getPositions());
@@ -48,7 +50,6 @@ public class Application {
     private static Index indexCorpus(DocumentCorpus corpus) {
         TrimSplitTokenProcessor processor = new TrimSplitTokenProcessor();
         PositionalInvertedIndex index = new PositionalInvertedIndex();
-
 
         // scan all documents and process each token into terms of our vocabulary
         for (Document document : corpus.getDocuments()) {

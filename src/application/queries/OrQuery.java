@@ -24,6 +24,7 @@ public class OrQuery implements QueryComponent {
 		
 		// TODO: program the merge for an OrQuery, by gathering the postings of the composed QueryComponents and
 		// unioning the resulting postings.
+		System.out.println("OR query terms: " + mComponents);
 		
 		return result;
 	}

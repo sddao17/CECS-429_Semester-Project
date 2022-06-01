@@ -1,10 +1,11 @@
-package cecs429.queries;
+
+package application.queries;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
-import cecs429.indexes.Index;
-import cecs429.indexes.Posting;
+import application.indexes.Index;
+import application.indexes.Posting;
 
 /**
  * An OrQuery composes other QueryComponents and merges their postings with a union-type operation.

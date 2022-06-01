@@ -1,4 +1,5 @@
-package cecs429.queries;
+
+package application.queries;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -3,14 +3,16 @@ package application.indexes;
 
 import java.util.*;
 
-public class InvertedIndex implements Index {
+// TODO:
+// Program the PositionalInvertedIndex class and incorporate it into the indexing process.
+public class PositionalInvertedIndex implements Index {
 
     private final HashMap<String, List<Posting>> indexMap;
 
     /**
      * Constructs an empty inverted index.
      */
-    public InvertedIndex() {
+    public PositionalInvertedIndex() {
         indexMap = new HashMap<>();
     }
 
@@ -32,25 +34,31 @@ public class InvertedIndex implements Index {
         return vocabulary;
     }
 
-    public void addTerm(String term, int documentId) {
+    public void addTerm(String term, int documentId, int position) {
         // each term (key) is mapped to a List of Postings (value)
         List<Posting> existingPostings = indexMap.get(term);
 
         // if `map.get(term)` returns null, the term doesn't exist in our vocabulary yet
         if (existingPostings == null) {
             // initialize a new ArrayList with a single Posting and add it, along with the term, to our map
-            ArrayList<Posting> newPostings = new ArrayList<>(){{add(new Posting(documentId));}};
+            ArrayList<Posting> newPostings = new ArrayList<>(){{add(new Posting(documentId,
+                    new ArrayList<>(){{add(position);}}));}};
             indexMap.put(term, newPostings);
         } else {
-            // since we're fully checking one document at a time,
-            // any redundant documentID additions would be at the end of the list
+            // get the last index of the existing postings
             int latestIndex = existingPostings.size() - 1;
             int latestDocumentId = existingPostings.get(latestIndex).getDocumentId();
 
-            // if the same term is found more than once in the same document, only add the documentId once
             if (latestDocumentId != documentId) {
-                existingPostings.add(new Posting(documentId));
+                // since the term exists but the document ID has not been established yet,
+                // we must add a new Posting with the new document ID
+                existingPostings.add(new Posting(documentId, new ArrayList<>(){{add(position);}}));
+            } else {
+                // since we've confirmed the term exists within our map, we simply add the term's new position
+                // into the Posting with the specific document ID
+                existingPostings.get(latestIndex).addPosition(position);
             }
+
         }
     }
 }

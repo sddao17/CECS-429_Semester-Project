@@ -1,7 +1,8 @@
-package cecs429.queries;
+
+package application.queries;
 import java.util.List;
 
-import cecs429.indexes.*;
+import application.indexes.*;
 
 /**
  * A QueryComponent is one piece of a larger query, whether that piece is a literal string or represents a merging of

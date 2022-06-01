@@ -54,7 +54,7 @@ public class Application {
             List<Posting> resultPostings = parsedQuery.getPostings(index);
 
             for (Posting posting : resultPostings) {
-                System.out.println(corpus.getDocument(posting.getDocumentId()).getTitle() +
+                System.out.println("- " + corpus.getDocument(posting.getDocumentId()).getTitle() +
                         " (Doc ID: " + posting.getDocumentId() +
                         ", positions: " + posting.getPositions() + ")");
             }

@@ -19,7 +19,7 @@ public class Application {
 
     public static void main(String[] args) {
         // change these as needed
-        String directoryPathString = "./test-sites";
+        String directoryPathString = "./corpus/test-sites";
         String extensionType = ".json";
 
         // Create a DocumentCorpus to load .json documents from the project directory.
@@ -34,17 +34,15 @@ public class Application {
         String query = "";
 
         do {
-            System.out.print("Enter the search term:\n >> ");
-            // We aren't ready to use a full query parser; for now, we'll only support single-term queries.
+            System.out.print("Enter the query:\n >> ");
             query = in.nextLine();
 
             BooleanQueryParser parser = new BooleanQueryParser();
             QueryComponent parsedQuery = parser.parseQuery(query);
-            System.out.println("Parsed query: " + parsedQuery);
 
             for (Posting posting : parsedQuery.getPostings(index)) {
-                System.out.println("Document " + corpus.getDocument(posting.getDocumentId()).getTitle());
-                System.out.println("Term: " + parsedQuery + ", doc id: " + posting.getDocumentId() +
+                System.out.println(corpus.getDocument(posting.getDocumentId()).getTitle());
+                System.out.println(" - Query: " + parsedQuery + ", doc id: " + posting.getDocumentId() +
                         ", positions: " + posting.getPositions());
             }
         } while (!query.equals(""));

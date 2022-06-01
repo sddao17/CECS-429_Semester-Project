@@ -1,6 +1,7 @@
 
 package application.queries;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -20,11 +21,23 @@ public class OrQuery implements QueryComponent {
 	
 	@Override
 	public List<Posting> getPostings(Index index) {
-		List<Posting> result = null;
+		List<Posting> result = new ArrayList<>();
+		List<Integer> pool = new ArrayList<>();
 		
 		// TODO: program the merge for an OrQuery, by gathering the postings of the composed QueryComponents and
 		// unioning the resulting postings.
 		System.out.println("OR query terms: " + mComponents);
+		for (QueryComponent mComponent : mComponents) {
+			List<Posting> currentPostings = mComponent.getPostings(index);
+
+			for (Posting posting : currentPostings) {
+				int currentDocId = posting.getDocumentId();
+				if (!pool.contains(currentDocId)) {
+					pool.add(currentDocId);
+					result.add(posting);
+				}
+			}
+		}
 		
 		return result;
 	}

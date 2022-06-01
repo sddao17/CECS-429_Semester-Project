@@ -1,7 +1,7 @@
 
 package application.queries;
 
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import application.indexes.Index;
@@ -19,12 +19,24 @@ public class AndQuery implements QueryComponent {
 	
 	@Override
 	public List<Posting> getPostings(Index index) {
-		List<Posting> result = null;
+		Set<Posting> intersections = new HashSet<>();
 		
 		// TODO: program the merge for an AndQuery, by gathering the postings of the composed QueryComponents and
 		// intersecting the resulting postings.
-		System.out.println("AND query terms: " + mComponents);
-		
+		// continue checking two posting lists at a time and have them intersect each other
+		for (int i = 0; i < mComponents.size() - 1; ++i) {
+			List<Posting> leftPostings = mComponents.get(i).getPostings(index);
+			List<Posting> rightPostings = mComponents.get(i + 1).getPostings(index);
+
+			intersections.addAll(leftPostings.stream()
+					.distinct()
+					.filter(rightPostings::contains)
+					.collect(Collectors.toSet()));
+		}
+		// store the set into a new ArrayList for sorting
+		ArrayList<Posting> result = new ArrayList<>(intersections);
+		Collections.sort(result);
+
 		return result;
 	}
 	

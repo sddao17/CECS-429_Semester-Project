@@ -20,15 +20,26 @@ public class Application {
     public static void main(String[] args) {
         // change these as needed
         String directoryPathString = "./corpus/test-sites";
+        //String directoryPathString = "./kanye-test";
+        //String directoryPathString = "./corpus/parks";
+
         String extensionType = ".json";
 
         // Create a DocumentCorpus to load .json documents from the project directory.
         DocumentCorpus corpus = DirectoryCorpus.loadJsonDirectory(
                 Paths.get(directoryPathString).toAbsolutePath(), extensionType);
         // Index the documents of the corpus.
+        System.out.println("Indexing ...");
+        long startTime = System.nanoTime();
+
         Index index = indexCorpus(corpus);
 
-        System.out.println("Vocabulary:\n" + index.getVocabulary());
+        long endTime = System.nanoTime();
+        double elapsedTimeInSeconds = (double) (endTime - startTime) / 1_000_000_000;
+        System.out.println("Indexing complete." +
+                "\nElapsed time: " + elapsedTimeInSeconds + " seconds");
+
+        System.out.println("\nVocabulary:\n" + index.getVocabulary());
 
         Scanner in = new Scanner(System.in);
         String query = "";
@@ -39,12 +50,14 @@ public class Application {
 
             BooleanQueryParser parser = new BooleanQueryParser();
             QueryComponent parsedQuery = parser.parseQuery(query);
+            List<Posting> resultPostings = parsedQuery.getPostings(index);
 
-            for (Posting posting : parsedQuery.getPostings(index)) {
-                System.out.println(corpus.getDocument(posting.getDocumentId()).getTitle());
-                System.out.println(" - Query: " + parsedQuery + ", doc id: " + posting.getDocumentId() +
+            for (Posting posting : resultPostings) {
+                System.out.println(corpus.getDocument(posting.getDocumentId()).getTitle() +
+                        "\n- Query: " + parsedQuery + ", doc id: " + posting.getDocumentId() +
                         ", positions: " + posting.getPositions());
             }
+            System.out.println("Found " + resultPostings.size() + " documents.");
         } while (!query.equals(""));
     }
 

@@ -22,6 +22,8 @@ public class PositionalInvertedIndex implements Index {
         if (!indexMap.containsKey(term))
             return new ArrayList<>();
 
+        Collections.sort(indexMap.get(term));
+
         return indexMap.get(term);
     }
 

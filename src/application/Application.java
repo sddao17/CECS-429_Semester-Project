@@ -36,11 +36,12 @@ public class Application {
 
         BooleanQueryParser parser = new BooleanQueryParser();
         QueryComponent parsedQuery = parser.parseQuery(query);
-        System.out.println(parsedQuery);
+        System.out.println("Parsed query: " + parsedQuery);
 
         for (Posting posting : index.getPostings(query)) {
             System.out.println("Document " + corpus.getDocument(posting.getDocumentId()).getTitle());
-            System.out.println(query + ", doc id: " + posting.getDocumentId() + ", positions: " + posting.getPositions());
+            System.out.println("Term: " + parsedQuery + ", doc id: " + posting.getDocumentId() +
+                    ", positions: " + posting.getPositions());
         }
     }
 

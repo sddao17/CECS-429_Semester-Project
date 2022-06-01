@@ -19,11 +19,12 @@ public class Application {
 
     public static void main(String[] args) {
         // change these as needed
-        String directoryPathString = "./corpus/test-sites";
-        //String directoryPathString = "./kanye-test";
         //String directoryPathString = "./corpus/parks";
+        String directoryPathString = "./corpus/test-sites";
+        //String directoryPathString = "./corpus/kanye-test";
 
         String extensionType = ".json";
+        //String extensionType = ".txt";
 
         // Create a DocumentCorpus to load .json documents from the project directory.
         DocumentCorpus corpus = DirectoryCorpus.loadJsonDirectory(
@@ -54,8 +55,8 @@ public class Application {
 
             for (Posting posting : resultPostings) {
                 System.out.println(corpus.getDocument(posting.getDocumentId()).getTitle() +
-                        "\n- Query: " + parsedQuery + ", doc id: " + posting.getDocumentId() +
-                        ", positions: " + posting.getPositions());
+                        " (Doc ID: " + posting.getDocumentId() +
+                        ", positions: " + posting.getPositions() + ")");
             }
             System.out.println("Found " + resultPostings.size() + " documents.");
         } while (!query.equals(""));

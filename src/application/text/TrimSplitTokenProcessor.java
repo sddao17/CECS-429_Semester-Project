@@ -27,6 +27,8 @@ public class TrimSplitTokenProcessor implements TokenProcessor {
         boolean foundFirst = false;
         boolean foundLast = false;
 
+        // continue while we have not established the range of middle alphanumeric characters
+        // and we are still within the length of the string
         while ((!foundFirst || !foundLast) && (leftIndex < term.length() && rightIndex >= 0)) {
             char leftChar = term.charAt(leftIndex);
             char rightChar = term.charAt(rightIndex);

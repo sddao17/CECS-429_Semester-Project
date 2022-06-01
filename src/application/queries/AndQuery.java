@@ -23,6 +23,7 @@ public class AndQuery implements QueryComponent {
 		
 		// TODO: program the merge for an AndQuery, by gathering the postings of the composed QueryComponents and
 		// intersecting the resulting postings.
+		System.out.println("AND query terms: " + mComponents);
 		
 		return result;
 	}

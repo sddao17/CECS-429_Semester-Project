@@ -51,6 +51,11 @@ public class TrimSplitTokenProcessor implements TokenProcessor {
             --rightIndex;
         }
 
+        // tokens without any alphanumeric characters (i.e. "&") must return an empty list
+        if (!foundFirst && !foundLast) {
+            return new ArrayList<>();
+        }
+
         // create a new substring using the marked range of indices
         term = term.substring(indexOfFirst, indexOfLast);
 

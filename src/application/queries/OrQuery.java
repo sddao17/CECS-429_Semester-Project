@@ -26,12 +26,15 @@ public class OrQuery implements QueryComponent {
 		List<Integer> pool = new ArrayList<>();
 		
 		// TODO: program the merge for an OrQuery, by gathering the postings of the composed QueryComponents and
-		// unioning the resulting postings.
-		System.out.println("OR query terms: " + mComponents);
+		// unionizing the resulting postings.
+		// iterate through each separated query term
 		for (QueryComponent mComponent : mComponents) {
+			// get the postings associated for that term
 			List<Posting> currentPostings = mComponent.getPostings(index);
 
+			// iterate through each posting for the current term
 			for (Posting posting : currentPostings) {
+				// if the next document ID is unique to the current pool, add it / its posting to our pool / result
 				int currentDocId = posting.getDocumentId();
 				if (!pool.contains(currentDocId)) {
 					pool.add(currentDocId);
@@ -39,6 +42,7 @@ public class OrQuery implements QueryComponent {
 				}
 			}
 		}
+		// remember to sort the documents
 		Collections.sort(result);
 		
 		return result;

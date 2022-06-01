@@ -28,12 +28,13 @@ public class AndQuery implements QueryComponent {
 			List<Posting> leftPostings = mComponents.get(i).getPostings(index);
 			List<Posting> rightPostings = mComponents.get(i + 1).getPostings(index);
 
+			// iterate through all lists, get the common items, and intersect them within a set
 			intersections.addAll(leftPostings.stream()
 					.distinct()
 					.filter(rightPostings::contains)
 					.collect(Collectors.toSet()));
 		}
-		// store the set into a new ArrayList for sorting
+		// store the set into a new ArrayList for sorting the document IDs
 		ArrayList<Posting> result = new ArrayList<>(intersections);
 		Collections.sort(result);
 

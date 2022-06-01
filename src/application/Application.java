@@ -45,7 +45,7 @@ public class Application {
         String query = "";
 
         do {
-            System.out.print("Enter the query:\n >> ");
+            System.out.print("\nEnter the query:\n >> ");
             query = in.nextLine();
 
             BooleanQueryParser parser = new BooleanQueryParser();

@@ -7,8 +7,8 @@ import application.documents.DocumentCorpus;
 import application.indexes.Index;
 import application.indexes.PositionalInvertedIndex;
 import application.indexes.Posting;
-import application.text.BasicTokenProcessor;
 import application.text.EnglishTokenStream;
+import application.text.TrimSplitTokenProcessor;
 
 import java.nio.file.Paths;
 import java.util.*;
@@ -17,7 +17,7 @@ public class Application {
 
     public static void main(String[] args) {
         // change these as needed
-        String directoryPathString = "./all-nps-sites-extracted";
+        String directoryPathString = "./test-sites";
         String extensionType = ".json";
 
         // Create a DocumentCorpus to load .json documents from the project directory.
@@ -38,8 +38,9 @@ public class Application {
     }
 
     private static Index indexCorpus(DocumentCorpus corpus) {
-        BasicTokenProcessor processor = new BasicTokenProcessor();
+        TrimSplitTokenProcessor processor = new TrimSplitTokenProcessor();
         PositionalInvertedIndex index = new PositionalInvertedIndex();
+
 
         // scan all documents and process each token into terms of our vocabulary
         for (Document document : corpus.getDocuments()) {
@@ -50,8 +51,12 @@ public class Application {
 
             for (String token : tokens) {
                 // process the token before evaluating whether it exists within our matrix
-                String term = processor.processToken(token);
-                index.addTerm(term, document.getId(), currentPosition);
+                ArrayList<String> terms = processor.processToken(token);
+
+                // since each token can produce multiple terms, add all terms using the same documentID and position
+                for (String term : terms) {
+                    index.addTerm(term, document.getId(), currentPosition);
+                }
                 // after each token, update the position count
                 ++currentPosition;
             }

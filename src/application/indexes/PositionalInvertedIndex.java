@@ -49,6 +49,7 @@ public class PositionalInvertedIndex implements Index {
             int latestIndex = existingPostings.size() - 1;
             int latestDocumentId = existingPostings.get(latestIndex).getDocumentId();
 
+            // check if the term has our current document id
             if (latestDocumentId != documentId) {
                 // since the term exists but the document ID has not been established yet,
                 // we must add a new Posting with the new document ID

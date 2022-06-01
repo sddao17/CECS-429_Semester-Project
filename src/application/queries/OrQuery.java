@@ -33,6 +33,6 @@ public class OrQuery implements QueryComponent {
 		// Returns a string of the form "[SUBQUERY] + [SUBQUERY] + [SUBQUERY]"
 		return "(" +
 		 String.join(" + ", mComponents.stream().map(c -> c.toString()).collect(Collectors.toList()))
-		 + " )";
+		 + ")";
 	}
 }

@@ -2,6 +2,7 @@
 package application.queries;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -124,7 +125,7 @@ public class BooleanQueryParser {
 			// If there is another + sign, then the length of this subquery goes up
 			// to the next + sign.
 		
-			// Move nextPlus backwards until finding a non-space non-plus character.
+			// Move nextPlus backwards until finding a non-space non-plus non-quotation character.
 			test = query.charAt(nextPlus);
 			while (test == ' ' || test == '+') {
 				test = query.charAt(--nextPlus);
@@ -143,12 +144,35 @@ public class BooleanQueryParser {
 	private Literal findNextLiteral(String subquery, int startIndex) {
 		int subLength = subquery.length();
 		int lengthOut;
-		
+
 		// Skip past white space.
 		while (subquery.charAt(startIndex) == ' ') {
 			++startIndex;
 		}
-		
+
+		// return a PhraseLiteral instead if the next literal started in quotes
+		if (subquery.charAt(startIndex) == '\"') {
+			// Locate the next quotation to find the end of this literal.
+			int nextQuotationMark = subquery.indexOf('\"', startIndex + 1);
+			if (nextQuotationMark < 0) {
+				// No more literals in this subquery.
+				lengthOut = subLength - startIndex + 1;
+			}
+			else {
+				lengthOut = nextQuotationMark - startIndex + 1;
+			}
+
+			// split all literals in this phrase by splitting them on spaces, ignoring the quotations
+			String phraseLiteral = subquery.substring(startIndex + 1, lengthOut - 1);
+			String[] literals = phraseLiteral.split(" ");
+			List<String> literalsList = Arrays.stream(literals).toList();
+
+			return new Literal(
+					new StringBounds(startIndex, lengthOut),
+					new PhraseLiteral(literalsList)
+			);
+		}
+
 		// Locate the next space to find the end of this literal.
 		int nextSpace = subquery.indexOf(' ', startIndex);
 		if (nextSpace < 0) {
@@ -158,7 +182,7 @@ public class BooleanQueryParser {
 		else {
 			lengthOut = nextSpace - startIndex;
 		}
-		
+
 		// This is a term literal containing a single term.
 		return new Literal(
 		 new StringBounds(startIndex, lengthOut),

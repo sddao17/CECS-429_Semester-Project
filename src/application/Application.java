@@ -7,6 +7,8 @@ import application.documents.DocumentCorpus;
 import application.indexes.Index;
 import application.indexes.PositionalInvertedIndex;
 import application.indexes.Posting;
+import application.queries.BooleanQueryParser;
+import application.queries.QueryComponent;
 import application.text.EnglishTokenStream;
 import application.text.TrimSplitTokenProcessor;
 
@@ -31,6 +33,10 @@ public class Application {
         System.out.print("Enter the search term:\n >> ");
         // We aren't ready to use a full query parser; for now, we'll only support single-term queries.
         String query = in.nextLine();
+
+        BooleanQueryParser parser = new BooleanQueryParser();
+        QueryComponent parsedQuery = parser.parseQuery(query);
+        System.out.println(parsedQuery);
 
         for (Posting posting : index.getPostings(query)) {
             System.out.println("Document " + corpus.getDocument(posting.getDocumentId()).getTitle());

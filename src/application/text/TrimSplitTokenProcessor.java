@@ -27,7 +27,7 @@ public class TrimSplitTokenProcessor implements TokenProcessor {
         boolean foundFirst = false;
         boolean foundLast = false;
 
-        while ((!foundFirst && !foundLast) && (leftIndex < term.length() && rightIndex >= 0)) {
+        while ((!foundFirst || !foundLast) && (leftIndex < term.length() && rightIndex >= 0)) {
             char leftChar = term.charAt(leftIndex);
             char rightChar = term.charAt(rightIndex);
             boolean isLeftAlphaNumeric = Character.isLetter(leftChar) || Character.isDigit(leftChar);

@@ -31,20 +31,23 @@ public class Application {
         System.out.println("Vocabulary:\n" + index.getVocabulary());
 
         Scanner in = new Scanner(System.in);
+        String query = "";
 
-        System.out.print("Enter the search term:\n >> ");
-        // We aren't ready to use a full query parser; for now, we'll only support single-term queries.
-        String query = in.nextLine();
+        do {
+            System.out.print("Enter the search term:\n >> ");
+            // We aren't ready to use a full query parser; for now, we'll only support single-term queries.
+            query = in.nextLine();
 
-        BooleanQueryParser parser = new BooleanQueryParser();
-        QueryComponent parsedQuery = parser.parseQuery(query);
-        System.out.println("Parsed query: " + parsedQuery);
+            BooleanQueryParser parser = new BooleanQueryParser();
+            QueryComponent parsedQuery = parser.parseQuery(query);
+            System.out.println("Parsed query: " + parsedQuery);
 
-        for (Posting posting : parsedQuery.getPostings(index)) {
-            System.out.println("Document " + corpus.getDocument(posting.getDocumentId()).getTitle());
-            System.out.println("Term: " + parsedQuery + ", doc id: " + posting.getDocumentId() +
-                    ", positions: " + posting.getPositions());
-        }
+            for (Posting posting : parsedQuery.getPostings(index)) {
+                System.out.println("Document " + corpus.getDocument(posting.getDocumentId()).getTitle());
+                System.out.println("Term: " + parsedQuery + ", doc id: " + posting.getDocumentId() +
+                        ", positions: " + posting.getPositions());
+            }
+        } while (!query.equals(""));
     }
 
     private static Index indexCorpus(DocumentCorpus corpus) {

@@ -41,6 +41,7 @@ public class Application {
         TrimSplitTokenProcessor processor = new TrimSplitTokenProcessor();
         PositionalInvertedIndex index = new PositionalInvertedIndex();
 
+        System.out.println(processor.processToken("  wha  le  "));
 
         // scan all documents and process each token into terms of our vocabulary
         for (Document document : corpus.getDocuments()) {

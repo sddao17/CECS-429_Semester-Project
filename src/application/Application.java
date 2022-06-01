@@ -30,16 +30,18 @@ public class Application {
 
         System.out.print("Enter the search term:\n >> ");
         // We aren't ready to use a full query parser; for now, we'll only support single-term queries.
-        String query = in.nextLine().toLowerCase();
+        String query = in.nextLine();
 
         for (Posting posting : index.getPostings(query)) {
             System.out.println("Document " + corpus.getDocument(posting.getDocumentId()).getTitle());
+            System.out.println(query + ", doc id: " + posting.getDocumentId() + ", positions: " + posting.getPositions());
         }
     }
 
     private static Index indexCorpus(DocumentCorpus corpus) {
         TrimSplitTokenProcessor processor = new TrimSplitTokenProcessor();
         PositionalInvertedIndex index = new PositionalInvertedIndex();
+
 
         // scan all documents and process each token into terms of our vocabulary
         for (Document document : corpus.getDocuments()) {

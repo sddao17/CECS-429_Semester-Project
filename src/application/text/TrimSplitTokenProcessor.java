@@ -55,7 +55,7 @@ public class TrimSplitTokenProcessor implements TokenProcessor {
         term = term.substring(indexOfFirst, indexOfLast);
 
         // 2. Remove all apostrophes or quotation marks (single or double quotes) from anywhere in the string.
-        term = term.replaceAll("'", "").replaceAll("\"", "");
+        term = term.replaceAll("'", "").replaceAll("’", "").replaceAll("\"", "");
 
         // 3. For hyphens in words, do both:
         // (a) Remove the hyphens from the token and then proceed with the modified token;

@@ -18,8 +18,12 @@ import java.util.*;
 
 public class Application {
 
-    // global variables
+    // global constants - change as needed
     public static final int VOCABULARY_PRINT_SIZE = 1000;
+    // global variables
+    private static DocumentCorpus corpus;
+    private static Index index;
+    private static boolean uninitialized = true;
 
     public static void main(String[] args) {
         startApplication();
@@ -40,10 +44,14 @@ public class Application {
     }
 
     private static void initializeComponents(String directoryPath, Scanner in) {
-        DocumentCorpus corpus = createCorpus(directoryPath);
-        Index index = indexCorpus(corpus);
+        // store the corpus and index as global member variables so the garbage collector can remove past instances
+        corpus = createCorpus(directoryPath);
+        index = indexCorpus(corpus);
 
-        System.out.printf("""
+        // only show the commands once
+        if (uninitialized) {
+            uninitialized = false;
+            System.out.printf("""
                     %nSpecial Commands:
                     :index `directory-name`  --  Index the folder at the specified path.
                               :stem `token`  --  Stem, then print the token string.
@@ -51,8 +59,13 @@ public class Application {
                                                  then print the total number of vocabulary terms.
                                          :q  --  Exit the program.
                       """, VOCABULARY_PRINT_SIZE);
+        }
 
-        startQueryLoop(corpus, index, in);
+        // terminate existing query loops before we recreate the components
+        String response = startQueryLoop(in);
+        if (!response.equals(":q")) {
+            initializeComponents(response, in);
+        }
     }
 
     private static DocumentCorpus createCorpus(String directoryPath) {
@@ -100,7 +113,7 @@ public class Application {
         return index;
     }
 
-    private static void startQueryLoop(DocumentCorpus corpus, Index index, Scanner in) {
+    private static String startQueryLoop(Scanner in) {
         String query;
 
         do {
@@ -110,60 +123,53 @@ public class Application {
             */
             System.out.print("\nEnter the query:\n >> ");
             query = in.nextLine();
+            String[] splitQuery = query.split(" ");
 
-            // read the command between the semicolon and space
-            if (query.charAt(0) == ':') {
-                int nextSpaceIndex = query.indexOf(' ');
-                String command;
-
-                // take into account whether there is a token after the original command
-                if (nextSpaceIndex > -1) {
-                    command = query.substring(1, nextSpaceIndex);
-                } else {
-                    command = query.substring(1);
+            // skip empty input
+            if (splitQuery.length > 0) {
+                String potentialCommand = splitQuery[0];
+                String parameter = "";
+                if (splitQuery.length > 1) {
+                    parameter = splitQuery[1];
                 }
-                String parameter = query.substring(nextSpaceIndex + 1);
-
                 /*
                 TODO:
                 3(a, i). If it is a special query, perform that action.
                 */
-                switch (command) {
-                    case "index" -> {
-                        initializeComponents(parameter, in);
-                        System.exit(0);
-                    }
-                    case "stem" -> {
+                switch (potentialCommand) {
+                    case ":index" -> {return parameter;}
+                    case ":stem" -> {
                         TokenStemmer stemmer = new TokenStemmer();
                         System.out.println(stemmer.processToken(parameter).get(0));
                     }
-                    case "vocab" -> {
+                    case ":vocab" -> {
                         List<String> vocabulary = index.getVocabulary();
                         int vocabularyPrintSize = Math.min(vocabulary.size(), VOCABULARY_PRINT_SIZE);
-
                         for (int i = 0; i < vocabularyPrintSize; ++i) {
                             System.out.println(vocabulary.get(i));
                         }
-
                         if (vocabulary.size() > VOCABULARY_PRINT_SIZE) {
                             System.out.println("...");
                         }
                         System.out.println("Found " + vocabulary.size() + " terms.");
                     }
+                    case ":q" -> {return ":q";}
+                    default -> {
+                        /*
+                        TODO:
+                        3(a, ii). If it isn't a special query, then parse the query and retrieve its postings.
+                        */
+                        BooleanQueryParser parser = new BooleanQueryParser();
+                        QueryComponent parsedQuery = parser.parseQuery(query);
+                        List<Posting> resultPostings = parsedQuery.getPostings(index);
+
+                        displayPostings(corpus, resultPostings, in);
+                    }
                 }
-
-                /*
-                TODO:
-                3(a, ii). If it is not, then parse the query and retrieve its postings.
-                */
-            } else if (query.charAt(0) != ':') {
-                BooleanQueryParser parser = new BooleanQueryParser();
-                QueryComponent parsedQuery = parser.parseQuery(query);
-                List<Posting> resultPostings = parsedQuery.getPostings(index);
-
-                displayPostings(corpus, resultPostings, in);
             }
         } while (!query.equals(":q"));
+
+        return ":q";
     }
 
     private static void displayPostings(DocumentCorpus corpus, List<Posting> resultPostings, Scanner in) {
@@ -197,6 +203,7 @@ public class Application {
                 Document document = corpus.getDocument(Integer.parseInt(query));
                 EnglishTokenStream stream = new EnglishTokenStream(document.getContent());
 
+                // print the tokens to the user without processing them
                 stream.getTokens().forEach(c -> System.out.print(c + " "));
                 System.out.println();
             }

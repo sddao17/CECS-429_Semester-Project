@@ -34,7 +34,7 @@ public class Application {
         System.out.print("\nEnter the path of the directory corpus:\n >> ");
 
         Scanner in = new Scanner(System.in);
-        String directoryPath = in.nextLine();
+        String directoryPath = in.nextLine().toLowerCase();
 
         initializeComponents(directoryPath, in);
     }
@@ -52,12 +52,12 @@ public class Application {
                                          :q  --  Exit the program.
                       """, VOCABULARY_PRINT_SIZE);
 
-        startQueryMenu(corpus, index, in);
+        startQueryLoop(corpus, index, in);
     }
 
     private static DocumentCorpus createCorpus(String directoryPath) {
         // Create a DocumentCorpus to load documents from the project directory.
-        return  DirectoryCorpus.loadJsonDirectory(Paths.get(directoryPath).toAbsolutePath(), ".json");
+        return DirectoryCorpus.loadJsonDirectory(Paths.get(directoryPath).toAbsolutePath(), ".json");
     }
 
     private static Index indexCorpus(DocumentCorpus corpus) {
@@ -100,7 +100,7 @@ public class Application {
         return index;
     }
 
-    private static void startQueryMenu(DocumentCorpus corpus, Index index, Scanner in) {
+    private static void startQueryLoop(DocumentCorpus corpus, Index index, Scanner in) {
         String query;
 
         do {
@@ -186,7 +186,7 @@ public class Application {
         */
         if (resultPostings.size() > 0) {
             System.out.print("Would you like to view a document? (`y` to proceed)\n >> ");
-            String query = in.nextLine();
+            String query = in.nextLine().toLowerCase();
 
             if (query.equals("y")) {
                 System.out.print("Enter the document ID to view:\n >> ");

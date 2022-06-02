@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.ArrayList;
 
 import static application.Application.indexCorpus;
+import static junit.framework.Assert.assertEquals;
 
 
 public class IndexTest {
@@ -221,8 +222,15 @@ public class IndexTest {
         String extensionType = ".txt";
         DocumentCorpus testCorpus = DirectoryCorpus.loadTextDirectory(
                 Paths.get(directoryPathString).toAbsolutePath(), extensionType);
-
         Index index = indexCorpus(testCorpus);
+
+        for(String term: indexMap.keySet()) {
+            assertEquals(indexMap.get(term), index.getPostings(term));
+        }
+
+
+
+
         //assertequal index by hand by
 
     }

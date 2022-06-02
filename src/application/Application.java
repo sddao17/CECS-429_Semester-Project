@@ -64,7 +64,7 @@ public class Application {
         return DirectoryCorpus.loadJsonDirectory(Paths.get(directoryPath).toAbsolutePath(), ".json");
     }
 
-    private static Index indexCorpus(DocumentCorpus corpus) {
+    public static Index indexCorpus(DocumentCorpus corpus) {
         /*
          TODO:
          2. Index all documents in the corpus to build a positional inverted index.

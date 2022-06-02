@@ -43,7 +43,7 @@ public class Application {
         System.out.println("\nVocabulary:\n" + index.getVocabulary());
 
         Scanner in = new Scanner(System.in);
-        String query = "";
+        String query;
 
         do {
             System.out.print("\nEnter the query:\n >> ");

@@ -6,11 +6,11 @@ import org.tartarus.snowball.ext.PorterStemmer;
 import java.util.ArrayList;
 
 /**
- * A TrimSplitTokenProcessor creates terms from tokens by: removing all non-alphanumeric characters from the
- * beginning and end of the token, stripping all apostrophes and quotation marks, parsing hyphenated words
- * by including a unified and split version of the words, converting the token to lowercase, and then stemming it.
+ * A TrimQueryTokenProcessor creates terms from tokens by: removing all non-alphanumeric characters from the
+ * beginning and end of the token, stripping all apostrophes and quotation marks, converting the token to lowercase,
+ * and then stemming it.
  */
-public class TrimSplitTokenProcessor implements TokenProcessor {
+public class TrimQueryTokenProcessor implements TokenProcessor {
 
     @Override
     public ArrayList<String> processToken(String token) {
@@ -51,41 +51,22 @@ public class TrimSplitTokenProcessor implements TokenProcessor {
             --rightIndex;
         }
 
-        // tokens without any alphanumeric characters (i.e. "&") must return an empty list
-        if (!foundFirst && !foundLast) {
-            return new ArrayList<>();
-        }
-
         // create a new substring using the marked range of indices
         term = term.substring(indexOfFirst, indexOfLast);
 
         // 2. Remove all apostrophes or quotation marks (single or double quotes) from anywhere in the string.
         term = term.replaceAll("'", "").replaceAll("’", "").replaceAll("\"", "");
 
-        // 3. For hyphens in words, do both:
-        // (a) Remove the hyphens from the token and then proceed with the modified token;
-        String[] splitTerms = term.split("-");
+        // 4. Convert the token to lowercase.
+        term = term.toLowerCase();
 
-        // (b) Split the original hyphenated token into multiple tokens without a hyphen,
-        //     and proceed with all split tokens.
-        StringBuilder combinedTerms = new StringBuilder();
-        PorterStemmer stemmer = new PorterStemmer();
-
+        String[] splitTerms = term.split(" ");
         for (String currentTerm : splitTerms) {
-            // 4. Convert the token to lowercase.
-            currentTerm = currentTerm.toLowerCase();
-
             // 5. Stem the token using an implementation of the Porter2 stemmer.
-            stemmer.setCurrent(currentTerm);
+            PorterStemmer stemmer = new PorterStemmer();
+            stemmer.setCurrent(term);
             stemmer.stem();
-
-            terms.add(stemmer.getCurrent());
-            combinedTerms.append(currentTerm);
-        }
-
-        // add all terms in a single string if any hyphen exists
-        if (splitTerms.length > 1) {
-            terms.add(combinedTerms.toString());
+            terms.add(currentTerm);
         }
 
         return terms;

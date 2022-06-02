@@ -1,6 +1,8 @@
 
 package application.queries;
 
+import application.text.TrimQueryTokenProcessor;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -149,6 +151,9 @@ public class BooleanQueryParser {
 		while (subquery.charAt(startIndex) == ' ') {
 			++startIndex;
 		}
+		// TODO:
+		// Somehow incorporate a TokenProcessor into the getPostings call sequence.
+		TrimQueryTokenProcessor processor = new TrimQueryTokenProcessor();
 
 		/*
 		TODO:
@@ -162,14 +167,15 @@ public class BooleanQueryParser {
 			int nextQuotationMark = subquery.indexOf('\"', startIndex + 1);
 			if (nextQuotationMark < 0) {
 				// No more literals in this subquery.
-				lengthOut = subLength - startIndex + 1;
+				lengthOut = subLength - startIndex;
 			}
 			else {
 				lengthOut = nextQuotationMark - startIndex + 1;
 			}
 
 			// split all literals in this phrase by splitting them on spaces, ignoring the quotations
-			String phraseLiteral = subquery.substring(startIndex + 1, lengthOut - 1);
+			// and normalize the query tokens before passing them into the PhraseLiteral
+			String phraseLiteral = String.join(" ", processor.processToken(subquery.substring(startIndex, lengthOut)));
 			List<String> literals = Arrays.stream(phraseLiteral.split(" ")).toList();
 
 			return new Literal(
@@ -188,9 +194,12 @@ public class BooleanQueryParser {
 			lengthOut = nextSpace - startIndex;
 		}
 
+		// normalize the query tokens before passing them into the TermLiteral
+		String literal = String.join(" ", processor.processToken(subquery.substring(startIndex, startIndex + lengthOut)));
+
 		// This is a term literal containing a single term.
 		return new Literal(
 		 new StringBounds(startIndex, lengthOut),
-		 new TermLiteral(subquery.substring(startIndex, startIndex + lengthOut)));
+		 new TermLiteral(literal));
 	}
 }

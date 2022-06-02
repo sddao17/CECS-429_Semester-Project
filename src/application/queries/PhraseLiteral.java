@@ -13,7 +13,7 @@ import application.indexes.Posting;
  */
 public class PhraseLiteral implements QueryComponent {
 	// The list of individual terms in the phrase.
-	private List<String> mTerms = new ArrayList<>();
+	private final List<String> mTerms = new ArrayList<>();
 	
 	/**
 	 * Constructs a PhraseLiteral with the given individual phrase terms.
@@ -33,11 +33,13 @@ public class PhraseLiteral implements QueryComponent {
 	public List<Posting> getPostings(Index index) {
 		// TODO: program this method. Retrieve the postings for the individual terms in the phrase,
 		// and positional merge them together.
+		// intersect the common postings using AndQuery
 		List<QueryComponent> allSubqueries = new ArrayList<>();
 		mTerms.forEach(c -> allSubqueries.add(new TermLiteral(c)));
 		AndQuery mergedQuery = new AndQuery(allSubqueries);
 		List<Posting> postings = mergedQuery.getPostings(index);
 
+		// store the postings and consecutive positions separately
 		ArrayList<Posting> results = new ArrayList<>();
 		ArrayList<Integer> consecutivePositions = new ArrayList<>();
 

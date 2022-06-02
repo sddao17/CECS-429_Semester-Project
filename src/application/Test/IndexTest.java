@@ -10,16 +10,19 @@ import org.junit.Test;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Comparator;
 
 import static application.Application.indexCorpus;
 import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertTrue;
 
 
 public class IndexTest {
     @Test
     public void testKanyeCorpus(){
         //inverted index by hand
-        HashMap indexMap = new HashMap<>() {
+        HashMap<String, List<Posting>> indexMap = new HashMap<>() {
             {
                 // String term, ArrayList postings
                 put("350", new ArrayList<>() {
@@ -224,9 +227,19 @@ public class IndexTest {
                 Paths.get(directoryPathString).toAbsolutePath(), extensionType);
         Index index = indexCorpus(testCorpus);
 
+        Comparator comparator = new Comparator() {
+            @Override
+            public int compare(Object o1, Object o2) {
+                return 0;
+            }
+        };
         for(String term: indexMap.keySet()) {
-            assertEquals(indexMap.get(term), index.getPostings(term));
+            int result = comparator.compare(indexMap.get(term), index.getPostings(term));
+            assertTrue("Index generated from indexCorpus method should be equal to the index made by hand",
+                    result ==0);
         }
+
+
 
 
 

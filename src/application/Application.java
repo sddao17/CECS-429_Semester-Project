@@ -123,6 +123,7 @@ public class Application {
                 if (splitQuery.length > 1) {
                     parameter = splitQuery[1];
                 }
+
                 /*
                  TODO:
                  3(a, i). If it is a special query, perform that action.
@@ -168,6 +169,7 @@ public class Application {
         */
         for (Posting posting : resultPostings) {
             int currentDocumentId = posting.getDocumentId();
+
             System.out.println("- " + corpus.getDocument(currentDocumentId).getTitle() +
                     " (ID: " + currentDocumentId + ")");
         }

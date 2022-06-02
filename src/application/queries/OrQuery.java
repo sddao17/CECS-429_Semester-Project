@@ -27,9 +27,8 @@ public class OrQuery implements QueryComponent {
 		
 		/*
 		 TODO:
-		 program the merge for an OrQuery, by gathering the postings of the composed QueryComponents and
+		 Program the merge for an OrQuery, by gathering the postings of the composed QueryComponents and
 		 */
-
 		// iterate through each separated query term
 		for (QueryComponent mComponent : mComponents) {
 			// get the postings associated for that term

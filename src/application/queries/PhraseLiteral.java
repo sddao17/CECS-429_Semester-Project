@@ -44,6 +44,11 @@ public class PhraseLiteral implements QueryComponent {
 		AndQuery intersections = new AndQuery(allSubqueries);
 		List<Posting> postings = intersections.getPostings(index);
 
+		// if there are no intersections, immediately return an empty list
+		if (postings.size() <= 0) {
+			return postings;
+		}
+
 		// store the postings and consecutive positions separately
 		ArrayList<Posting> results = new ArrayList<>();
 		ArrayList<Integer> consecutivePositions = new ArrayList<>();
@@ -63,7 +68,6 @@ public class PhraseLiteral implements QueryComponent {
 				// store values for readability
 				Posting leftPosting = leftPostings.get(leftPostingIndex);
 				Posting rightPosting = rightPostings.get(rightPostingIndex);
-
 				ArrayList<Integer> leftPositions = leftPosting.getPositions();
 				ArrayList<Integer> rightPositions = rightPosting.getPositions();
 
@@ -75,8 +79,13 @@ public class PhraseLiteral implements QueryComponent {
 				// or until one of the iterators have reached the end of their list
 				while (!found && (leftIndex < leftPositions.size() && rightIndex < rightPositions.size())) {
 					// store the current left / right position values for readability
-					int leftPosition = leftPositions.get(leftIndex);
 					int rightPosition = rightPositions.get(rightIndex);
+					int leftPosition = leftPositions.get(leftIndex);
+
+					// if there is an established consecutive chain, compare that instead
+					if (consecutivePositions.size() > 0) {
+						leftPosition = consecutivePositions.get(consecutivePositions.size() - 1);
+					}
 
 					// if the right term is off by one from the left, add it and the posting to our lists
 					if (leftPosition == rightPosition - 1) {
@@ -99,7 +108,7 @@ public class PhraseLiteral implements QueryComponent {
 					}
 				}
 
-				// if the consecutive link is broken, we must start over
+				// if the consecutive position chain is broken, we must start over
 				if (!found) {
 					consecutivePositions.clear();
 				}
@@ -116,6 +125,8 @@ public class PhraseLiteral implements QueryComponent {
 	 * @return              the index of the documentId within the ArrayList
 	 */
 	private static int binarySearch(List<Posting> postings, int documentId) {
+		if (postings.size() <= 0)
+			return -1;
 
 		return binarySearchRecursively(postings, 0, postings.size(), documentId);
 	}

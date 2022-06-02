@@ -45,6 +45,7 @@ public class PositionalInvertedIndex implements Index {
             // initialize a new ArrayList with a single Posting and add it, along with the term, to our map
             ArrayList<Posting> newPostings = new ArrayList<>(){{add(new Posting(documentId,
                     new ArrayList<>(){{add(position);}}));}};
+
             indexMap.put(term, newPostings);
         } else {
             // get the last index of the existing postings

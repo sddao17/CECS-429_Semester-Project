@@ -14,7 +14,7 @@ import application.indexes.Posting;
  */
 public class OrQuery implements QueryComponent {
 	// The components of the Or query.
-	private List<QueryComponent> mComponents;
+	private final List<QueryComponent> mComponents;
 	
 	public OrQuery(List<QueryComponent> components) {
 		mComponents = components;

@@ -129,7 +129,10 @@ public class Application {
                 3(a, i). If it is a special query, perform that action.
                 */
                 switch (command) {
-                    case "index" -> initializeComponents(parameter, in);
+                    case "index" -> {
+                        initializeComponents(parameter, in);
+                        System.exit(0);
+                    }
                     case "stem" -> {
                         TokenStemmer stemmer = new TokenStemmer();
                         System.out.println(stemmer.processToken(parameter).get(0));

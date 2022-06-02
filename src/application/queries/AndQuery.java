@@ -11,7 +11,7 @@ import application.indexes.Posting;
  * An AndQuery composes other QueryComponents and merges their postings in an intersection-like operation.
  */
 public class AndQuery implements QueryComponent {
-	private List<QueryComponent> mComponents;
+	private final List<QueryComponent> mComponents;
 	
 	public AndQuery(List<QueryComponent> components) {
 		mComponents = components;

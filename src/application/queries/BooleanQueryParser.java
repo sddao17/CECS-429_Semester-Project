@@ -170,12 +170,11 @@ public class BooleanQueryParser {
 
 			// split all literals in this phrase by splitting them on spaces, ignoring the quotations
 			String phraseLiteral = subquery.substring(startIndex + 1, lengthOut - 1);
-			String[] literals = phraseLiteral.split(" ");
-			List<String> literalsList = Arrays.stream(literals).toList();
+			List<String> literals = Arrays.stream(phraseLiteral.split(" ")).toList();
 
 			return new Literal(
 					new StringBounds(startIndex, lengthOut),
-					new PhraseLiteral(literalsList)
+					new PhraseLiteral(literals)
 			);
 		}
 

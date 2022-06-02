@@ -6,7 +6,7 @@ import java.io.Reader;
 /**
  * Represents a document in an index.
  */
-public interface Document extends Comparable<Document> {
+public interface Document {
 
 	/**
 	 * The ID used by the index to represent the document.
@@ -22,9 +22,4 @@ public interface Document extends Comparable<Document> {
 	 * The title of the document, for displaying to the user.
 	 */
 	String getTitle();
-
-	@Override
-	default int compareTo(Document otherDocument) {
-		return this.getTitle().compareTo(otherDocument.getTitle());
-	}
 }

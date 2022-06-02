@@ -20,14 +20,14 @@ public class Application {
     public static void main(String[] args) {
         // change these as needed
         //String directoryPathString = "./corpus/parks";
-        String directoryPathString = "./corpus/test-sites";
-        //String directoryPathString = "./corpus/kanye-test";
+        //String directoryPathString = "./corpus/test-sites";
+        String directoryPathString = "./corpus/kanye-test";
 
-        String extensionType = ".json";
-        //String extensionType = ".txt";
+        //String extensionType = ".json";
+        String extensionType = ".txt";
 
         // Create a DocumentCorpus to load .json documents from the project directory.
-        DocumentCorpus corpus = DirectoryCorpus.loadJsonDirectory(
+        DocumentCorpus corpus = DirectoryCorpus.loadTextDirectory(
                 Paths.get(directoryPathString).toAbsolutePath(), extensionType);
         // Index the documents of the corpus.
         System.out.println("Indexing ...");

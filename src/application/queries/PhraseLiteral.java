@@ -33,9 +33,12 @@ public class PhraseLiteral implements QueryComponent {
 	public List<Posting> getPostings(Index index) {
 		// TODO: program this method. Retrieve the postings for the individual terms in the phrase,
 		// and positional merge them together.
-		System.out.println("Phrase literal query terms: " + mTerms);
+		// find the same postings by merging them together using AndQueries
+		List<QueryComponent> allSubqueries = new ArrayList<>();
+		mTerms.forEach(c -> allSubqueries.add(new TermLiteral(c)));
+		AndQuery mergedQuery = new AndQuery(allSubqueries);
 
-		return null;
+		return mergedQuery.getPostings(index);
 	}
 	
 	@Override

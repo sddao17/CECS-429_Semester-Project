@@ -119,9 +119,7 @@ public class DirectoryCorpus implements DocumentCorpus {
 			}
 		}
 
-		List<Document> allDocuments = new ArrayList<>(mDocuments.values().stream().toList());
-		Collections.sort(allDocuments);
-		return allDocuments;
+		return new ArrayList<>(mDocuments.values().stream().toList());
 	}
 	
 	@Override

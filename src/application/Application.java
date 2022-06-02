@@ -23,7 +23,6 @@ public class Application {
     // global variables
     private static DocumentCorpus corpus;
     private static Index index;
-    private static boolean uninitialized = true;
 
     public static void main(String[] args) {
         startApplication();
@@ -40,32 +39,24 @@ public class Application {
         Scanner in = new Scanner(System.in);
         String directoryPath = in.nextLine().toLowerCase();
 
-        initializeComponents(directoryPath, in);
+        initializeComponents(directoryPath);
+
+        System.out.printf("""
+                %nSpecial Commands:
+                :index `directory-name`  --  Index the folder at the specified path.
+                          :stem `token`  --  Stem, then print the token string.
+                                 :vocab  --  Print the first %s terms in the vocabulary of the corpus,
+                                             then print the total number of vocabulary terms.
+                                     :q  --  Exit the program.
+                """, VOCABULARY_PRINT_SIZE);
+
+        startQueryLoop(in);
     }
 
-    private static void initializeComponents(String directoryPath, Scanner in) {
+    private static void initializeComponents(String directoryPath) {
         // store the corpus and index as global member variables so the garbage collector can remove past instances
         corpus = createCorpus(directoryPath);
         index = indexCorpus(corpus);
-
-        // only show the commands once
-        if (uninitialized) {
-            uninitialized = false;
-            System.out.printf("""
-                    %nSpecial Commands:
-                    :index `directory-name`  --  Index the folder at the specified path.
-                              :stem `token`  --  Stem, then print the token string.
-                                     :vocab  --  Print the first %s terms in the vocabulary of the corpus,
-                                                 then print the total number of vocabulary terms.
-                                         :q  --  Exit the program.
-                      """, VOCABULARY_PRINT_SIZE);
-        }
-
-        // terminate existing query loops before we recreate the components
-        String response = startQueryLoop(in);
-        if (!response.equals(":q")) {
-            initializeComponents(response, in);
-        }
     }
 
     private static DocumentCorpus createCorpus(String directoryPath) {
@@ -113,7 +104,7 @@ public class Application {
         return index;
     }
 
-    private static String startQueryLoop(Scanner in) {
+    private static void startQueryLoop(Scanner in) {
         String query;
 
         do {
@@ -137,7 +128,7 @@ public class Application {
                 3(a, i). If it is a special query, perform that action.
                 */
                 switch (potentialCommand) {
-                    case ":index" -> {return parameter;}
+                    case ":index" -> initializeComponents(parameter);
                     case ":stem" -> {
                         TokenStemmer stemmer = new TokenStemmer();
                         System.out.println(stemmer.processToken(parameter).get(0));
@@ -153,7 +144,7 @@ public class Application {
                         }
                         System.out.println("Found " + vocabulary.size() + " terms.");
                     }
-                    case ":q" -> {return ":q";}
+                    case ":q" -> {}
                     default -> {
                         /*
                         TODO:
@@ -168,8 +159,6 @@ public class Application {
                 }
             }
         } while (!query.equals(":q"));
-
-        return ":q";
     }
 
     private static void displayPostings(DocumentCorpus corpus, List<Posting> resultPostings, Scanner in) {

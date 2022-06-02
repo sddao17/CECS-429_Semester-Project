@@ -30,9 +30,9 @@ public class Application {
 
     private static void startApplication() {
         /*
-        TODO:
-        1. At startup, ask the user for the name of a directory that they would like to index,
-           and construct a DirectoryCorpus from that directory.
+         TODO:
+         1. At startup, ask the user for the name of a directory that they would like to index,
+            and construct a DirectoryCorpus from that directory.
          */
         System.out.print("\nEnter the path of the directory corpus:\n >> ");
 
@@ -66,9 +66,9 @@ public class Application {
 
     private static Index indexCorpus(DocumentCorpus corpus) {
         /*
-        TODO:
-        2. Index all documents in the corpus to build a positional inverted index.
-           Print to the screen how long (in seconds) this process takes.
+         TODO:
+         2. Index all documents in the corpus to build a positional inverted index.
+            Print to the screen how long (in seconds) this process takes.
          */
         System.out.println("\nIndexing ...");
         long startTime = System.nanoTime();
@@ -109,8 +109,8 @@ public class Application {
 
         do {
             /*
-            TODO:
-            3a. Ask for a search query.
+             TODO:
+             3a. Ask for a search query.
             */
             System.out.print("\nEnter the query:\n >> ");
             query = in.nextLine();
@@ -124,8 +124,8 @@ public class Application {
                     parameter = splitQuery[1];
                 }
                 /*
-                TODO:
-                3(a, i). If it is a special query, perform that action.
+                 TODO:
+                 3(a, i). If it is a special query, perform that action.
                 */
                 switch (potentialCommand) {
                     case ":index" -> initializeComponents(parameter);
@@ -147,8 +147,8 @@ public class Application {
                     case ":q" -> {}
                     default -> {
                         /*
-                        TODO:
-                        3(a, ii). If it isn't a special query, then parse the query and retrieve its postings.
+                         TODO:
+                         3(a, ii). If it isn't a special query, then parse the query and retrieve its postings.
                         */
                         BooleanQueryParser parser = new BooleanQueryParser();
                         QueryComponent parsedQuery = parser.parseQuery(query);
@@ -163,8 +163,8 @@ public class Application {
 
     private static void displayPostings(DocumentCorpus corpus, List<Posting> resultPostings, Scanner in) {
         /*
-        TODO:
-        3(a, ii, A). Output the names of the documents returned from the query, one per line.
+         TODO:
+         3(a, ii, A). Output the names of the documents returned from the query, one per line.
         */
         for (Posting posting : resultPostings) {
             int currentDocumentId = posting.getDocumentId();
@@ -172,15 +172,15 @@ public class Application {
                     " (ID: " + currentDocumentId + ")");
         }
         /*
-        TODO:
-        3(a, ii, B). Output the number of documents returned from the query, after the document names.
+         TODO:
+         3(a, ii, B). Output the number of documents returned from the query, after the document names.
         */
         System.out.println("Found " + resultPostings.size() + " documents.");
 
         /*
-        TODO:
-        3(a, ii, C). Ask the user if they would like to select a document to view.
-                     If the user selects a document to view, print the entire content of the document to the screen.
+         TODO:
+         3(a, ii, C). Ask the user if they would like to select a document to view.
+                      If the user selects a document to view, print the entire content of the document to the screen.
         */
         if (resultPostings.size() > 0) {
             System.out.print("Would you like to view a document? (`y` to proceed)\n >> ");

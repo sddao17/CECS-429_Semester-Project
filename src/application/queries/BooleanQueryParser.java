@@ -151,15 +151,17 @@ public class BooleanQueryParser {
 		while (subquery.charAt(startIndex) == ' ') {
 			++startIndex;
 		}
-		// TODO:
-		// Somehow incorporate a TokenProcessor into the getPostings call sequence.
+		/*
+		 TODO:
+		 Somehow incorporate a TokenProcessor into the getPostings call sequence.
+		 */
 		TrimQueryTokenProcessor processor = new TrimQueryTokenProcessor();
 
 		/*
-		TODO:
-		Instead of assuming that we only have single-term literals, modify this method so it will create a PhraseLiteral
-		object if the first non-space character you find is a double-quote ("). In this case, the literal is not ended
-		by the next space character, but by the next double-quote character.
+		 TODO:
+		 Instead of assuming that we only have single-term literals, modify this method so it will create a PhraseLiteral
+		 object if the first non-space character you find is a double-quote ("). In this case, the literal is not ended
+		 by the next space character, but by the next double-quote character.
 		 */
 		// return a PhraseLiteral instead if the next literal started in quotes
 		if (subquery.charAt(startIndex) == '\"') {

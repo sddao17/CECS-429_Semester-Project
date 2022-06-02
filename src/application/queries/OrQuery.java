@@ -25,8 +25,10 @@ public class OrQuery implements QueryComponent {
 		List<Posting> result = new ArrayList<>();
 		List<Integer> pool = new ArrayList<>();
 		
-		// TODO: program the merge for an OrQuery, by gathering the postings of the composed QueryComponents and
-		// unionizing the resulting postings.
+		/*
+		 TODO:
+		 program the merge for an OrQuery, by gathering the postings of the composed QueryComponents and
+		 */
 
 		// iterate through each separated query term
 		for (QueryComponent mComponent : mComponents) {

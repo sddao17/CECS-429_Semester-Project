@@ -4,12 +4,12 @@ package application;
 import application.documents.DirectoryCorpus;
 import application.documents.Document;
 import application.documents.DocumentCorpus;
-import application.indexes.Index;
 import application.indexes.PositionalInvertedIndex;
 import application.indexes.Posting;
 import application.queries.BooleanQueryParser;
 import application.queries.QueryComponent;
 import application.text.EnglishTokenStream;
+import application.text.TokenStemmer;
 import application.text.TrimSplitTokenProcessor;
 
 import java.nio.file.Paths;
@@ -17,54 +17,55 @@ import java.util.*;
 
 public class Application {
 
+    // global variables
+    public static final int VOCABULARY_PRINT_SIZE = 1000;
+
+    private static DocumentCorpus corpus;
+    private static PositionalInvertedIndex index;
+
     public static void main(String[] args) {
-        // change these as needed
-        //String directoryPathString = "./corpus/parks";
-        String directoryPathString = "./corpus/test-sites";
-        //String directoryPathString = "./corpus/kanye-test";
+        startApplication();
+    }
 
-        String extensionType = ".json";
-        //String extensionType = ".txt";
+    private static void startApplication() {
+        /*
+        TODO:
+        1. At startup, ask the user for the name of a directory that they would like to index,
+           and construct a DirectoryCorpus from that directory.
+         */
+        System.out.print("\nEnter the path of the directory corpus:\n >> ");
 
-        // Create a DocumentCorpus to load .json documents from the project directory.
-        DocumentCorpus corpus = DirectoryCorpus.loadJsonDirectory(
-                Paths.get(directoryPathString).toAbsolutePath(), extensionType);
-        // Index the documents of the corpus.
-        System.out.println("Indexing ...");
+        Scanner in = new Scanner(System.in);
+        String directoryPath = in.nextLine();
+
+        createIndexCorpus(directoryPath);
+        startQueryMenu(in);
+    }
+
+    private static void createIndexCorpus(String directoryPath) {
+        // Create a DocumentCorpus to load documents from the project directory.
+        corpus = DirectoryCorpus.loadJsonDirectory(
+                Paths.get(directoryPath).toAbsolutePath(), ".json");
+
+        /*
+        TODO:
+        2. Index all documents in the corpus to build a positional inverted index.
+           Print to the screen how long (in seconds) this process takes.
+         */
+        System.out.println("\nIndexing ...");
         long startTime = System.nanoTime();
 
-        Index index = indexCorpus(corpus);
+        indexCorpus();
 
         long endTime = System.nanoTime();
         double elapsedTimeInSeconds = (double) (endTime - startTime) / 1_000_000_000;
         System.out.println("Indexing complete." +
                 "\nElapsed time: " + elapsedTimeInSeconds + " seconds");
-
-        System.out.println("\nVocabulary:\n" + index.getVocabulary());
-
-        Scanner in = new Scanner(System.in);
-        String query;
-
-        do {
-            System.out.print("\nEnter the query:\n >> ");
-            query = in.nextLine();
-
-            BooleanQueryParser parser = new BooleanQueryParser();
-            QueryComponent parsedQuery = parser.parseQuery(query);
-            List<Posting> resultPostings = parsedQuery.getPostings(index);
-
-            for (Posting posting : resultPostings) {
-                System.out.println("- " + corpus.getDocument(posting.getDocumentId()).getTitle() +
-                        " (Doc ID: " + posting.getDocumentId() +
-                        ", positions: " + posting.getPositions() + ")");
-            }
-            System.out.println("Found " + resultPostings.size() + " documents.");
-        } while (!query.equals(""));
     }
 
-    private static Index indexCorpus(DocumentCorpus corpus) {
+    private static void indexCorpus() {
         TrimSplitTokenProcessor processor = new TrimSplitTokenProcessor();
-        PositionalInvertedIndex index = new PositionalInvertedIndex();
+        index = new PositionalInvertedIndex();
 
         // scan all documents and process each token into terms of our vocabulary
         for (Document document : corpus.getDocuments()) {
@@ -81,11 +82,98 @@ public class Application {
                 for (String term : terms) {
                     index.addTerm(term, document.getId(), currentPosition);
                 }
-                // after each token, update the position count
+                // after each token addition, update the position count
                 ++currentPosition;
             }
         }
+    }
 
-        return index;
+    private static void startQueryMenu(Scanner in) {
+        System.out.printf("""
+                    %nSpecial Commands:
+                    :index `directory-name`  --  Index the folder at the specified path.
+                              :stem `token`  --  Stem, then print the token string.
+                                     :vocab  --  Print the first %s terms in the vocabulary of the corpus,
+                                                 then print the total number of vocabulary terms.
+                                         :q  --  Exit the program.
+                      """, VOCABULARY_PRINT_SIZE);
+        String query;
+
+        do {
+            /*
+            TODO:
+            3a. Ask for a search query.
+            */
+            System.out.print("\nEnter the query:\n >> ");
+            query = in.nextLine();
+
+            // read the command between the semicolon and space
+            if (query.charAt(0) == ':') {
+                int nextSpaceIndex = query.indexOf(' ');
+                String command;
+
+                // take into account whether there is a token after the original command
+                if (nextSpaceIndex > -1) {
+                    command = query.substring(1, nextSpaceIndex);
+                } else {
+                    command = query.substring(1);
+                }
+                String parameter = query.substring(nextSpaceIndex + 1);
+
+                /*
+                TODO:
+                3(a, i). If it is a special query, perform that action.
+                */
+                switch (command) {
+                    case "index" -> createIndexCorpus(parameter);
+                    case "stem" -> {
+                        TokenStemmer stemmer = new TokenStemmer();
+                        System.out.println(stemmer.processToken(parameter).get(0));
+                    }
+                    case "vocab" -> {
+                        List<String> vocabulary = index.getVocabulary();
+                        int vocabularyPrintSize = Math.min(vocabulary.size(), VOCABULARY_PRINT_SIZE);
+
+                        for (int i = 0; i < vocabularyPrintSize; ++i) {
+                            System.out.println(vocabulary.get(i));
+                        }
+                        System.out.println("Found " + vocabulary.size() + " terms.");
+                    }
+                }
+
+                /*
+                TODO:
+                3(a, ii). If it is not, then parse the query and retrieve its postings.
+                */
+            } else if (query.charAt(0) != ':') {
+                BooleanQueryParser parser = new BooleanQueryParser();
+                QueryComponent parsedQuery = parser.parseQuery(query);
+                List<Posting> resultPostings = parsedQuery.getPostings(index);
+
+                displayPostings(corpus, resultPostings);
+            }
+        } while (!query.equals(":q"));
+    }
+
+    private static void displayPostings(DocumentCorpus corpus, List<Posting> resultPostings) {
+        /*
+        TODO:
+        3(a, ii, A). Output the names of the documents returned from the query, one per line.
+        */
+        for (Posting posting : resultPostings) {
+            System.out.println("- " + corpus.getDocument(posting.getDocumentId()).getTitle() +
+                    " (Doc ID: " + posting.getDocumentId() + ")");
+        }
+        /*
+        TODO:
+        3(a, ii, B). Output the number of documents returned from the query, after the document names.
+        */
+        System.out.println("Found " + resultPostings.size() + " documents.");
+
+        /*
+        TODO:
+        3(a, ii, C). Ask the user if they would like to select a document to view.
+                     If the user selects a document to view, print the entire content of the document to the screen.
+        */
     }
 }

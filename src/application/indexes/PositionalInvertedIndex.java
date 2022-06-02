@@ -10,7 +10,7 @@ public class PositionalInvertedIndex implements Index {
     private final HashMap<String, List<Posting>> indexMap;
 
     /**
-     * Constructs an empty inverted index.
+     * Constructs an empty positional inverted index.
      */
     public PositionalInvertedIndex() {
         indexMap = new HashMap<>();

@@ -23,6 +23,7 @@ public class AndQuery implements QueryComponent {
 		
 		// TODO: program the merge for an AndQuery, by gathering the postings of the composed QueryComponents and
 		// intersecting the resulting postings.
+
 		// continue checking two posting lists at a time and have them intersect each other
 		for (int i = 0; i < mComponents.size() - 1; ++i) {
 			List<Posting> leftPostings = mComponents.get(i).getPostings(index);

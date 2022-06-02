@@ -33,11 +33,12 @@ public class PhraseLiteral implements QueryComponent {
 	public List<Posting> getPostings(Index index) {
 		// TODO: program this method. Retrieve the postings for the individual terms in the phrase,
 		// and positional merge them together.
+
 		// intersect the common postings using AndQuery
 		List<QueryComponent> allSubqueries = new ArrayList<>();
 		mTerms.forEach(c -> allSubqueries.add(new TermLiteral(c)));
-		AndQuery mergedQuery = new AndQuery(allSubqueries);
-		List<Posting> postings = mergedQuery.getPostings(index);
+		AndQuery intersections = new AndQuery(allSubqueries);
+		List<Posting> postings = intersections.getPostings(index);
 
 		// store the postings and consecutive positions separately
 		ArrayList<Posting> results = new ArrayList<>();
@@ -48,7 +49,7 @@ public class PhraseLiteral implements QueryComponent {
 			List<Posting> leftPostings = index.getPostings(mTerms.get(i));
 			List<Posting> rightPostings = index.getPostings(mTerms.get(i + 1));
 
-			// iterate through each posting from the AndQuery intersection
+			// iterate through each posting from the AndQuery intersections
 			for (Posting currentPosting : postings) {
 				int currentDocumentId = currentPosting.getDocumentId();
 				// get the indexes of the current documentId using binary search
@@ -86,7 +87,7 @@ public class PhraseLiteral implements QueryComponent {
 
 						// else, increment the lesser value's iterator to progress the next comparison
 					} else {
-						if (leftPosition < rightPosition) {
+						if (leftPosition <= rightPosition) {
 							++leftIndex;
 						} else {
 							++rightIndex;

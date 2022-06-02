@@ -64,9 +64,9 @@ public class TrimQueryTokenProcessor implements TokenProcessor {
         for (String currentTerm : splitTerms) {
             // 5. Stem the token using an implementation of the Porter2 stemmer.
             PorterStemmer stemmer = new PorterStemmer();
-            stemmer.setCurrent(term);
+            stemmer.setCurrent(currentTerm);
             stemmer.stem();
-            terms.add(currentTerm);
+            terms.add(stemmer.getCurrent());
         }
 
         return terms;

@@ -33,12 +33,115 @@ public class PhraseLiteral implements QueryComponent {
 	public List<Posting> getPostings(Index index) {
 		// TODO: program this method. Retrieve the postings for the individual terms in the phrase,
 		// and positional merge them together.
-		// find the same postings by merging them together using AndQueries
 		List<QueryComponent> allSubqueries = new ArrayList<>();
 		mTerms.forEach(c -> allSubqueries.add(new TermLiteral(c)));
 		AndQuery mergedQuery = new AndQuery(allSubqueries);
+		List<Posting> postings = mergedQuery.getPostings(index);
 
-		return mergedQuery.getPostings(index);
+		ArrayList<Posting> results = new ArrayList<>();
+		ArrayList<Integer> consecutivePositions = new ArrayList<>();
+
+		// iterate through the terms, comparing their Postings 2 at a time
+		for (int i = 0; i < mTerms.size() - 1; ++i) {
+			List<Posting> leftPostings = index.getPostings(mTerms.get(i));
+			List<Posting> rightPostings = index.getPostings(mTerms.get(i + 1));
+
+			// iterate through each posting from the AndQuery intersection
+			for (Posting currentPosting : postings) {
+				int currentDocumentId = currentPosting.getDocumentId();
+				// get the indexes of the current documentId using binary search
+				int leftPostingIndex = binarySearch(leftPostings, currentDocumentId);
+				int rightPostingIndex = binarySearch(leftPostings, currentDocumentId);
+
+				// store values for readability
+				Posting leftPosting = leftPostings.get(leftPostingIndex);
+				Posting rightPosting = rightPostings.get(rightPostingIndex);
+
+				ArrayList<Integer> leftPositions = leftPosting.getPositions();
+				ArrayList<Integer> rightPositions = rightPosting.getPositions();
+
+				boolean found = false;
+				int leftIndex = 0;
+				int rightIndex = 0;
+
+				// continue until the positional index intersection is found
+				// or until one of the iterators have reached the end of their list
+				while (!found && (leftIndex < leftPositions.size() && rightIndex < rightPositions.size())) {
+					// store the current left / right position values for readability
+					int leftPosition = leftPositions.get(leftIndex);
+					int rightPosition = rightPositions.get(rightIndex);
+
+					// if the right term is off by one from the left, add it and the posting to our lists
+					if (leftPosition == rightPosition - 1) {
+						// since we only add one Posting / position at a time with additional iterations,
+						// only add both the left and right Postings / positions when the lists are empty
+						if (consecutivePositions.size() <= 0) {
+							results.add(leftPosting);
+							consecutivePositions.add(leftPosition);
+						}
+						consecutivePositions.add(rightPosition);
+						found = true;
+
+						// else, increment the lesser value's iterator to progress the next comparison
+					} else {
+						if (leftPosition < rightPosition) {
+							++leftIndex;
+						} else {
+							++rightIndex;
+						}
+					}
+				}
+
+				// if the consecutive link is broken, we must start over
+				if (!found) {
+					consecutivePositions.clear();
+				}
+			}
+		}
+
+		return results;
+	}
+
+	/**
+	 * Returns the index of the Postings list that contains the documentId.
+	 * @param postings 		the list of Postings to search through
+	 * @param documentId	the document ID to find the index for
+	 * @return              the index of the documentId within the ArrayList
+	 */
+	private static int binarySearch(List<Posting> postings, int documentId) {
+
+		return binarySearchRecursively(postings, 0, postings.size(), documentId);
+	}
+
+	/**
+	 * Returns the index of the Postings list that contains the documentId.
+	 * @param postings 		the list of Postings to search through
+	 * @param left	        the left boundary of the ArrayList to check
+	 * @param right         the right boundary of the ArrayList to check
+	 * @param documentId	the document ID to find the index for
+	 * @return              the index of the documentId within the ArrayList
+	 */
+	private static int binarySearchRecursively(List<Posting> postings, int left, int right, int documentId) {
+		// base case: left and right boundaries are positioned at empty array
+		// or the int to search is greater than the array's greatest element
+		if (right < left) {
+			return -1;
+		}
+
+		int middle = ((right - left) / 2) + left;
+
+		// return the middle index if it's the element we're searching for
+		if (postings.get(middle).getDocumentId() == documentId) {
+			return middle;
+		}
+
+		// if our intToSearch is less than the current midpoint, halve our search section and try again
+		if (documentId < postings.get(middle).getDocumentId()) {
+			return binarySearchRecursively(postings, left, middle - 1, documentId);
+		}
+
+		// else, the intToSearch must be in the upper half
+		return binarySearchRecursively(postings, middle + 1, right, documentId);
 	}
 	
 	@Override

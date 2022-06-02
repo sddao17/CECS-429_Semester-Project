@@ -130,7 +130,7 @@ public class PhraseLiteral implements QueryComponent {
 	 */
 	private static int binarySearchRecursively(List<Posting> postings, int left, int right, int documentId) {
 		// base case: left and right boundaries are positioned at empty array
-		// or the int to search is greater than the array's greatest element
+		// or the element to search is greater than the array's greatest element
 		if (right < left) {
 			return -1;
 		}
@@ -142,12 +142,12 @@ public class PhraseLiteral implements QueryComponent {
 			return middle;
 		}
 
-		// if our intToSearch is less than the current midpoint, halve our search section and try again
+		// if our search element is less than the current midpoint, halve our search section and try again
 		if (documentId < postings.get(middle).getDocumentId()) {
 			return binarySearchRecursively(postings, left, middle - 1, documentId);
 		}
 
-		// else, the intToSearch must be in the upper half
+		// else, the search element must be in the upper half
 		return binarySearchRecursively(postings, middle + 1, right, documentId);
 	}
 	

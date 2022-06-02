@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import static application.Application.indexCorpus;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class IndexTest {
@@ -87,10 +88,6 @@ public class IndexTest {
                                 add(1);
                             }
                         }));
-                    }
-                });
-                put("la", new ArrayList<>() {
-                    {
                         add(new Posting(2, new ArrayList<>() {
                             {
                                 add(5);
@@ -170,19 +167,11 @@ public class IndexTest {
                                 add(2);
                             }
                         }));
-                    }
-                });
-                put("yeezi", new ArrayList<>() {
-                    {
                         add(new Posting(3, new ArrayList<>() {
                             {
                                 add(1);
                             }
                         }));
-                    }
-                });
-                put("yeezi", new ArrayList<>() {
-                    {
                         add(new Posting(4, new ArrayList<>() {
                             {
                                 add(1);
@@ -190,6 +179,7 @@ public class IndexTest {
                         }));
                     }
                 });
+
             }
 
         };
@@ -202,17 +192,62 @@ public class IndexTest {
         Index index = indexCorpus(testCorpus);
 
         //assertequal index by hand by
-        Comparator comparator = new Comparator() {
+        Comparator<List<Posting>> comparator = new Comparator() {
             @Override
             public int compare(Object o1, Object o2) {
+                List<Posting> posting1;
+                List<Posting> posting2;
+                if(o1 instanceof List){
+                    posting1 = (List<Posting>) o1;
+                } else {
+                    return -1;
+                }
+                if(o2 instanceof List){
+                    posting2 = (List<Posting>) o2;
+                }
+                else {
+                    return -1;
+                }
+                if (posting1.size()< posting2.size()){
+                    return -1;
+                }
+                if (posting1.size()> posting2.size()){
+                    return 1;
+                }
+                for(int i=0; posting1.size()>i; i++){
+                    // we're iterating through one posting at a time
+                    // store each documentID for readability
+                    int leftDocumentId = posting1.get(i).getDocumentId();
+                    int rightDocumentId = posting2.get(i).getDocumentId();
+
+                    if (leftDocumentId != rightDocumentId) {
+                        return -1;
+                    }
+
+                    ArrayList<Integer> leftPositions = posting1.get(i).getPositions();
+                    ArrayList<Integer> rightPositions = posting2.get(i).getPositions();
+                    if(leftPositions.size()>rightPositions.size()){
+                        return 1;
+                    }
+                    if(leftPositions.size()<rightPositions.size()){
+                        return -1;
+                    }
+                    for(int j =0; leftPositions.size()>j; j++){
+                        int leftPosition = leftPositions.get(j);
+                        int rightPosition = rightPositions.get(j);
+
+                        if (leftPosition != rightPosition)
+                            return -1;
+                    }
+                }
+
                 return 0;
             }
         };
         for(String term: indexMap.keySet()) {
             //assertEquals(indexMap.get(term), index.getPostings(term));
             int result = comparator.compare(indexMap.get(term), index.getPostings(term));
-            assertTrue("Index generated from indexCorpus method should be equal to the index made by hand",
-                    result ==0);
+            assertEquals("Index generated from indexCorpus method should be equal to the index made by hand", 0, result);
         }
 
     }

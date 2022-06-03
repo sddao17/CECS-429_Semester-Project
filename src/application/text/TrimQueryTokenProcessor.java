@@ -23,6 +23,8 @@ public class TrimQueryTokenProcessor implements TokenProcessor {
         // 2. Remove all apostrophes or quotation marks (single or double quotes) from anywhere in the string.
         term = term.replaceAll("'", "").replaceAll("’", "").replaceAll("\"", "");
 
+        // skip 3 (splitting token on hyphens)
+
         // 4. Convert the token to lowercase.
         term = term.toLowerCase();
 

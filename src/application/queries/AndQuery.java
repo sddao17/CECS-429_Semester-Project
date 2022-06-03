@@ -28,9 +28,10 @@ public class AndQuery implements QueryComponent {
 		List<Posting> intersections = mComponents.get(0).getPostings(index);
 
 		// start intersecting with the postings of the second term
-		for (QueryComponent mComponent : mComponents) {
+		for (int i = 1; i < mComponents.size(); ++i) {
+			QueryComponent currentComponent = mComponents.get(i);
 			// store current posting for readability
-			List<Posting> currentPostings = mComponent.getPostings(index);
+			List<Posting> currentPostings = currentComponent.getPostings(index);
 
 			// intersect the current intersections with the new postings
 			intersections = intersectPostings(intersections, currentPostings);

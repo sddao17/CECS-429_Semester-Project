@@ -24,6 +24,12 @@ public class Application {
     private static Index index;
 
     public static void main(String[] args) {
+        System.out.printf("""
+                %nCopy/paste for testing:
+                ./corpus/parks
+                ./corpus/parks-test
+                ./corpus/kanye-test
+                ./corpus/moby dick%n""");
         startApplication();
     }
 

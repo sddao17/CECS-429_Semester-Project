@@ -40,8 +40,10 @@ public class PhraseLiteral implements QueryComponent {
 
 		// store postings where all the terms are sequentially in +1 positional order,
 		// beginning with the postings of the first term
-		List<int[]> positionalIntersects = new ArrayList<>();
-		ArrayList<Posting> finalIntersects = new ArrayList<>();
+		// Object[0], Object[1], Object[2] = Postings, position1 (int), position2 (int)
+		List<Object[]> positionalIntersects = new ArrayList<>();
+		List<Posting> finalIntersects = new ArrayList<>();
+		int firstTermIntersects = 0;
 
 		// start positional intersecting with postings two at a time
 		for (int i = 0; i < mTerms.size() - 1; ++i) {
@@ -51,17 +53,51 @@ public class PhraseLiteral implements QueryComponent {
 
 			// positional intersect our current intersections list with the next postings list
 			positionalIntersects.addAll(positionalIntersect(leftPostings, rightPostings, k));
+
+			if (i == 0) {
+				firstTermIntersects = positionalIntersects.size();
+			}
 		}
 
 		// starting from index 0, compare the first index against all others after it;
 		// if ((leftIndex[0] == rightIndex[0]) && (rightIndex[2] - leftIndex[1] <= k))
 		// 	increment consecutiveCount and check if consecutiveCount == mTerms.size() - 1;
 		// 	if it is, add the posting to the finalIntersections
+		for (int i = 0; i < firstTermIntersects; ++i) {
+			Posting leftPosting = (Posting) positionalIntersects.get(i)[0];
+			int leftDocumentId = leftPosting.getDocumentId();
+			int leftPosition = (int) positionalIntersects.get(i)[2];
+			int consecutiveCount = 0;
+
+			if (firstTermIntersects == positionalIntersects.size()) {
+				addPosting(finalIntersects, leftPosting, leftDocumentId);
+			} else {
+				for (int j = firstTermIntersects; j < positionalIntersects.size(); ++j) {
+					Posting rightPosting = (Posting) positionalIntersects.get(j)[0];
+					int rightDocumentId = rightPosting.getDocumentId();
+					int rightPosition = (int) positionalIntersects.get(j)[2];
+
+					if (leftDocumentId == rightDocumentId) {
+						System.out.println("Entered: " + leftPosition + ", " + rightPosition);
+						if (Math.abs(leftPosition - rightPosition) <= k) {
+							++consecutiveCount;
+
+							if (consecutiveCount == mTerms.size() - 2) {
+								addPosting(finalIntersects, leftPosting, leftDocumentId);
+								break;
+							}
+
+							leftPosition = rightPosition;
+						}
+					}
+				}
+			}
+		}
 
 		return finalIntersects;
 	}
 
-	private ArrayList<int[]> positionalIntersect(List<Posting> leftList, List<Posting> rightList, int k) {
+	private ArrayList<Object[]> positionalIntersect(List<Posting> leftList, List<Posting> rightList, int k) {
 		/*
 			answer ← {}
 			while p1 != NIL and p2 != NIL
@@ -88,7 +124,7 @@ public class PhraseLiteral implements QueryComponent {
 						else p2 ← next(p2)
 			return answer
 		 */
-		ArrayList<int[]> positionalIntersects = new ArrayList<>();
+		ArrayList<Object[]> positionalIntersects = new ArrayList<>();
 
 		int leftListIndex = 0;
 		int rightListIndex = 0;
@@ -130,7 +166,7 @@ public class PhraseLiteral implements QueryComponent {
 
 					for (int rightPosition : consecutivePositions) {
 						if (leftPosition < rightPosition) {
-							int[] documentPositions = new int[]{leftDocumentId, leftPosition, rightPosition};
+							Object[] documentPositions = new Object[]{leftPosting, leftPosition, rightPosition};
 							positionalIntersects.add(documentPositions);
 						}
 					}
@@ -147,6 +183,19 @@ public class PhraseLiteral implements QueryComponent {
 		}
 
 		return positionalIntersects;
+	}
+
+	private void addPosting(List<Posting> finalIntersects, Posting leftPosting, int leftDocumentId) {
+		if (finalIntersects.size() <= 0) {
+			finalIntersects.add(leftPosting);
+		} else {
+			int latestIndex = finalIntersects.size() - 1;
+			int latestDocumentId = finalIntersects.get(latestIndex).getDocumentId();
+
+			if (latestDocumentId != leftDocumentId) {
+				finalIntersects.add(leftPosting);
+			}
+		}
 	}
 
 	@Override

@@ -5,7 +5,6 @@ import java.util.ArrayList;
 
 /**
  * A Posting encapsulates a document ID associated with a search query component.
- * TODO:
  * Adjust this class so that Postings also store an ArrayList indicating the positions for each document
  * that the term occurs in.
  */

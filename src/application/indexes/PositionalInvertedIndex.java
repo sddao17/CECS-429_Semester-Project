@@ -3,7 +3,6 @@ package application.indexes;
 
 import java.util.*;
 
-// TODO:
 // Program the PositionalInvertedIndex class and incorporate it into the indexing process.
 public class PositionalInvertedIndex implements Index {
 

@@ -2,7 +2,6 @@
 package application.queries;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,7 +24,6 @@ public class OrQuery implements QueryComponent {
 		List<Posting> unions = new ArrayList<>();
 		
 		/*
-		 TODO:
 		 Program the merge for an OrQuery, by gathering the postings of the composed QueryComponents and
 		 unionizing the resulting postings.
 		 */
@@ -63,7 +61,7 @@ public class OrQuery implements QueryComponent {
 				unions.add(rightPosting);
 				++rightIndex;
 			} else {
-				// add one of the duplicate elements and then increment both
+				// add one of the duplicate elements and then increment both iterators
 				unions.add(rightPosting);
 				++leftIndex;
 				++rightIndex;

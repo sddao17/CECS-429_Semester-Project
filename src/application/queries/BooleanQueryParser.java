@@ -177,12 +177,11 @@ public class BooleanQueryParser {
 
 			// split all literals in this phrase by splitting them on spaces, ignoring the quotations
 			// and normalize the query tokens before passing them into the PhraseLiteral
-			String phraseLiteral = String.join(" ", processor.processToken(subquery.substring(startIndex, lengthOut)));
-			List<String> literals = Arrays.stream(phraseLiteral.split(" ")).toList();
+			List<String> phraseLiteral = processor.processToken(subquery.substring(startIndex, lengthOut));
 
 			return new Literal(
 					new StringBounds(startIndex, lengthOut),
-					new PhraseLiteral(literals)
+					new PhraseLiteral(phraseLiteral)
 			);
 		}
 

@@ -20,7 +20,6 @@ public class AndQuery implements QueryComponent {
 	@Override
 	public List<Posting> getPostings(Index index) {
 		/*
-		 TODO:
 		 Program the merge for an AndQuery, by gathering the postings of the composed QueryComponents and
 		 unionizing the results.
 		 */

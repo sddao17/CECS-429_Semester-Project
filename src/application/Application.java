@@ -17,8 +17,9 @@ import java.util.*;
 public class Application {
 
     // global constants - change as needed
-    public static final int VOCABULARY_PRINT_SIZE = 1000;
+    private static final int VOCABULARY_PRINT_SIZE = 1_000;
     // global variables
+    // we need only one corpus and index active at a time, and multiple methods need access to them
     private static DirectoryCorpus corpus;
     private static Index index;
 
@@ -28,9 +29,8 @@ public class Application {
 
     private static void startApplication() {
         /*
-         TODO:
          1. At startup, ask the user for the name of a directory that they would like to index,
-            and construct a DirectoryCorpus from that directory.
+         and construct a DirectoryCorpus from that directory.
          */
         System.out.print("\nEnter the path of the directory corpus:\n >> ");
         Scanner in = new Scanner(System.in);
@@ -51,8 +51,6 @@ public class Application {
     }
 
     private static void initializeComponents(String directoryPath) {
-        // since we need only one instance each of the corpus and index active at any time,
-        // and many other methods will need them, store them as static members
         corpus = new DirectoryCorpus(Path.of(directoryPath));
         corpus.registerFileDocumentFactory(".txt", TextFileDocument::loadTextFileDocument);
         corpus.registerFileDocumentFactory(".json", JsonFileDocument::loadJsonFileDocument);
@@ -61,9 +59,8 @@ public class Application {
 
     private static Index indexCorpus(DocumentCorpus corpus) {
         /*
-         TODO:
          2. Index all documents in the corpus to build a positional inverted index.
-            Print to the screen how long (in seconds) this process takes.
+         Print to the screen how long (in seconds) this process takes.
          */
         System.out.println("\nIndexing...");
         long startTime = System.nanoTime();
@@ -103,10 +100,7 @@ public class Application {
         String query;
 
         do {
-            /*
-             TODO:
-             3a. Ask for a search query.
-            */
+            // 3a. Ask for a search query.
             System.out.print("\nEnter the query:\n >> ");
             query = in.nextLine();
             String[] splitQuery = query.split(" ");
@@ -119,10 +113,7 @@ public class Application {
                     parameter = splitQuery[1];
                 }
 
-                /*
-                 TODO:
-                 3(a, i). If it is a special query, perform that action.
-                */
+                // 3(a, i). If it is a special query, perform that action.
                 switch (potentialCommand) {
                     case ":index" -> initializeComponents(parameter);
                     case ":stem" -> {
@@ -142,10 +133,7 @@ public class Application {
                     }
                     case ":q" -> {}
                     default -> {
-                        /*
-                         TODO:
-                         3(a, ii). If it isn't a special query, then parse the query and retrieve its postings.
-                        */
+                        // 3(a, ii). If it isn't a special query, then parse the query and retrieve its postings.
                         BooleanQueryParser parser = new BooleanQueryParser();
                         QueryComponent parsedQuery = parser.parseQuery(query);
                         List<Posting> resultPostings = parsedQuery.getPostings(index);
@@ -158,26 +146,20 @@ public class Application {
     }
 
     private static void displayPostings(List<Posting> resultPostings, Scanner in) {
-        /*
-         TODO:
-         3(a, ii, A). Output the names of the documents returned from the query, one per line.
-        */
+        // 3(a, ii, A). Output the names of the documents returned from the query, one per line.
         for (Posting posting : resultPostings) {
             int currentDocumentId = posting.getDocumentId();
 
             System.out.println("- " + corpus.getDocument(currentDocumentId).getTitle() +
                     " (ID: " + currentDocumentId + ")");
         }
-        /*
-         TODO:
-         3(a, ii, B). Output the number of documents returned from the query, after the document names.
-        */
+
+        // 3(a, ii, B). Output the number of documents returned from the query, after the document names.
         System.out.println("Found " + resultPostings.size() + " documents.");
 
         /*
-         TODO:
          3(a, ii, C). Ask the user if they would like to select a document to view.
-                      If the user selects a document to view, print the entire content of the document to the screen.
+         If the user selects a document to view, print the entire content of the document to the screen.
         */
         if (resultPostings.size() > 0) {
             System.out.print("Would you like to view a document's contents? (`y` to proceed)\n >> ");
@@ -189,7 +171,7 @@ public class Application {
                 Document document = corpus.getDocument(Integer.parseInt(query));
                 EnglishTokenStream stream = new EnglishTokenStream(document.getContent());
 
-                // print the tokens to the user without processing them
+                // print the tokens to the console without processing them
                 stream.getTokens().forEach(c -> System.out.print(c + " "));
                 System.out.println();
             }

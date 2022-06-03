@@ -1,8 +1,6 @@
 
 package application.text;
 
-import org.tartarus.snowball.ext.PorterStemmer;
-
 import java.util.ArrayList;
 
 /**

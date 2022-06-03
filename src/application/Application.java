@@ -35,7 +35,6 @@ public class Application {
             and construct a DirectoryCorpus from that directory.
          */
         System.out.print("\nEnter the path of the directory corpus:\n >> ");
-
         Scanner in = new Scanner(System.in);
         String directoryPath = in.nextLine().toLowerCase();
 
@@ -54,14 +53,10 @@ public class Application {
     }
 
     private static void initializeComponents(String directoryPath) {
-        // store the corpus and index as global member variables so the garbage collector can remove past instances
-        corpus = createCorpus(directoryPath);
+        // since we need only one instance each of the corpus and index active at any time,
+        // store them as static members
+        corpus = DirectoryCorpus.loadJsonDirectory(Paths.get(directoryPath).toAbsolutePath(), ".json");
         index = indexCorpus(corpus);
-    }
-
-    private static DocumentCorpus createCorpus(String directoryPath) {
-        // Create a DocumentCorpus to load documents from the project directory.
-        return DirectoryCorpus.loadJsonDirectory(Paths.get(directoryPath).toAbsolutePath(), ".json");
     }
 
     private static Index indexCorpus(DocumentCorpus corpus) {
@@ -155,14 +150,14 @@ public class Application {
                         QueryComponent parsedQuery = parser.parseQuery(query);
                         List<Posting> resultPostings = parsedQuery.getPostings(index);
 
-                        displayPostings(corpus, resultPostings, in);
+                        displayPostings(resultPostings, in);
                     }
                 }
             }
         } while (!query.equals(":q"));
     }
 
-    private static void displayPostings(DocumentCorpus corpus, List<Posting> resultPostings, Scanner in) {
+    private static void displayPostings(List<Posting> resultPostings, Scanner in) {
         /*
          TODO:
          3(a, ii, A). Output the names of the documents returned from the query, one per line.
@@ -185,7 +180,7 @@ public class Application {
                       If the user selects a document to view, print the entire content of the document to the screen.
         */
         if (resultPostings.size() > 0) {
-            System.out.print("Would you like to view a document? (`y` to proceed)\n >> ");
+            System.out.print("Would you like to view a document's contents? (`y` to proceed)\n >> ");
             String query = in.nextLine().toLowerCase();
 
             if (query.equals("y")) {

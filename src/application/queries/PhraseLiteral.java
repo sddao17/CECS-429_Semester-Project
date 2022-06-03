@@ -31,7 +31,7 @@ public class PhraseLiteral implements QueryComponent {
 	
 	@Override
 	public List<Posting> getPostings(Index index) {
-		//System.out.println("Phrase literal terms: " + mTerms);
+		System.out.println("Phrase literal terms: " + mTerms);
 		/*
 		 TODO:
 		 Program this method. Retrieve the postings for the individual terms in the phrase,
@@ -58,60 +58,64 @@ public class PhraseLiteral implements QueryComponent {
 			List<Posting> leftPostings = index.getPostings(mTerms.get(i));
 			List<Posting> rightPostings = index.getPostings(mTerms.get(i + 1));
 
-			// iterate through each posting from the AndQuery intersections
-			for (Posting currentPosting : postings) {
-				int currentDocumentId = currentPosting.getDocumentId();
-				// get the indexes of the current documentId using binary search
-				int leftPostingIndex = binarySearch(leftPostings, currentDocumentId);
-				int rightPostingIndex = binarySearch(leftPostings, currentDocumentId);
+			// debugging only
+			try {
+				// iterate through each posting from the AndQuery intersections
+				for (Posting currentPosting : postings) {
+					int currentDocumentId = currentPosting.getDocumentId();
+					// get the indexes of the current documentId using binary search
+					int leftPostingIndex = binarySearch(leftPostings, currentDocumentId);
+					int rightPostingIndex = binarySearch(rightPostings, currentDocumentId);
 
-				// store values for readability
-				Posting leftPosting = leftPostings.get(leftPostingIndex);
-				Posting rightPosting = rightPostings.get(rightPostingIndex);
-				ArrayList<Integer> leftPositions = leftPosting.getPositions();
-				ArrayList<Integer> rightPositions = rightPosting.getPositions();
+					// store values for readability
+					Posting leftPosting = leftPostings.get(leftPostingIndex);
+					Posting rightPosting = rightPostings.get(rightPostingIndex);
+					ArrayList<Integer> leftPositions = leftPosting.getPositions();
+					ArrayList<Integer> rightPositions = rightPosting.getPositions();
 
-				boolean found = false;
-				int leftIndex = 0;
-				int rightIndex = 0;
+					boolean found = false;
+					int leftIndex = 0;
+					int rightIndex = 0;
 
-				// continue until the positional index intersection is found
-				// or until one of the iterators have reached the end of their list
-				while (!found && (leftIndex < leftPositions.size() && rightIndex < rightPositions.size())) {
-					// store the current left / right position values for readability
-					int rightPosition = rightPositions.get(rightIndex);
-					int leftPosition = leftPositions.get(leftIndex);
+					// continue until the positional index intersection is found
+					// or until one of the iterators have reached the end of their list
+					while (!found && (leftIndex < leftPositions.size() && rightIndex < rightPositions.size())) {
+						// store the current left / right position values for readability
+						int rightPosition = rightPositions.get(rightIndex);
+						int leftPosition = leftPositions.get(leftIndex);
 
-					// if there is an established consecutive chain, compare that instead
-					if (consecutivePositions.size() > 0) {
-						leftPosition = consecutivePositions.get(consecutivePositions.size() - 1);
-					}
-
-					// if the right term is off by one from the left, add it and the posting to our lists
-					if (leftPosition == rightPosition - 1) {
-						// since we only add one Posting / position at a time with additional iterations,
-						// only add both the left and right Postings / positions when the lists are empty
-						if (consecutivePositions.size() <= 0) {
-							results.add(leftPosting);
-							consecutivePositions.add(leftPosition);
+						// if there is an established consecutive chain, compare that instead
+						if (consecutivePositions.size() > 0) {
+							leftPosition = consecutivePositions.get(consecutivePositions.size() - 1);
 						}
-						consecutivePositions.add(rightPosition);
-						found = true;
 
-						// else, increment the lesser value's iterator to progress the next comparison
-					} else {
-						if (leftPosition <= rightPosition) {
-							++leftIndex;
+						// if the right term is off by one from the left, add it and the posting to our lists
+						if (leftPosition == rightPosition - 1) {
+							// only add both the left and right positions when the lists are empty;
+							// the first two elements are compared when the consecutivePositions is empty
+							if (consecutivePositions.size() <= 0) {
+								consecutivePositions.add(leftPosition);
+							}
+							consecutivePositions.add(rightPosition);
+							found = true;
+
+							// else, increment the lesser value's iterator to progress the next comparison
 						} else {
-							++rightIndex;
+							if (leftPosition <= rightPosition) {
+								++leftIndex;
+							} else {
+								++rightIndex;
+							}
 						}
 					}
-				}
 
-				// if the consecutive position chain is broken, we must start over
-				if (!found) {
-					consecutivePositions.clear();
+					// if the consecutive position chain is broken, we must start over
+					if (!found) {
+						consecutivePositions.clear();
+					}
 				}
+			} catch (Exception err) {
+				err.printStackTrace();
 			}
 		}
 

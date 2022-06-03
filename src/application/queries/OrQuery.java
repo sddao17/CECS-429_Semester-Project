@@ -22,32 +22,62 @@ public class OrQuery implements QueryComponent {
 	
 	@Override
 	public List<Posting> getPostings(Index index) {
-		List<Posting> result = new ArrayList<>();
-		List<Integer> pool = new ArrayList<>();
+		List<Posting> unions = new ArrayList<>();
 		
 		/*
 		 TODO:
 		 Program the merge for an OrQuery, by gathering the postings of the composed QueryComponents and
+		 unionizing the resulting postings.
 		 */
 		// iterate through each separated query term
 		for (QueryComponent mComponent : mComponents) {
-			// get the postings associated for that term
+			// store current posting for readability
 			List<Posting> currentPostings = mComponent.getPostings(index);
 
-			// iterate through each posting for the current term
-			for (Posting posting : currentPostings) {
-				// if the next document ID is unique to the current pool, add it / its posting to our pool / result
-				int currentDocId = posting.getDocumentId();
-				if (!pool.contains(currentDocId)) {
-					pool.add(currentDocId);
-					result.add(posting);
-				}
+			// unionize the current unions with the new postings
+			unions = unionizePostings(unions, currentPostings);
+		}
+		
+		return unions;
+	}
+
+	private List<Posting> unionizePostings(List<Posting> leftList, List<Posting> rightList) {
+		List<Posting> unions = new ArrayList<>();
+
+		int leftIndex = 0;
+		int rightIndex = 0;
+
+		// iterate through the lists until one (or both) have been fully traversed
+		while (leftIndex < leftList.size() && rightIndex < rightList.size()) {
+			// store values for readability
+			Posting leftPosting = leftList.get(leftIndex);
+			Posting rightPosting = rightList.get(rightIndex);
+			int leftDocumentId = leftPosting.getDocumentId();
+			int rightDocumentId = rightPosting.getDocumentId();
+
+			// add the union if the posting has the same document ID and progress the index iterators
+			if (leftDocumentId < rightDocumentId) {
+				unions.add(leftPosting);
+				++leftIndex;
+			} else if (leftDocumentId > rightDocumentId){
+				unions.add(rightPosting);
+				++rightIndex;
+			} else {
+				// add one of the duplicate elements and then increment both
+				unions.add(rightPosting);
+				++leftIndex;
+				++rightIndex;
 			}
 		}
-		// remember to sort the documents
-		Collections.sort(result);
-		
-		return result;
+
+		// similar to mergeSort, add any leftovers of any non-fully-traversed list
+		if (leftIndex < leftList.size()) {
+			unions.addAll(leftList.subList(leftIndex, leftList.size()));
+		} else if (rightIndex < rightList.size()) {
+			unions.addAll(rightList.subList(rightIndex, rightList.size()));
+		}
+
+		return unions;
 	}
 	
 	@Override

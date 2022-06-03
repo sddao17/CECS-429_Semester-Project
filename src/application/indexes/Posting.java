@@ -2,7 +2,6 @@
 package application.indexes;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 
 /**
  * A Posting encapsulates a document ID associated with a search query component.

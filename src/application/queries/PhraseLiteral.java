@@ -31,16 +31,15 @@ public class PhraseLiteral implements QueryComponent {
 
 	@Override
 	public List<Posting> getPostings(Index index) {
-		/*
-		 Program this method. Retrieve the postings for the individual terms in the phrase,
-		 and positional merge them together.
-		 */
-		// `k` represents the position difference between words to be acceptable as "consecutive"
+		/* Program this method. Retrieve the postings for the individual terms in the phrase,
+		  and positional merge them together. */
+		/* `k` represents the position difference between acceptable consecutive terms;
+		  in the future, we may need to adjust this value - if so, it would have to be a static member variable */
 		int k = 1;
 
-		// store postings where all the terms are sequentially in +1 positional order,
-		// beginning with the postings of the first term
-		// Object[0], Object[1], Object[2] = Postings, position1 (int), position2 (int)
+		/* store posting-position1-position2 tuples where all the terms are sequentially in +1 positional order,
+		  beginning with the postings of the first term */
+		// Object[0], Object[1], Object[2] --> Posting, position1 (int), position2 (int)
 		List<Object[]> positionalIntersects = new ArrayList<>();
 		List<Posting> finalIntersects = new ArrayList<>();
 		int firstTermIntersects = 0;
@@ -54,38 +53,46 @@ public class PhraseLiteral implements QueryComponent {
 			// positional intersect our current intersections list with the next postings list
 			positionalIntersects.addAll(positionalIntersect(leftPostings, rightPostings, k));
 
+			// mark the position of where the first terms' positional intersections end
 			if (i == 0) {
 				firstTermIntersects = positionalIntersects.size();
 			}
 		}
 
-		// starting from index 0, compare the first index against all others after it;
-		// if ((leftIndex[0] == rightIndex[0]) && (rightIndex[2] - leftIndex[1] <= k))
-		// 	increment consecutiveCount and check if consecutiveCount == mTerms.size() - 1;
-		// 	if it is, add the posting to the finalIntersections
+		/* the first intersection results are the foundation of determining whether position tuples are consecutive;
+		  we start with comparing the first term intersections with all other term intersections;
+		  then, we will check if later position tuples are consecutive by adjusting our left/right position boundaries
+		  and keep track of the count of consecutive position tuples */
 		for (int i = 0; i < firstTermIntersects; ++i) {
+			// store values for readability
 			Posting leftPosting = (Posting) positionalIntersects.get(i)[0];
 			int leftDocumentId = leftPosting.getDocumentId();
 			int leftPosition = (int) positionalIntersects.get(i)[2];
 			int consecutiveCount = 0;
 
+			// if there are only two terms, the first intersection is the only positional intersection recorded
 			if (firstTermIntersects == positionalIntersects.size()) {
 				addPosting(finalIntersects, leftPosting, leftDocumentId);
 			} else {
+				// check each term intersection against all the other intersections
 				for (int j = firstTermIntersects; j < positionalIntersects.size(); ++j) {
+					// store values for readability
 					Posting rightPosting = (Posting) positionalIntersects.get(j)[0];
 					int rightDocumentId = rightPosting.getDocumentId();
 					int rightPosition = (int) positionalIntersects.get(j)[2];
 
+					// we only care about consecutive chains of terms in the same document
 					if (leftDocumentId == rightDocumentId) {
+						// if the term positions falls within the range of `k`, they are considered consecutive
 						if (Math.abs(leftPosition - rightPosition) <= k) {
 							++consecutiveCount;
 
+							// if the number of intersections matches the expected amount, add it to our final list
 							if (consecutiveCount == mTerms.size() - 2) {
 								addPosting(finalIntersects, leftPosting, leftDocumentId);
-								break;
 							}
 
+							// set the left boundary to the latest right boundary to check the consecutive chain
 							leftPosition = rightPosition;
 						}
 					}
@@ -97,32 +104,6 @@ public class PhraseLiteral implements QueryComponent {
 	}
 
 	private ArrayList<Object[]> positionalIntersect(List<Posting> leftList, List<Posting> rightList, int k) {
-		/*
-			answer ← {}
-			while p1 != NIL and p2 != NIL
-				do if docID(p1) = docID(p2)
-					then l ← {}
-						pp1 ← positions(p1)
-						pp2 ← positions(p2)
-						while pp1 != NIL
-						do while pp2 != NIL
-							do if |pos(pp1) − pos(pp2)| ≤ k
-								then ADD(l, pos(pp2))
-								else if pos(pp2) > pos(pp1)
-									then break
-								pp2 ← next(pp2)
-							while l != h i and |l[0] − pos(pp1)| > k
-							do DELETE(l[0])
-							for each ps ∈ l
-							do ADD(answer, <docID(p1), pos(pp1), psi>)
-							pp1 ← next(pp1)
-						p1 ← next(p1)
-						p2 ← next(p2)
-					else if docID(p1) < docID(p2)
-						then p1 ← next(p1)
-						else p2 ← next(p2)
-			return answer
-		 */
 		ArrayList<Object[]> positionalIntersects = new ArrayList<>();
 
 		int leftListIndex = 0;
@@ -138,17 +119,21 @@ public class PhraseLiteral implements QueryComponent {
 			ArrayList<Integer> leftPositions = leftPosting.getPositions();
 			ArrayList<Integer> rightPositions = rightPosting.getPositions();
 
+			// only compare postings with the same document
 			if (leftDocumentId == rightDocumentId) {
 				List<Integer> consecutivePositions = new ArrayList<>();
 				int leftPositionsIndex = 0;
 				int rightPositionsIndex = 0;
 
+				// compare all left term positions against all right term positions
 				while (leftPositionsIndex < leftPositions.size()) {
 					int leftPosition = leftPositions.get(leftPositionsIndex);
 
+					// add all positions in the right posting that match the consecutive requirements
 					while (rightPositionsIndex < rightPositions.size()) {
 						int rightPosition = rightPositions.get(rightPositionsIndex);
 
+						// positions within range of `k` are considered to be consecutive
 						if (Math.abs(leftPosition - rightPosition) <= k) {
 							consecutivePositions.add(rightPosition);
 						} else if (rightPosition > leftPosition) {
@@ -158,22 +143,23 @@ public class PhraseLiteral implements QueryComponent {
 						++rightPositionsIndex;
 					}
 
+					// remove all elements where the left term is positioned after the right term
 					while (consecutivePositions.size() > 0 &&
 							Math.abs(consecutivePositions.get(0) - leftPosition) > k) {
 						consecutivePositions.remove(0);
 					}
 
+					// add all consecutive posting-position1-position2 tuples
 					for (int rightPosition : consecutivePositions) {
-						if (leftPosition < rightPosition) {
-							Object[] documentPositions = new Object[]{leftPosting, leftPosition, rightPosition};
-							positionalIntersects.add(documentPositions);
-						}
+						Object[] documentPositions = new Object[]{leftPosting, leftPosition, rightPosition};
+						positionalIntersects.add(documentPositions);
 					}
 
 					++leftPositionsIndex;
 				}
 				++leftListIndex;
 				++rightListIndex;
+				// skip postings that don't have the same documentId
 			} else if (leftDocumentId < rightDocumentId) {
 				++leftListIndex;
 			} else {
@@ -185,12 +171,15 @@ public class PhraseLiteral implements QueryComponent {
 	}
 
 	private void addPosting(List<Posting> finalIntersects, Posting leftPosting, int leftDocumentId) {
+		// if it's empty, we can safely add it as a unique element
 		if (finalIntersects.size() <= 0) {
 			finalIntersects.add(leftPosting);
 		} else {
+			// store for values for readability
 			int latestIndex = finalIntersects.size() - 1;
 			int latestDocumentId = finalIntersects.get(latestIndex).getDocumentId();
 
+			// skip duplicate postings with the same documentId
 			if (latestDocumentId != leftDocumentId) {
 				finalIntersects.add(leftPosting);
 			}

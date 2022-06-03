@@ -23,11 +23,8 @@ public class OrQuery implements QueryComponent {
 	public List<Posting> getPostings(Index index) {
 		List<Posting> unions = new ArrayList<>();
 		
-		/*
-		 Program the merge for an OrQuery, by gathering the postings of the composed QueryComponents and
-		 unionizing the resulting postings.
-		 */
-		// iterate through each separated query term
+		/* Program the merge for an OrQuery, by gathering the postings of the composed QueryComponents and
+		  unionizing the resulting postings. */
 		for (QueryComponent mComponent : mComponents) {
 			// store current posting for readability
 			List<Posting> currentPostings = mComponent.getPostings(index);

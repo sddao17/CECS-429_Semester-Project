@@ -34,10 +34,8 @@ public class Application {
     }
 
     private static void startApplication() {
-        /*
-         1. At startup, ask the user for the name of a directory that they would like to index,
-         and construct a DirectoryCorpus from that directory.
-         */
+        /* 1. At startup, ask the user for the name of a directory that they would like to index,
+          and construct a DirectoryCorpus from that directory. */
         System.out.print("\nEnter the path of the directory corpus:\n >> ");
         Scanner in = new Scanner(System.in);
         String directoryPath = in.nextLine().toLowerCase();
@@ -64,10 +62,8 @@ public class Application {
     }
 
     private static Index indexCorpus(DocumentCorpus corpus) {
-        /*
-         2. Index all documents in the corpus to build a positional inverted index.
-         Print to the screen how long (in seconds) this process takes.
-         */
+        /* 2. Index all documents in the corpus to build a positional inverted index.
+          Print to the screen how long (in seconds) this process takes. */
         System.out.println("\nIndexing...");
         long startTime = System.nanoTime();
 
@@ -137,7 +133,7 @@ public class Application {
                         }
                         System.out.println("Found " + vocabulary.size() + " terms.");
                     }
-                    case ":q" -> {}
+                    case ":q", "" -> {}
                     default -> {
                         // 3(a, ii). If it isn't a special query, then parse the query and retrieve its postings.
                         BooleanQueryParser parser = new BooleanQueryParser();
@@ -163,10 +159,8 @@ public class Application {
         // 3(a, ii, B). Output the number of documents returned from the query, after the document names.
         System.out.println("Found " + resultPostings.size() + " documents.");
 
-        /*
-         3(a, ii, C). Ask the user if they would like to select a document to view.
-         If the user selects a document to view, print the entire content of the document to the screen.
-        */
+        /* 3(a, ii, C). Ask the user if they would like to select a document to view.
+          If the user selects a document to view, print the entire content of the document to the screen. */
         if (resultPostings.size() > 0) {
             System.out.print("Would you like to view a document's contents? (`y` to proceed)\n >> ");
             String query = in.nextLine().toLowerCase();

@@ -19,10 +19,8 @@ public class AndQuery implements QueryComponent {
 	
 	@Override
 	public List<Posting> getPostings(Index index) {
-		/*
-		 Program the merge for an AndQuery, by gathering the postings of the composed QueryComponents and
-		 unionizing the results.
-		 */
+		/* Program the merge for an AndQuery, by gathering the postings of the composed QueryComponents and
+		  unionizing the results. */
 		// initialize the intersections to be the postings of the first term
 		List<Posting> intersections = mComponents.get(0).getPostings(index);
 

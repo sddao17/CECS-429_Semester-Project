@@ -1,9 +1,7 @@
 
 package application;
 
-import application.documents.DirectoryCorpus;
-import application.documents.Document;
-import application.documents.DocumentCorpus;
+import application.documents.*;
 import application.indexes.Index;
 import application.indexes.PositionalInvertedIndex;
 import application.indexes.Posting;
@@ -13,7 +11,7 @@ import application.text.EnglishTokenStream;
 import application.text.TokenStemmer;
 import application.text.TrimSplitTokenProcessor;
 
-import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.util.*;
 
 public class Application {
@@ -21,7 +19,7 @@ public class Application {
     // global constants - change as needed
     public static final int VOCABULARY_PRINT_SIZE = 1000;
     // global variables
-    private static DocumentCorpus corpus;
+    private static DirectoryCorpus corpus;
     private static Index index;
 
     public static void main(String[] args) {
@@ -54,8 +52,10 @@ public class Application {
 
     private static void initializeComponents(String directoryPath) {
         // since we need only one instance each of the corpus and index active at any time,
-        // store them as static members
-        corpus = DirectoryCorpus.loadJsonDirectory(Paths.get(directoryPath).toAbsolutePath(), ".json");
+        // and many other methods will need them, store them as static members
+        corpus = new DirectoryCorpus(Path.of(directoryPath));
+        corpus.registerFileDocumentFactory(".txt", TextFileDocument::loadTextFileDocument);
+        corpus.registerFileDocumentFactory(".json", JsonFileDocument::loadJsonFileDocument);
         index = indexCorpus(corpus);
     }
 
@@ -65,7 +65,7 @@ public class Application {
          2. Index all documents in the corpus to build a positional inverted index.
             Print to the screen how long (in seconds) this process takes.
          */
-        System.out.println("\nIndexing ...");
+        System.out.println("\nIndexing...");
         long startTime = System.nanoTime();
 
         TrimSplitTokenProcessor processor = new TrimSplitTokenProcessor();

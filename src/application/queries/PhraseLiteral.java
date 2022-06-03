@@ -14,21 +14,21 @@ import application.indexes.Posting;
 public class PhraseLiteral implements QueryComponent {
 	// The list of individual terms in the phrase.
 	private final List<String> mTerms = new ArrayList<>();
-	
+
 	/**
 	 * Constructs a PhraseLiteral with the given individual phrase terms.
 	 */
 	public PhraseLiteral(List<String> terms) {
 		mTerms.addAll(terms);
 	}
-	
+
 	/**
 	 * Constructs a PhraseLiteral given a string with one or more individual terms separated by spaces.
 	 */
 	public PhraseLiteral(String terms) {
 		mTerms.addAll(Arrays.asList(terms.split(" ")));
 	}
-	
+
 	@Override
 	public List<Posting> getPostings(Index index) {
 		/*
@@ -43,7 +43,6 @@ public class PhraseLiteral implements QueryComponent {
 		// beginning with the postings of the first term
 		List<int[]> positionalIntersects = new ArrayList<>();
 		ArrayList<Posting> finalIntersects = new ArrayList<>();
-		System.out.println("New document:");
 
 		// start positional intersecting with postings two at a time
 		for (int i = 0; i < mTerms.size() - 1; ++i) {
@@ -52,10 +51,13 @@ public class PhraseLiteral implements QueryComponent {
 			List<Posting> rightPostings = index.getPostings(mTerms.get(i + 1));
 
 			// positional intersect our current intersections list with the next postings list
-			positionalIntersects = positionalIntersect(leftPostings, rightPostings, k);
-			System.out.println("New positional intersection:");
-			positionalIntersects.forEach(c -> System.out.println(Arrays.toString(c)));
+			positionalIntersects.addAll(positionalIntersect(leftPostings, rightPostings, k));
 		}
+
+		// starting from index 0, compare the first index against all others after it;
+		// if ((leftIndex[0] == rightIndex[0]) && (rightIndex[2] - leftIndex[1] <= k))
+		// 	increment consecutiveCount and check if consecutiveCount == mTerms.size() - 1;
+		// 	if it is, add the posting to the finalIntersections
 
 		return finalIntersects;
 	}
@@ -153,3 +155,4 @@ public class PhraseLiteral implements QueryComponent {
 		return "\"" + String.join(" ", mTerms) + "\"";
 	}
 }
+

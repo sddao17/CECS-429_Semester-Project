@@ -78,7 +78,6 @@ public class PhraseLiteral implements QueryComponent {
 					int rightPosition = (int) positionalIntersects.get(j)[2];
 
 					if (leftDocumentId == rightDocumentId) {
-						System.out.println("Entered: " + leftPosition + ", " + rightPosition);
 						if (Math.abs(leftPosition - rightPosition) <= k) {
 							++consecutiveCount;
 

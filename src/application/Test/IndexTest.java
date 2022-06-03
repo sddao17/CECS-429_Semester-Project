@@ -72,11 +72,11 @@ public class IndexTest {
                         }));
                     }
                 });
-                put("kany", new ArrayList<>() {
+                put("kanye", new ArrayList<>() {
                     {
                         add(new Posting(2, new ArrayList<>() {
                             {
-                                add(7);
+                                add(6);
                             }
                         }));
                     }
@@ -154,7 +154,7 @@ public class IndexTest {
                     {
                         add(new Posting(2, new ArrayList<>() {
                             {
-                                add(8);
+                                add(7);
                             }
                         }));
                     }
@@ -245,7 +245,7 @@ public class IndexTest {
             }
         };
         for(String term: indexMap.keySet()) {
-            //assertEquals(indexMap.get(term), index.getPostings(term));
+            //assert
             int result = comparator.compare(indexMap.get(term), index.getPostings(term));
             assertEquals("Index generated from indexCorpus method should be equal to the index made by hand", 0, result);
         }

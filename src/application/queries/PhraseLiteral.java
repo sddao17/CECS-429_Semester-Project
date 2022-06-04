@@ -39,7 +39,7 @@ public class PhraseLiteral implements QueryComponent {
 	}
 
 	@Override
-	public List<Posting> getPostings(Index<String, Posting> index) {
+	public List<Posting> getPostings(Index index) {
 		/* Program this method. Retrieve the postings for the individual terms in the phrase,
 		  and positional merge them together. */
 		/* store posting-position1-position2 tuples where all the terms are sequentially in +1 positional order,

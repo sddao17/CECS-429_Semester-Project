@@ -5,7 +5,7 @@ import org.tartarus.snowball.ext.PorterStemmer;
 
 import java.util.ArrayList;
 
-public class TokenStemmer extends TokenProcessor {
+public class TokenStemmer implements TokenProcessor {
 
     @Override
     public ArrayList<String> processToken(String token) {

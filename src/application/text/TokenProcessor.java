@@ -2,89 +2,14 @@
 package application.text;
 
 import java.util.ArrayList;
-import java.util.List;
 
 /**
  * A TokenProcessor applies some rules of normalization to a token from a document, and returns a term for that token.
  */
-public abstract class TokenProcessor {
+public interface TokenProcessor {
 
 	/**
 	 * Normalizes a token into a term.
 	 */
-	public abstract List<String> processToken(String token);
-
-	/**
-	 * Returns a substring of the token that trims all non-alphanumeric characters at its beginning and end.
-	 * @param token the token to normalize
-	 * @return the normalized token
-	 */
-	public String trimNonAlphanumeric(String token) {
-		/* To normalize a token into a term, perform these steps in order:
-          1. Remove all non-alphanumeric characters from the beginning and end of the token, but not the middle.
-          (a) Example: Hello. becomes Hello ; 192.168.1.1 remains unchanged. */
-		return token.replaceAll("^[^a-zA-Z\\d\\s]+|[^a-zA-Z\\d\\s]+$", "");
-	}
-
-	/**
-	 * Returns a parsed token that removes all single and double quotes from the original token.
-	 * @param token the token to normalize
-	 * @return the normalized token
-	 */
-	public String removeQuotes(String token) {
-		/* To normalize a token into a term, perform these steps in order:
-          1. Remove all non-alphanumeric characters from the beginning and end of the token, but not the middle.
-          (a) Example: Hello. becomes Hello ; 192.168.1.1 remains unchanged. */
-		// 2. Remove all apostrophes or quotation marks (single or double quotes) from anywhere in the string.
-		return token.replaceAll("'", "").replaceAll("’", "").replaceAll("\"", "");
-	}
-
-	/**
-	 * Returns a list of tokens which are substrings of the original hyphenated token.
-	 * @param token the token to normalize
-	 * @return the normalized list of tokens
-	 */
-	public List<String> splitOnHyphens(String token) {
-		ArrayList<String> tokens = new ArrayList<>();
-		/* 3. For hyphens in words, do both:
-          (a) Remove the hyphens from the token and then proceed with the modified token. */
-		String[] splitTerms = token.split("-");
-
-        /* (b) Split the original hyphenated token into multiple tokens without a hyphen,
-          and proceed with all split tokens. */
-		StringBuilder combinedTerms = new StringBuilder();
-
-		for (String currentTerm : splitTerms) {
-			tokens.add(currentTerm);
-			combinedTerms.append(currentTerm);
-		}
-
-		// add all terms in a single string if any hyphen exists
-		if (splitTerms.length > 1) {
-			tokens.add(combinedTerms.toString());
-		}
-
-		return tokens;
-	}
-
-	/**
-	 * Returns the token after converting it to lowercase.
-	 * @param token the token to normalize
-	 * @return the normalized token
-	 */
-	public String convertToLowercase(String token) {
-		// 4. Convert the token to lowercase.
-		return token.toLowerCase();
-	}
-
-	/**
-	 * Returns a stemmed version of the token.
-	 * @param token the token to normalize
-	 * @return the normalized token
-	 */
-	public String stem(String token) {
-		// 5. Stem the token using an implementation of the Porter2 stemmer.
-		TokenStemmer stemmer = new TokenStemmer();
-		return stemmer.processToken(token).get(0);
-	}
+	ArrayList<String> processToken(String token);
 }

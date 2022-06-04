@@ -4,7 +4,7 @@ package application.indexes;
 import java.util.*;
 
 // Program the PositionalInvertedIndex class and incorporate it into the indexing process.
-public class PositionalInvertedIndex implements Index<String, Posting> {
+public class PositionalInvertedIndex implements Index {
 
     private final Map<String, List<Posting>> index;
 

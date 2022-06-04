@@ -23,8 +23,33 @@ public class IndexTest {
     DocumentCorpus testCorpus = DirectoryCorpus.loadTextDirectory(
             Paths.get(directoryPathString).toAbsolutePath(), extensionType);
     Index index = indexCorpus(testCorpus, 3);
+    int oneDocId;
+    int twoDocId;
+    int threeDocId;
+    int fourDocId;
+    int fiveDocId;
+
     @Test
     public void testKanyeCorpus(){
+
+        for(int i=0; i<5; i++){
+            String title = testCorpus.getDocument(i).getTitle();
+            if(title.equals("one.txt")){
+                oneDocId = i;
+            }
+            else if(title.equals("two.txt")){
+                twoDocId = i;
+            }
+            else if(title.equals("three.txt")){
+                threeDocId = i;
+            }
+            else if(title.equals("four.txt")){
+                fourDocId = i;
+            }
+            else if(title.equals("five.txt")){
+                fiveDocId = i;
+            }
+        }
         //inverted index by hand
         HashMap<String, List<Posting>> indexMap = new HashMap<>() {
             {
@@ -32,7 +57,7 @@ public class IndexTest {
                 put("350", new ArrayList<>() {
                     {
                         // int documentID, ArrayList positions
-                        add(new Posting(4, new ArrayList<>() {
+                        add(new Posting(twoDocId, new ArrayList<>() {
                             {
                                 // int position
                                 add(3);
@@ -42,7 +67,7 @@ public class IndexTest {
                 });
                 put("boost", new ArrayList<>() {
                     {
-                        add(new Posting(4, new ArrayList<>() {
+                        add(new Posting(twoDocId, new ArrayList<>() {
                             {
                                 add(2);
                             }
@@ -53,7 +78,7 @@ public class IndexTest {
 
                 put("in", new ArrayList<>() {
                     {
-                        add(new Posting(2, new ArrayList<>() {
+                        add(new Posting(oneDocId, new ArrayList<>() {
                             {
                                 add(4);
                             }
@@ -62,7 +87,7 @@ public class IndexTest {
                 });
                 put("jump", new ArrayList<>() {
                     {
-                        add(new Posting(0, new ArrayList<>() {
+                        add(new Posting(fiveDocId, new ArrayList<>() {
                             {
                                 add(3);
                             }
@@ -71,7 +96,7 @@ public class IndexTest {
                 });
                 put("jumpman", new ArrayList<>() {
                     {
-                        add(new Posting(0, new ArrayList<>() {
+                        add(new Posting(fiveDocId, new ArrayList<>() {
                             {
                                 add(5);
                             }
@@ -80,7 +105,7 @@ public class IndexTest {
                 });
                 put("kanye", new ArrayList<>() {
                     {
-                        add(new Posting(2, new ArrayList<>() {
+                        add(new Posting(oneDocId, new ArrayList<>() {
                             {
                                 add(6);
                             }
@@ -89,12 +114,12 @@ public class IndexTest {
                 });
                 put("la", new ArrayList<>() {
                     {
-                        add(new Posting(1, new ArrayList<>() {
+                        add(new Posting(fourDocId, new ArrayList<>() {
                             {
                                 add(1);
                             }
                         }));
-                        add(new Posting(2, new ArrayList<>() {
+                        add(new Posting(oneDocId, new ArrayList<>() {
                             {
                                 add(5);
                             }
@@ -103,7 +128,7 @@ public class IndexTest {
                 });
                 put("more", new ArrayList<>() {
                     {
-                        add(new Posting(2, new ArrayList<>() {
+                        add(new Posting(oneDocId, new ArrayList<>() {
                             {
                                 add(2);
                             }
@@ -112,7 +137,7 @@ public class IndexTest {
                 });
                 put("no", new ArrayList<>() {
                     {
-                        add(new Posting(2, new ArrayList<>() {
+                        add(new Posting(oneDocId, new ArrayList<>() {
                             {
                                 add(1);
                             }
@@ -121,7 +146,7 @@ public class IndexTest {
                 });
                 put("over", new ArrayList<>() {
                     {
-                        add(new Posting(0, new ArrayList<>() {
+                        add(new Posting(fiveDocId, new ArrayList<>() {
                             {
                                 add(4);
                             }
@@ -130,7 +155,7 @@ public class IndexTest {
                 });
                 put("parti", new ArrayList<>() {
                     {
-                        add(new Posting(2, new ArrayList<>() {
+                        add(new Posting(oneDocId, new ArrayList<>() {
                             {
                                 add(3);
                             }
@@ -139,7 +164,7 @@ public class IndexTest {
                 });
                 put("ram", new ArrayList<>() {
                     {
-                        add(new Posting(1, new ArrayList<>() {
+                        add(new Posting(fourDocId, new ArrayList<>() {
                             {
                                 add(2);
                             }
@@ -149,7 +174,7 @@ public class IndexTest {
 
                 put("runner", new ArrayList<>() {
                     {
-                        add(new Posting(3, new ArrayList<>() {
+                        add(new Posting(threeDocId, new ArrayList<>() {
                             {
                                 add(2);
                             }
@@ -158,7 +183,7 @@ public class IndexTest {
                 });
                 put("west", new ArrayList<>() {
                     {
-                        add(new Posting(2, new ArrayList<>() {
+                        add(new Posting(oneDocId, new ArrayList<>() {
                             {
                                 add(7);
                             }
@@ -167,18 +192,18 @@ public class IndexTest {
                 });
                 put("yeezi", new ArrayList<>() {
                     {
-                        add(new Posting(0, new ArrayList<>() {
+                        add(new Posting(fiveDocId, new ArrayList<>() {
                             {
                                 add(1);
                                 add(2);
                             }
                         }));
-                        add(new Posting(3, new ArrayList<>() {
+                        add(new Posting(threeDocId, new ArrayList<>() {
                             {
                                 add(1);
                             }
                         }));
-                        add(new Posting(4, new ArrayList<>() {
+                        add(new Posting(twoDocId, new ArrayList<>() {
                             {
                                 add(1);
                             }

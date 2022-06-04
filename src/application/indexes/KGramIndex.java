@@ -6,24 +6,19 @@ import java.util.*;
 /**
  * Maps the k-grams of the given term to the list of vocabulary words that contain the k-gram.
  */
-public class KGramIndex implements Index {
+public class KGramIndex implements Index<String, String> {
 
-    private final Index corpusIndex;
-    private final Map<String, List<String>> kGramIndex;
-    private final Map<String, List<Posting>> kGramPostings;
+    private final Map<String, List<String>> index;
     private final int k; // the number of adjacent characters from the term
 
     /**
      * Constructs a k-gram and postings index using the input index, vocabulary, and `k` value.
      */
-    public KGramIndex(Index inputIndex, List<String> vocabulary, int inputK) {
-        corpusIndex = inputIndex;
-        kGramIndex = new HashMap<>();
-        kGramPostings = new HashMap<>();
+    public KGramIndex(List<String> vocabulary, int inputK) {
+        index = new HashMap<>();
         k = inputK;
 
         buildKGramIndex(vocabulary);
-        createPostings();
     }
 
     private void buildKGramIndex(List<String> vocabulary) {
@@ -33,7 +28,7 @@ public class KGramIndex implements Index {
               from which it was generated */
             List<String> kGrams = createKGrams(token);
 
-            kGramIndex.put(token, new ArrayList<>(kGrams));
+            index.put(token, new ArrayList<>(kGrams));
         }
     }
 
@@ -47,24 +42,13 @@ public class KGramIndex implements Index {
 
                 // if applicable, add a copy of the substrings denoting the beginning or ending of the token
                 if (j == 0 && currentKGram.length() < k) {
-                    String beginKGram = "$" + currentKGram;
-
                     kGrams.add("$" + currentKGram);
-                    if (!kGramPostings.containsKey(beginKGram)) {
-                        kGramPostings.put(beginKGram, new ArrayList<>());
-                    }
                 }
-                kGrams.add(currentKGram);
-                if (!kGramPostings.containsKey(currentKGram)) {
-                    kGramPostings.put(currentKGram, new ArrayList<>());
-                }
-                if (j == (token.length() - i) && currentKGram.length() < k) {
-                    String endKGram = currentKGram + "$";
 
-                    kGrams.add(endKGram);
-                    if (!kGramPostings.containsKey(endKGram)) {
-                        kGramPostings.put(endKGram, new ArrayList<>());
-                    }
+                kGrams.add(currentKGram);
+
+                if (j == (token.length() - i) && currentKGram.length() < k) {
+                    kGrams.add(currentKGram + "$");
                 }
             }
         }
@@ -72,72 +56,21 @@ public class KGramIndex implements Index {
         return kGrams;
     }
 
-    private void createPostings() {
-        List<String> corpusVocabulary = corpusIndex.getVocabulary();
-
-        for (String kGram : kGramPostings.keySet()) {
-            for (String token : corpusVocabulary) {
-                if (kGram.startsWith("$")) {
-                    if (token.startsWith(kGram.substring(1))) {
-                        if (!kGramPostings.containsKey(kGram)) {
-                            kGramPostings.put(kGram, corpusIndex.getPostings(token));
-                        } else {
-                            kGramPostings.get(kGram).addAll(corpusIndex.getPostings(token));
-                        }
-                    }
-                } else if (kGram.endsWith("$")) {
-                    if ((token.length() > kGram.length()) && token.endsWith(kGram.substring(0, token.indexOf('$') + 1))) {
-                        if (!kGramPostings.containsKey(kGram)) {
-                            kGramPostings.put(kGram, corpusIndex.getPostings(token));
-                        } else {
-                            kGramPostings.get(kGram).addAll(corpusIndex.getPostings(token));
-                        }
-                    }
-                } else if (token.contains(kGram)) {
-                    if (!kGramPostings.containsKey(kGram)) {
-                        kGramPostings.put(kGram, corpusIndex.getPostings(token));
-                    } else {
-                        kGramPostings.get(kGram).addAll(corpusIndex.getPostings(token));
-                    }
-                }
-            }
-        }
-    }
-
-    public List<String> getKGrams(String term) {
-        // return an empty list if the term doesn't exist in the map
-        if (!kGramIndex.containsKey(term))
-            return new ArrayList<>();
-
-        return kGramIndex.get(term);
-    }
-
     @Override
-    public List<Posting> getPostings(String term) {
+    public List<String> getPostings(String term) {
         // return an empty list if the term doesn't exist in the map
-        if (!kGramPostings.containsKey(term))
+        if (!index.containsKey(term))
             return new ArrayList<>();
 
-        return kGramPostings.get(term);
+        return index.get(term);
     }
 
     @Override
     public List<String> getVocabulary() {
         // remember to return a sorted vocabulary
-        List<String> vocabulary = new ArrayList<>(kGramPostings.keySet().stream().toList());
+        List<String> vocabulary = new ArrayList<>(index.keySet().stream().toList());
         Collections.sort(vocabulary);
 
         return vocabulary;
-    }
-
-    public static void main(String[] args) {
-        ArrayList<String> vocabulary = new ArrayList<>(){{
-            add("revive");
-            add("redacted");
-            add("rejuvenate");
-            add("revival");
-            add("revivers");
-        }};
-        KGramIndex kGramIndex = new KGramIndex(null, vocabulary, 3);
     }
 }

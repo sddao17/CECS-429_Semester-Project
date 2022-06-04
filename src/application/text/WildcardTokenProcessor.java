@@ -5,16 +5,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A TrimSplitTokenProcessor creates terms from tokens by: removing all non-alphanumeric characters from the
- * beginning and end of the token, stripping all apostrophes and quotation marks, parsing hyphenated words
- * by including a unified and split version of the words, converting the token to lowercase, and then stemming it.
+ * A TrimQueryTokenProcessor creates terms from tokens by: removing all non-alphanumeric characters from the
+ * beginning and end of the token, stripping all apostrophes and quotation marks, splitting on hyphens, and
+ * converting the token to lowercase.
  * @see TokenProcessor
  */
-public class TrimSplitTokenProcessor extends TokenProcessor {
+public class WildcardTokenProcessor extends TokenProcessor {
 
     @Override
-    public List<String> processToken(String token) {
-        List<String> terms = new ArrayList<>();
+    public ArrayList<String> processToken(String token) {
+        ArrayList<String> terms = new ArrayList<>();
         /* To normalize a token into a term, perform these steps in order:
           1. Remove all non-alphanumeric characters from the beginning and end of the token, but not the middle.
           (a) Example: Hello. becomes Hello ; 192.168.1.1 remains unchanged. */
@@ -33,8 +33,8 @@ public class TrimSplitTokenProcessor extends TokenProcessor {
             // 4. Convert the token to lowercase.
             currentToken = convertToLowercase(currentToken);
 
-            // 5. Stem the token using an implementation of the Porter2 stemmer.
-            currentToken = stem(currentToken);
+            // skip 5 (stemming)
+
             terms.add(currentToken);
         }
 

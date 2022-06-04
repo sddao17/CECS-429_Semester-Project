@@ -16,6 +16,7 @@ import java.util.List;
 
 import static application.Application.indexCorpus;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class QueryProcessingTest {
 
@@ -39,7 +40,8 @@ public class QueryProcessingTest {
         QueryComponent parsedQuery = parser.parseQuery(query);
         List<Posting> resultPostings = parsedQuery.getPostings(index);
         int queryDocumentId = resultPostings.get(0).getDocumentId();
-        assertEquals("The Document ID should be the same.",4, queryDocumentId);
+        assertEquals("The Document titles should be the same.",
+                "two.txt", testCorpus.getDocument(queryDocumentId).getTitle());
     }
 
     @Test
@@ -48,8 +50,21 @@ public class QueryProcessingTest {
         String query = "la + west";
         QueryComponent parsedQuery = parser.parseQuery(query);
         List<Posting> resultPostings = parsedQuery.getPostings(index);
-        assertEquals("The Document ID should be the same.", 1, resultPostings.get(0).getDocumentId());
-        assertEquals("The Document ID should be the same.", 2, resultPostings.get(1).getDocumentId());
+        List<String> resultTitles = new ArrayList<>();
+
+        for (Posting posting : resultPostings) {
+            int currentDocumentId = posting.getDocumentId();
+
+            resultTitles.add(testCorpus.getDocument(currentDocumentId).getTitle());
+        }
+
+        List<String> expectedTitles = new ArrayList<>(){{
+            add("one.txt");
+            add("four.txt");
+        }};
+        boolean titlesMatch = resultTitles.containsAll(expectedTitles) && expectedTitles.containsAll(resultTitles);
+
+        assertTrue("The documents' titles should match.", titlesMatch);
     }
 
     @Test

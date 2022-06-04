@@ -1,7 +1,6 @@
 
 package application.indexes;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -12,11 +11,8 @@ public interface Index {
 
 	/**
 	 * Retrieves a list of Postings of documents that contain the given term.
-	 * Set to default so specialized Indexes like `KGramIndex` can still implement this interface reasonably.
 	 */
-	default List<Posting> getPostings(String term) {
-		return new ArrayList<>();
-	}
+	List<Posting> getPostings(String term);
 	
 	/**
 	 * A (sorted) list of all terms in the index vocabulary.

@@ -24,7 +24,7 @@ public class QueryProcessingTest {
     String extensionType = ".txt";
     DocumentCorpus testCorpus = DirectoryCorpus.loadTextDirectory(
             Paths.get(directoryPathString).toAbsolutePath(), extensionType);
-    Index index = Application.indexCorpus(testCorpus);
+    Index index = Application.indexCorpus(testCorpus, 3);
 
 
     @Test

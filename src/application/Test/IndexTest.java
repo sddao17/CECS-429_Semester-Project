@@ -189,7 +189,7 @@ public class IndexTest {
         String extensionType = ".txt";
         DocumentCorpus testCorpus = DirectoryCorpus.loadTextDirectory(
                 Paths.get(directoryPathString).toAbsolutePath(), extensionType);
-        Index index = indexCorpus(testCorpus);
+        Index index = indexCorpus(testCorpus, 3);
 
         //assertequal index by hand by
         Comparator<List<Posting>> comparator = new Comparator() {

@@ -66,7 +66,7 @@ public class Application {
         index = indexCorpus(corpus, 3);
     }
 
-    private static Index indexCorpus(DocumentCorpus corpus, int k) {
+    public static Index indexCorpus(DocumentCorpus corpus, int k) {
         /* 2. Index all documents in the corpus to build a positional inverted index.
           Print to the screen how long (in seconds) this process takes. */
         System.out.println("\nIndexing...");

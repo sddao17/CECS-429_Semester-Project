@@ -11,6 +11,7 @@ import application.text.TrimQueryTokenProcessor;
  * A TermLiteral represents a single term in a subquery.
  */
 public class TermLiteral implements QueryComponent {
+
 	private final String mTerm;
 	
 	public TermLiteral(String term) {

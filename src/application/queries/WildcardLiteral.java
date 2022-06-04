@@ -11,6 +11,7 @@ import application.text.TrimQueryTokenProcessor;
  * A WildcardLiteral represents a single token containing one or more * characters.
  */
 public class WildcardLiteral implements QueryComponent {
+
     private final String mTerm;
 
     public WildcardLiteral(String term) {

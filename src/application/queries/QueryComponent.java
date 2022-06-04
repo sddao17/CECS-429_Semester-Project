@@ -9,6 +9,7 @@ import application.indexes.*;
  * other components. All nodes in a query parse tree are QueryComponent objects.
  */
 public interface QueryComponent {
+
     /**
      * Retrieves a list of postings for the query component, using an Index as the source.
      */

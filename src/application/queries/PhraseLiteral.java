@@ -12,8 +12,9 @@ import application.text.TrimQueryTokenProcessor;
  * Represents a phrase literal consisting of one or more terms that must occur in sequence.
  */
 public class PhraseLiteral implements QueryComponent {
-	// The list of individual terms in the phrase.
-	private final List<String> mTerms = new ArrayList<>();
+
+	private static final int k = 1;	// the position difference between acceptable consecutive terms
+	private final List<String> mTerms = new ArrayList<>();	// the list of individual terms in the phrase
 
 	/**
 	 * Constructs a PhraseLiteral with the given individual phrase terms.
@@ -41,10 +42,6 @@ public class PhraseLiteral implements QueryComponent {
 	public List<Posting> getPostings(Index index) {
 		/* Program this method. Retrieve the postings for the individual terms in the phrase,
 		  and positional merge them together. */
-		/* `k` represents the position difference between acceptable consecutive terms;
-		  in the future, we may need to adjust this value - if so, it would have to be a static member variable */
-		int k = 1;
-
 		/* store posting-position1-position2 tuples where all the terms are sequentially in +1 positional order,
 		  beginning with the postings of the first term */
 		// Object[0], Object[1], Object[2] --> Posting, position1 (int), position2 (int)

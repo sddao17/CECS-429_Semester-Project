@@ -12,8 +12,8 @@ import application.indexes.Posting;
  * An OrQuery composes other QueryComponents and merges their postings with a union-type operation.
  */
 public class OrQuery implements QueryComponent {
-	// The components of the Or query.
-	private final List<QueryComponent> mComponents;
+
+	private final List<QueryComponent> mComponents;	// the components of the Or query
 	
 	public OrQuery(List<QueryComponent> components) {
 		mComponents = components;
@@ -54,7 +54,7 @@ public class OrQuery implements QueryComponent {
 			if (leftDocumentId < rightDocumentId) {
 				unions.add(leftPosting);
 				++leftIndex;
-			} else if (leftDocumentId > rightDocumentId){
+			} else if (leftDocumentId > rightDocumentId) {
 				unions.add(rightPosting);
 				++rightIndex;
 			} else {

@@ -11,6 +11,7 @@ import application.indexes.Posting;
  * An AndQuery composes other QueryComponents and merges their postings in an intersection-like operation.
  */
 public class AndQuery implements QueryComponent {
+
 	private final List<QueryComponent> mComponents;
 	
 	public AndQuery(List<QueryComponent> components) {
@@ -19,29 +20,51 @@ public class AndQuery implements QueryComponent {
 	
 	@Override
 	public List<Posting> getPostings(Index index) {
-		Set<Posting> intersections = new HashSet<>();
-		
-		/*
-		 TODO:
-		 program the merge for an AndQuery, by gathering the postings of the composed QueryComponents and
-		 */
+		/* Program the merge for an AndQuery, by gathering the postings of the composed QueryComponents and
+		  unionizing the results. */
+		// initialize the intersections to be the postings of the first term
+		List<Posting> intersections = mComponents.get(0).getPostings(index);
 
-		// continue checking two posting lists at a time and have them intersect each other
-		for (int i = 0; i < mComponents.size() - 1; ++i) {
-			List<Posting> leftPostings = mComponents.get(i).getPostings(index);
-			List<Posting> rightPostings = mComponents.get(i + 1).getPostings(index);
+		// start intersecting with the postings of the second term
+		for (int i = 1; i < mComponents.size(); ++i) {
+			QueryComponent currentComponent = mComponents.get(i);
+			// store current posting for readability
+			List<Posting> currentPostings = currentComponent.getPostings(index);
 
-			// iterate through all lists, get the common items, and intersect them within a set
-			intersections.addAll(leftPostings.stream()
-					.distinct()
-					.filter(rightPostings::contains)
-					.collect(Collectors.toSet()));
+			// intersect the current intersections with the new postings
+			intersections = intersectPostings(intersections, currentPostings);
 		}
-		// store the set into a new ArrayList for sorting the document IDs
-		ArrayList<Posting> result = new ArrayList<>(intersections);
-		Collections.sort(result);
 
-		return result;
+		return intersections;
+	}
+
+	private List<Posting> intersectPostings(List<Posting> leftList, List<Posting> rightList) {
+		List<Posting> intersections = new ArrayList<>();
+
+		int leftIndex = 0;
+		int rightIndex = 0;
+
+		// implement the intersection algorithm found in the textbook
+		while (leftIndex < leftList.size() && rightIndex < rightList.size()) {
+			// store values for readability
+			Posting leftPosting = leftList.get(leftIndex);
+			Posting rightPosting = rightList.get(rightIndex);
+			int leftDocumentId = leftPosting.getDocumentId();
+			int rightDocumentId = rightPosting.getDocumentId();
+
+			// add the intersection if the posting has the same document ID and progress the index iterators
+			if (leftDocumentId == rightDocumentId) {
+				intersections.add(leftPosting);
+				++leftIndex;
+				++rightIndex;
+			} else if (leftDocumentId < rightDocumentId){
+				++leftIndex;
+			} else {
+				++rightIndex;
+			}
+		}
+
+		return intersections;
 	}
 	
 	@Override

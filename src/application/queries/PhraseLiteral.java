@@ -2,157 +2,198 @@
 package application.queries;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import application.indexes.Index;
 import application.indexes.Posting;
+import application.text.TrimQueryTokenProcessor;
 
 /**
  * Represents a phrase literal consisting of one or more terms that must occur in sequence.
  */
 public class PhraseLiteral implements QueryComponent {
-	// The list of individual terms in the phrase.
-	private final List<String> mTerms = new ArrayList<>();
-	
+
+	private static final int k = 1;	// the position difference between acceptable consecutive terms
+	private final List<String> mTerms = new ArrayList<>();	// the list of individual terms in the phrase
+
 	/**
 	 * Constructs a PhraseLiteral with the given individual phrase terms.
 	 */
 	public PhraseLiteral(List<String> terms) {
-		mTerms.addAll(terms);
+		// Somehow incorporate a TokenProcessor into the getPostings call sequence.
+		TrimQueryTokenProcessor processor = new TrimQueryTokenProcessor();
+
+		List<String> processedTerms = processor.processToken(String.join(" ", terms));
+		mTerms.addAll(processedTerms);
 	}
-	
+
 	/**
 	 * Constructs a PhraseLiteral given a string with one or more individual terms separated by spaces.
 	 */
 	public PhraseLiteral(String terms) {
-		mTerms.addAll(Arrays.asList(terms.split(" ")));
+		// Somehow incorporate a TokenProcessor into the getPostings call sequence.
+		TrimQueryTokenProcessor processor = new TrimQueryTokenProcessor();
+
+		List<String> processedTerms = processor.processToken(terms);
+		mTerms.addAll(processedTerms);
 	}
-	
+
 	@Override
 	public List<Posting> getPostings(Index index) {
-		//System.out.println("Phrase literal terms: " + mTerms);
-		/*
-		 TODO:
-		 Program this method. Retrieve the postings for the individual terms in the phrase,
-		 and positional merge them together.
-		 */
+		/* Program this method. Retrieve the postings for the individual terms in the phrase,
+		  and positional merge them together. */
+		/* store posting-position1-position2 tuples where all the terms are sequentially in +1 positional order,
+		  beginning with the postings of the first term */
+		// Object[0], Object[1], Object[2] --> Posting, position1 (int), position2 (int)
+		List<Object[]> positionalIntersects = new ArrayList<>();
+		List<Posting> finalIntersects = new ArrayList<>();
+		int firstTermIntersects = 0;
 
-		// intersect the common postings using AndQuery
-		List<QueryComponent> allSubqueries = new ArrayList<>();
-		mTerms.forEach(c -> allSubqueries.add(new TermLiteral(c)));
-		AndQuery intersections = new AndQuery(allSubqueries);
-		List<Posting> postings = intersections.getPostings(index);
-
-		// store the postings and consecutive positions separately
-		ArrayList<Posting> results = new ArrayList<>();
-		ArrayList<Integer> consecutivePositions = new ArrayList<>();
-
-		// iterate through the terms, comparing their Postings 2 at a time
+		// start positional intersecting with postings two at a time
 		for (int i = 0; i < mTerms.size() - 1; ++i) {
+			// store the current postings for readability
 			List<Posting> leftPostings = index.getPostings(mTerms.get(i));
 			List<Posting> rightPostings = index.getPostings(mTerms.get(i + 1));
 
-			// iterate through each posting from the AndQuery intersections
-			for (Posting currentPosting : postings) {
-				int currentDocumentId = currentPosting.getDocumentId();
-				// get the indexes of the current documentId using binary search
-				int leftPostingIndex = binarySearch(leftPostings, currentDocumentId);
-				int rightPostingIndex = binarySearch(leftPostings, currentDocumentId);
+			// positional intersect our current intersections list with the next postings list
+			positionalIntersects.addAll(positionalIntersect(leftPostings, rightPostings, k));
 
-				// store values for readability
-				Posting leftPosting = leftPostings.get(leftPostingIndex);
-				Posting rightPosting = rightPostings.get(rightPostingIndex);
+			// mark the position of where the first terms' positional intersections end
+			if (i == 0) {
+				firstTermIntersects = positionalIntersects.size();
+			}
+		}
 
-				ArrayList<Integer> leftPositions = leftPosting.getPositions();
-				ArrayList<Integer> rightPositions = rightPosting.getPositions();
+		/* the first intersection results are the foundation of determining whether position tuples are consecutive;
+		  we start with comparing the first term intersections with all other term intersections;
+		  then, we will check if later position tuples are consecutive by adjusting our left/right position boundaries
+		  and keep track of the count of consecutive position tuples */
+		for (int i = 0; i < firstTermIntersects; ++i) {
+			// store values for readability
+			Posting leftPosting = (Posting) positionalIntersects.get(i)[0];
+			int leftDocumentId = leftPosting.getDocumentId();
+			int leftPosition = (int) positionalIntersects.get(i)[2];
+			int consecutiveCount = 0;
 
-				boolean found = false;
-				int leftIndex = 0;
-				int rightIndex = 0;
+			// if there are only two terms, the first intersection is the only positional intersection recorded
+			if (firstTermIntersects == positionalIntersects.size()) {
+				addPosting(finalIntersects, leftPosting, leftDocumentId);
+			} else {
+				// check each term intersection against all the other intersections
+				for (int j = firstTermIntersects; j < positionalIntersects.size(); ++j) {
+					// store values for readability
+					Posting rightPosting = (Posting) positionalIntersects.get(j)[0];
+					int rightDocumentId = rightPosting.getDocumentId();
+					int rightPosition = (int) positionalIntersects.get(j)[2];
 
-				// continue until the positional index intersection is found
-				// or until one of the iterators have reached the end of their list
-				while (!found && (leftIndex < leftPositions.size() && rightIndex < rightPositions.size())) {
-					// store the current left / right position values for readability
-					int leftPosition = leftPositions.get(leftIndex);
-					int rightPosition = rightPositions.get(rightIndex);
+					// we only care about consecutive chains of terms in the same document
+					if (leftDocumentId == rightDocumentId) {
+						// if the term positions falls within the range of `k`, they are considered consecutive
+						if (Math.abs(leftPosition - rightPosition) <= k) {
+							++consecutiveCount;
 
-					// if the right term is off by one from the left, add it and the posting to our lists
-					if (leftPosition == rightPosition - 1) {
-						// since we only add one Posting / position at a time with additional iterations,
-						// only add both the left and right Postings / positions when the lists are empty
-						if (consecutivePositions.size() <= 0) {
-							results.add(leftPosting);
-							consecutivePositions.add(leftPosition);
-						}
-						consecutivePositions.add(rightPosition);
-						found = true;
+							// if the number of intersections matches the expected amount, add it to our final list
+							if (consecutiveCount == mTerms.size() - 2) {
+								addPosting(finalIntersects, leftPosting, leftDocumentId);
+							}
 
-						// else, increment the lesser value's iterator to progress the next comparison
-					} else {
-						if (leftPosition <= rightPosition) {
-							++leftIndex;
-						} else {
-							++rightIndex;
+							// set the left boundary to the latest right boundary to check the consecutive chain
+							leftPosition = rightPosition;
 						}
 					}
-				}
-
-				// if the consecutive link is broken, we must start over
-				if (!found) {
-					consecutivePositions.clear();
 				}
 			}
 		}
 
-		return results;
+		return finalIntersects;
 	}
 
-	/**
-	 * Returns the index of the Postings list that contains the documentId.
-	 * @param postings 		the list of Postings to search through
-	 * @param documentId	the document ID to find the index for
-	 * @return              the index of the documentId within the ArrayList
-	 */
-	private static int binarySearch(List<Posting> postings, int documentId) {
+	private ArrayList<Object[]> positionalIntersect(List<Posting> leftList, List<Posting> rightList, int k) {
+		ArrayList<Object[]> positionalIntersects = new ArrayList<>();
 
-		return binarySearchRecursively(postings, 0, postings.size(), documentId);
+		int leftListIndex = 0;
+		int rightListIndex = 0;
+
+		// implement the positional intersection algorithm found in the textbook
+		while (leftListIndex < leftList.size() && rightListIndex < rightList.size()) {
+			// store values for readability
+			Posting leftPosting = leftList.get(leftListIndex);
+			Posting rightPosting = rightList.get(rightListIndex);
+			int leftDocumentId = leftPosting.getDocumentId();
+			int rightDocumentId = rightPosting.getDocumentId();
+			ArrayList<Integer> leftPositions = leftPosting.getPositions();
+			ArrayList<Integer> rightPositions = rightPosting.getPositions();
+
+			// only compare postings with the same document
+			if (leftDocumentId == rightDocumentId) {
+				List<Integer> consecutivePositions = new ArrayList<>();
+				int leftPositionsIndex = 0;
+				int rightPositionsIndex = 0;
+
+				// compare all left term positions against all right term positions
+				while (leftPositionsIndex < leftPositions.size()) {
+					int leftPosition = leftPositions.get(leftPositionsIndex);
+
+					// add all positions in the right posting that match the consecutive requirements
+					while (rightPositionsIndex < rightPositions.size()) {
+						int rightPosition = rightPositions.get(rightPositionsIndex);
+
+						// positions within range of `k` are considered to be consecutive
+						if (Math.abs(leftPosition - rightPosition) <= k) {
+							consecutivePositions.add(rightPosition);
+						} else if (rightPosition > leftPosition) {
+							break;
+						}
+
+						++rightPositionsIndex;
+					}
+
+					// remove all elements where the left term is positioned after the right term
+					while (consecutivePositions.size() > 0 &&
+							Math.abs(consecutivePositions.get(0) - leftPosition) > k) {
+						consecutivePositions.remove(0);
+					}
+
+					// add all consecutive posting-position1-position2 tuples
+					for (int rightPosition : consecutivePositions) {
+						Object[] documentPositions = new Object[]{leftPosting, leftPosition, rightPosition};
+						positionalIntersects.add(documentPositions);
+					}
+
+					++leftPositionsIndex;
+				}
+				++leftListIndex;
+				++rightListIndex;
+				// skip postings that don't have the same documentId
+			} else if (leftDocumentId < rightDocumentId) {
+				++leftListIndex;
+			} else {
+				++rightListIndex;
+			}
+		}
+
+		return positionalIntersects;
 	}
 
-	/**
-	 * Returns the index of the Postings list that contains the documentId.
-	 * @param postings 		the list of Postings to search through
-	 * @param left	        the left boundary of the ArrayList to check
-	 * @param right         the right boundary of the ArrayList to check
-	 * @param documentId	the document ID to find the index for
-	 * @return              the index of the documentId within the ArrayList
-	 */
-	private static int binarySearchRecursively(List<Posting> postings, int left, int right, int documentId) {
-		// base case: left and right boundaries are positioned at empty array
-		// or the element to search is greater than the array's greatest element
-		if (right < left) {
-			return -1;
+	private void addPosting(List<Posting> finalIntersects, Posting leftPosting, int leftDocumentId) {
+		// if it's empty, we can safely add it as a unique element
+		if (finalIntersects.size() <= 0) {
+			finalIntersects.add(leftPosting);
+		} else {
+			// store for values for readability
+			int latestIndex = finalIntersects.size() - 1;
+			int latestDocumentId = finalIntersects.get(latestIndex).getDocumentId();
+
+			// skip duplicate postings with the same documentId
+			if (latestDocumentId != leftDocumentId) {
+				finalIntersects.add(leftPosting);
+			}
 		}
-
-		int middle = ((right - left) / 2) + left;
-
-		// return the middle index if it's the element we're searching for
-		if (postings.get(middle).getDocumentId() == documentId) {
-			return middle;
-		}
-
-		// if our search element is less than the current midpoint, halve our search section and try again
-		if (documentId < postings.get(middle).getDocumentId()) {
-			return binarySearchRecursively(postings, left, middle - 1, documentId);
-		}
-
-		// else, the search element must be in the upper half
-		return binarySearchRecursively(postings, middle + 1, right, documentId);
 	}
-	
+
 	@Override
 	public String toString() {
 		return "\"" + String.join(" ", mTerms) + "\"";
 	}
 }
+

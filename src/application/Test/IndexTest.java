@@ -17,6 +17,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class IndexTest {
+    //run test corpus through our index
+    String directoryPathString = "./corpus/kanye-test";
+    String extensionType = ".txt";
+    DocumentCorpus testCorpus = DirectoryCorpus.loadTextDirectory(
+            Paths.get(directoryPathString).toAbsolutePath(), extensionType);
+    Index index = indexCorpus(testCorpus, 3);
     @Test
     public void testKanyeCorpus(){
         //inverted index by hand
@@ -183,13 +189,6 @@ public class IndexTest {
             }
 
         };
-
-        //run test corpus through our index
-        String directoryPathString = "./corpus/kanye-test";
-        String extensionType = ".txt";
-        DocumentCorpus testCorpus = DirectoryCorpus.loadTextDirectory(
-                Paths.get(directoryPathString).toAbsolutePath(), extensionType);
-        Index index = indexCorpus(testCorpus, 3);
 
         //assertequal index by hand by
         Comparator<List<Posting>> comparator = new Comparator() {

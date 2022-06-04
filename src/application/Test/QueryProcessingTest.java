@@ -26,17 +26,38 @@ public class QueryProcessingTest {
     DocumentCorpus testCorpus = DirectoryCorpus.loadTextDirectory(
             Paths.get(directoryPathString).toAbsolutePath(), extensionType);
     Index index = Application.indexCorpus(testCorpus, 3);
+    BooleanQueryParser parser = new BooleanQueryParser();
 
+    public List<String> ResultTitles(String query){
+        QueryComponent parsedQuery = parser.parseQuery(query);
+        List<Posting> resultPostings = parsedQuery.getPostings(index);
+        List<String> resultTitles = new ArrayList<>();
+        for (Posting posting : resultPostings) {
+            int currentDocumentId = posting.getDocumentId();
+
+            resultTitles.add(testCorpus.getDocument(currentDocumentId).getTitle());
+        }
+        return resultTitles;
+
+    }
 
     @Test
     public void singleQueryTest(){
-        String query = "yeezi";
+        List<String> resultTitles = ResultTitles("yeezy");
+
+        List<String> expectedTitles = new ArrayList<>(){{
+            add("two.txt");
+            add("three.txt");
+            add("five.txt");
+        }};
+        boolean titlesMatch = resultTitles.containsAll(expectedTitles) && expectedTitles.containsAll(resultTitles);
+
+        assertTrue("The list of document titles should match.", titlesMatch);
     }
 
     @Test
     public void andQueryTest(){
-        BooleanQueryParser parser = new BooleanQueryParser();
-        String query = "yeezi 350";
+        String query = "yeezy 350";
         QueryComponent parsedQuery = parser.parseQuery(query);
         List<Posting> resultPostings = parsedQuery.getPostings(index);
         int queryDocumentId = resultPostings.get(0).getDocumentId();
@@ -46,18 +67,7 @@ public class QueryProcessingTest {
 
     @Test
     public void orQueryTest(){
-        BooleanQueryParser parser = new BooleanQueryParser();
-        String query = "la + west";
-        QueryComponent parsedQuery = parser.parseQuery(query);
-        List<Posting> resultPostings = parsedQuery.getPostings(index);
-        List<String> resultTitles = new ArrayList<>();
-
-        for (Posting posting : resultPostings) {
-            int currentDocumentId = posting.getDocumentId();
-
-            resultTitles.add(testCorpus.getDocument(currentDocumentId).getTitle());
-        }
-
+        List<String> resultTitles = ResultTitles("la + west");
         List<String> expectedTitles = new ArrayList<>(){{
             add("one.txt");
             add("four.txt");
@@ -69,6 +79,13 @@ public class QueryProcessingTest {
 
     @Test
     public void phraseQueryTest(){
-        //write tests once phraseQuery is done
+        String query = "no more parties in la";
+        List<String> resultTitles = ResultTitles(query);
+        List<String> expectedTitles = new ArrayList<>(){{
+            add("one.txt");
+        }};
+        boolean titlesMatch = resultTitles.containsAll(expectedTitles) && expectedTitles.containsAll(resultTitles);
+
+        assertTrue("The list of document titles should match.", titlesMatch);
     }
 }

@@ -20,7 +20,7 @@ public class OrQuery implements QueryComponent {
 	}
 	
 	@Override
-	public List<Posting> getPostings(Index index) {
+	public List<Posting> getPostings(Index<String, Posting> index) {
 		List<Posting> unions = new ArrayList<>();
 		
 		/* Program the merge for an OrQuery, by gathering the postings of the composed QueryComponents and

@@ -60,8 +60,7 @@ public class Application {
 
     private static void initializeComponents(String directoryPath) {
         corpus = new DirectoryCorpus(Path.of(directoryPath));
-        corpus.registerFileDocumentFactory(".txt", TextFileDocument::loadTextFileDocument);
-        corpus.registerFileDocumentFactory(".json", JsonFileDocument::loadJsonFileDocument);
+        corpus.registerFileDocuments();
         // by default, our `k` value for k-gram indexes will be set to 3
         index = indexCorpus(corpus, 3);
     }

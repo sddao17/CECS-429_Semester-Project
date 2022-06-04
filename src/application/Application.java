@@ -16,12 +16,9 @@ import java.util.*;
 
 public class Application {
 
-    // global constants - change as needed
-    private static final int VOCABULARY_PRINT_SIZE = 1_000;
-    // global variables
-    // we need only one corpus and index active at a time, and multiple methods need access to them
-    private static DirectoryCorpus corpus;
-    private static Index index;
+    private static final int VOCABULARY_PRINT_SIZE = 1_000; // number of vocabulary terms to print
+    private static DirectoryCorpus corpus;  // we need only one corpus and index active at a time,
+    private static Index index;             // and multiple methods need access to them
 
     public static void main(String[] args) {
         System.out.printf("""

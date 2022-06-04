@@ -5,6 +5,7 @@ import java.util.List;
 
 import application.indexes.Index;
 import application.indexes.Posting;
+import application.text.TrimQueryTokenProcessor;
 
 /**
  * A TermLiteral represents a single term in a subquery.
@@ -13,7 +14,11 @@ public class TermLiteral implements QueryComponent {
 	private String mTerm;
 	
 	public TermLiteral(String term) {
-		mTerm = term;
+		// Somehow incorporate a TokenProcessor into the getPostings call sequence.
+		TrimQueryTokenProcessor processor = new TrimQueryTokenProcessor();
+
+		String processedTerm = processor.processToken(term).get(0);
+		mTerm = processedTerm;
 	}
 	
 	public String getTerm() {

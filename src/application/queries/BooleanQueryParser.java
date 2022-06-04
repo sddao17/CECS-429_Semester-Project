@@ -4,7 +4,6 @@ package application.queries;
 import application.text.TrimQueryTokenProcessor;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -44,11 +43,11 @@ public class BooleanQueryParser {
 	public QueryComponent parseQuery(String query) {
 		int start = 0;
 		
-		// General routine: scan the query to identify a literal, and put that literal into a list.
-		//	Repeat until a + or the end of the query is encountered; build an AND query with each
-		//	of the literals found. Repeat the scan-and-build-AND-query phase for each segment of the
-		// query separated by + signs. In the end, build a single OR query that composes all of the built
-		// AND subqueries.
+		/* General routine: scan the query to identify a literal, and put that literal into a list.
+		  Repeat until a + or the end of the query is encountered; build an AND query with each
+		  of the literals found. Repeat the scan-and-build-AND-query phase for each segment of the
+		  query separated by + signs. In the end, build a single OR query that composes all of the built
+		  AND subqueries. */
 		
 		List<QueryComponent> allSubqueries = new ArrayList<>();
 		do {
@@ -73,12 +72,12 @@ public class BooleanQueryParser {
 				
 			} while (subStart < subquery.length());
 			
-			// After processing all literals, we are left with a conjunctive list
-			// of query components, and must fold that list into the final disjunctive list
-			// of components.
+			/* After processing all literals, we are left with a conjunctive list
+			  of query components, and must fold that list into the final disjunctive list
+			  of components. */
 			
-			// If there was only one literal in the subquery, we don't need to AND it with anything --
-			// its component can go straight into the list.
+			/* If there was only one literal in the subquery, we don't need to AND it with anything --
+			  its component can go straight into the list. */
 			if (subqueryLiterals.size() == 1) {
 				allSubqueries.add(subqueryLiterals.get(0));
 			}
@@ -89,8 +88,8 @@ public class BooleanQueryParser {
 			start = nextSubquery.start + nextSubquery.length;
 		} while (start < query.length());
 		
-		// After processing all subqueries, we either have a single component or multiple components
-		// that must be combined with an OrQuery.
+		/* After processing all subqueries, we either have a single component or multiple components
+		  that must be combined with an OrQuery. */
 		if (allSubqueries.size() == 1) {
 			return allSubqueries.get(0);
 		}
@@ -119,13 +118,13 @@ public class BooleanQueryParser {
 		int nextPlus = query.indexOf('+', startIndex + 1);
 		
 		if (nextPlus < 0) {
-			// If there is no other + sign, then this is the final subquery in the
-			// query string.
+			/* If there is no other + sign, then this is the final subquery in the
+			  query string. */
 			lengthOut = query.length() - startIndex;
 		}
 		else {
-			// If there is another + sign, then the length of this subquery goes up
-			// to the next + sign.
+			/* If there is another + sign, then the length of this subquery goes up
+			  to the next + sign. */
 		
 			// Move nextPlus backwards until finding a non-space non-plus non-quotation character.
 			test = query.charAt(nextPlus);
@@ -151,22 +150,15 @@ public class BooleanQueryParser {
 		while (subquery.charAt(startIndex) == ' ') {
 			++startIndex;
 		}
-		/*
-		 TODO:
-		 Somehow incorporate a TokenProcessor into the getPostings call sequence.
-		 */
-		TrimQueryTokenProcessor processor = new TrimQueryTokenProcessor();
 
-		/*
-		 TODO:
-		 Instead of assuming that we only have single-term literals, modify this method so it will create a PhraseLiteral
+		/* Instead of assuming that we only have single-term literals, modify this method, so it will create a PhraseLiteral
 		 object if the first non-space character you find is a double-quote ("). In this case, the literal is not ended
-		 by the next space character, but by the next double-quote character.
-		 */
+		 by the next space character, but by the next double-quote character. */
 		// return a PhraseLiteral instead if the next literal started in quotes
 		if (subquery.charAt(startIndex) == '\"') {
 			// Locate the next quotation to find the end of this literal.
 			int nextQuotationMark = subquery.indexOf('\"', startIndex + 1);
+
 			if (nextQuotationMark < 0) {
 				// No more literals in this subquery.
 				lengthOut = subLength - startIndex;
@@ -175,9 +167,8 @@ public class BooleanQueryParser {
 				lengthOut = nextQuotationMark - startIndex + 1;
 			}
 
-			// split all literals in this phrase by splitting them on spaces, ignoring the quotations
-			// and normalize the query tokens before passing them into the PhraseLiteral
-			List<String> phraseLiteral = processor.processToken(subquery.substring(startIndex, lengthOut));
+			// the PhraseLiteral is between the two next quotations marks
+			String phraseLiteral = subquery.substring(startIndex, nextQuotationMark);
 
 			return new Literal(
 					new StringBounds(startIndex, lengthOut),
@@ -195,8 +186,7 @@ public class BooleanQueryParser {
 			lengthOut = nextSpace - startIndex;
 		}
 
-		// normalize the query tokens before passing them into the TermLiteral
-		String literal = String.join(" ", processor.processToken(subquery.substring(startIndex, startIndex + lengthOut)));
+		String literal = subquery.substring(startIndex, startIndex + lengthOut);
 
 		// This is a term literal containing a single term.
 		return new Literal(

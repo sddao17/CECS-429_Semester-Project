@@ -2,11 +2,11 @@
 package application.queries;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import application.indexes.Index;
 import application.indexes.Posting;
+import application.text.TrimQueryTokenProcessor;
 
 /**
  * Represents a phrase literal consisting of one or more terms that must occur in sequence.
@@ -19,14 +19,22 @@ public class PhraseLiteral implements QueryComponent {
 	 * Constructs a PhraseLiteral with the given individual phrase terms.
 	 */
 	public PhraseLiteral(List<String> terms) {
-		mTerms.addAll(terms);
+		// Somehow incorporate a TokenProcessor into the getPostings call sequence.
+		TrimQueryTokenProcessor processor = new TrimQueryTokenProcessor();
+
+		List<String> processedTerms = processor.processToken(String.join(" ", terms));
+		mTerms.addAll(processedTerms);
 	}
 
 	/**
 	 * Constructs a PhraseLiteral given a string with one or more individual terms separated by spaces.
 	 */
 	public PhraseLiteral(String terms) {
-		mTerms.addAll(Arrays.asList(terms.split(" ")));
+		// Somehow incorporate a TokenProcessor into the getPostings call sequence.
+		TrimQueryTokenProcessor processor = new TrimQueryTokenProcessor();
+
+		List<String> processedTerms = processor.processToken(terms);
+		mTerms.addAll(processedTerms);
 	}
 
 	@Override

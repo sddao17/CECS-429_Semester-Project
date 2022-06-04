@@ -40,6 +40,7 @@ public class PhraseLiteral implements QueryComponent {
 
 	@Override
 	public List<Posting> getPostings(Index<String, Posting> index) {
+		System.out.println(mTerms);
 		/* Program this method. Retrieve the postings for the individual terms in the phrase,
 		  and positional merge them together. */
 		/* store posting-position1-position2 tuples where all the terms are sequentially in +1 positional order,
@@ -93,7 +94,7 @@ public class PhraseLiteral implements QueryComponent {
 							++consecutiveCount;
 
 							// if the number of intersections matches the expected amount, add it to our final list
-							if (consecutiveCount == mTerms.size() - 2) {
+							if (consecutiveCount == mTerms.size() - 1) {
 								addPosting(finalIntersects, leftPosting, leftDocumentId);
 							}
 
@@ -156,8 +157,10 @@ public class PhraseLiteral implements QueryComponent {
 
 					// add all consecutive posting-position1-position2 tuples
 					for (int rightPosition : consecutivePositions) {
-						Object[] documentPositions = new Object[]{leftPosting, leftPosition, rightPosition};
-						positionalIntersects.add(documentPositions);
+						if (leftPosition > rightPosition) {
+							Object[] documentPositions = new Object[]{leftPosting, leftPosition, rightPosition};
+							positionalIntersects.add(documentPositions);
+						}
 					}
 
 					++leftPositionsIndex;

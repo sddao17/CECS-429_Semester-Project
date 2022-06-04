@@ -67,7 +67,7 @@ public class Application {
         corpusIndex = indexCorpus(corpus, 3);
     }
 
-    private static Index<String, Posting> indexCorpus(DocumentCorpus corpus, int k) {
+    public static Index<String, Posting> indexCorpus(DocumentCorpus corpus, int k) {
         TrimSplitTokenProcessor processor = new TrimSplitTokenProcessor();
         PositionalInvertedIndex index = new PositionalInvertedIndex();
         List<String> tokenVocabulary = new ArrayList<>();

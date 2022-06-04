@@ -3,6 +3,7 @@ package application;
 
 import application.documents.*;
 import application.indexes.Index;
+import application.indexes.KGramIndex;
 import application.indexes.PositionalInvertedIndex;
 import application.indexes.Posting;
 import application.queries.BooleanQueryParser;
@@ -14,11 +15,17 @@ import application.text.TrimSplitTokenProcessor;
 import java.nio.file.Path;
 import java.util.*;
 
+/**
+ * Search engine term project for CECS-429.
+ * Date: May 24, 2022
+ * @author Caitlin Martinez, Miguel Zavala, Steven Dao
+ */
 public class Application {
 
     private static final int VOCABULARY_PRINT_SIZE = 1_000; // number of vocabulary terms to print
-    private static DirectoryCorpus corpus;  // we need only one corpus and index active at a time,
-    private static Index index;             // and multiple methods need access to them
+    private static DirectoryCorpus corpus;  // we need only one corpus,
+    private static Index index;             // PositionalInvertedIndex,
+    private static Index kGramIndex;        // and KGramIndex active at a time, and multiple methods need access to them
 
     public static void main(String[] args) {
         System.out.printf("""
@@ -55,10 +62,11 @@ public class Application {
         corpus = new DirectoryCorpus(Path.of(directoryPath));
         corpus.registerFileDocumentFactory(".txt", TextFileDocument::loadTextFileDocument);
         corpus.registerFileDocumentFactory(".json", JsonFileDocument::loadJsonFileDocument);
-        index = indexCorpus(corpus);
+        // by default, our `k` value for k-gram indexes will be set to 3
+        index = indexCorpus(corpus, 3);
     }
 
-    private static Index indexCorpus(DocumentCorpus corpus) {
+    private static Index indexCorpus(DocumentCorpus corpus, int k) {
         /* 2. Index all documents in the corpus to build a positional inverted index.
           Print to the screen how long (in seconds) this process takes. */
         System.out.println("\nIndexing...");
@@ -86,6 +94,9 @@ public class Application {
                 ++currentPosition;
             }
         }
+
+        // after building the PositionalInvertedIndex, build the k-gram index using its vocabulary
+        //KGramIndex kGramIndex = new KGramIndex(index, index.getVocabulary(), 3);
 
         long endTime = System.nanoTime();
         double elapsedTimeInSeconds = (double) (endTime - startTime) / 1_000_000_000;

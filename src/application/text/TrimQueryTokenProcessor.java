@@ -14,10 +14,9 @@ public class TrimQueryTokenProcessor implements TokenProcessor {
     public ArrayList<String> processToken(String token) {
         ArrayList<String> terms = new ArrayList<>();
         String term = token;
-        // TODO:
-        // To normalize a token into a term, perform these steps in order:
-        // 1. Remove all non-alphanumeric characters from the beginning and end of the token, but not the middle.
-        // (a) Example: Hello. becomes Hello ; 192.168.1.1 remains unchanged.
+        /* To normalize a token into a term, perform these steps in order:
+          1. Remove all non-alphanumeric characters from the beginning and end of the token, but not the middle.
+          (a) Example: Hello. becomes Hello ; 192.168.1.1 remains unchanged. */
         term = term.replaceAll("^[^a-zA-Z\\d\\s]+|[^a-zA-Z\\d\\s]+$", "");
 
         // 2. Remove all apostrophes or quotation marks (single or double quotes) from anywhere in the string.

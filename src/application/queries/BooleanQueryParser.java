@@ -152,8 +152,8 @@ public class BooleanQueryParser {
 		/* Instead of assuming that we only have single-term literals, modify this method, so it will create a PhraseLiteral
 		 object if the first non-space character you find is a double-quote ("). In this case, the literal is not ended
 		 by the next space character, but by the next double-quote character. */
-		// return a PhraseLiteral instead if the next literal started in quotes
-		if (subquery.charAt(startIndex) == '\"') {
+		// return a PhraseLiteral instead if the next literal started and ended in quotes
+		if (subquery.charAt(startIndex) == '\"' && subquery.indexOf('\"', startIndex + 1) >= 0) {
 			// Locate the next quotation to find the end of this literal.
 			int nextQuotationMark = subquery.indexOf('\"', startIndex + 1);
 

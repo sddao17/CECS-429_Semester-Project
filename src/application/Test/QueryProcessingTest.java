@@ -64,7 +64,7 @@ public class QueryProcessingTest {
         }};
         boolean titlesMatch = resultTitles.containsAll(expectedTitles) && expectedTitles.containsAll(resultTitles);
 
-        assertTrue("The documents' titles should match.", titlesMatch);
+        assertTrue("The list of document titles should match.", titlesMatch);
     }
 
     @Test

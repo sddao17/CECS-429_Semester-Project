@@ -1,8 +1,6 @@
 
 package application.queries;
 
-import application.text.TrimQueryTokenProcessor;
-
 import java.util.ArrayList;
 import java.util.List;
 

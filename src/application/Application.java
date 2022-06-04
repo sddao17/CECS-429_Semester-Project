@@ -26,7 +26,7 @@ public class Application {
                 ./corpus/parks
                 ./corpus/parks-test
                 ./corpus/kanye-test
-                ./corpus/moby dick%n""");
+                ./corpus/moby-dick%n""");
         startApplication();
     }
 

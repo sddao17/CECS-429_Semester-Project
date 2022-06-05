@@ -206,24 +206,13 @@ public class IndexTest {
             ArrayList<Integer> leftPositions = leftPosting.getPositions();
             boolean found = false;
 
-            for (int currentLeftPosition : leftPositions) {
-                for (Posting rightPosting : rightList) {
-                    ArrayList<Integer> rightPositions = rightPosting.getPositions();
+            for (Posting rightPosting : rightList) {
+                ArrayList<Integer> rightPositions = rightPosting.getPositions();
+                found = leftPositions.equals(rightPositions);
 
-                    // compare left positions to right positions
-                    for (int currentRightPosition : rightPositions) {
-                        // break if the positions don't match
-                        if (currentLeftPosition != currentRightPosition) {
-                            found = false;
-                            break;
-                        }
-                        found = true;
-                    }
-
-                    // stop checking the left lift against the rest of right lists if we've found a match
-                    if (found) {
-                        break;
-                    }
+                // stop checking the left list against the rest of right lists if we've found a match
+                if (found) {
+                    break;
                 }
             }
 

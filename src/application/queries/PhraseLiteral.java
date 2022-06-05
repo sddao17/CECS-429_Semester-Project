@@ -39,7 +39,7 @@ public class PhraseLiteral implements QueryComponent {
 	}
 
 	@Override
-	public List<Posting> getPostings(Index index) {
+	public List<Posting> getPostings(Index<String, Posting> index) {
 		/* Program this method. Retrieve the postings for the individual terms in the phrase,
 		  and positional merge them together. */
 		/* store posting-position1-position2 tuples where all the terms are sequentially in +1 positional order,
@@ -48,6 +48,7 @@ public class PhraseLiteral implements QueryComponent {
 		List<Object[]> positionalIntersects = new ArrayList<>();
 		List<Posting> finalIntersects = new ArrayList<>();
 		int firstTermIntersects = 0;
+		int numOfIntersections = 0;
 
 		// start positional intersecting with postings two at a time
 		for (int i = 0; i < mTerms.size() - 1; ++i) {
@@ -62,6 +63,8 @@ public class PhraseLiteral implements QueryComponent {
 			if (i == 0) {
 				firstTermIntersects = positionalIntersects.size();
 			}
+
+			++numOfIntersections;
 		}
 
 		/* the first intersection results are the foundation of determining whether position tuples are consecutive;
@@ -76,11 +79,11 @@ public class PhraseLiteral implements QueryComponent {
 			int consecutiveCount = 0;
 
 			// if there are only two terms, the first intersection is the only positional intersection recorded
-			if (firstTermIntersects == positionalIntersects.size()) {
+			if (numOfIntersections == 1) {
 				addPosting(finalIntersects, leftPosting, leftDocumentId);
 			} else {
 				// check each term intersection against all the other intersections
-				for (int j = firstTermIntersects; j < positionalIntersects.size(); ++j) {
+				for (int j = firstTermIntersects; j < positionalIntersects.size() ; ++j) {
 					// store values for readability
 					Posting rightPosting = (Posting) positionalIntersects.get(j)[0];
 					int rightDocumentId = rightPosting.getDocumentId();

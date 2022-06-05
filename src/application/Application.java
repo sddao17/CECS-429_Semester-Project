@@ -84,7 +84,7 @@ public class Application {
 
             for (String token : tokens) {
                 // process the token before evaluating whether it exists within our matrix
-                ArrayList<String> terms = processor.processToken(token);
+                List<String> terms = processor.processToken(token);
 
                 // since each token can produce multiple terms, add all terms using the same documentID and position
                 for (String term : terms) {

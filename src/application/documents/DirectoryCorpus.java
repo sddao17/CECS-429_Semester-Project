@@ -146,6 +146,16 @@ public class DirectoryCorpus implements DocumentCorpus {
 	public void registerFileDocumentFactory(String fileExtension, FileDocumentFactory factory) {
 		mFactories.put(fileExtension, factory);
 	}
+
+	/**
+	 * Constructs a corpus over a directory of various types of documents.
+	 */
+	public DirectoryCorpus loadDirectory(Path absolutePath) {
+		DirectoryCorpus corpus = new DirectoryCorpus(absolutePath);
+		registerFileDocumentFactory(".txt", TextFileDocument::loadTextFileDocument);
+		registerFileDocumentFactory(".json", JsonFileDocument::loadJsonFileDocument);
+		return corpus;
+	}
 	
 	/**
 	 * Constructs a corpus over a directory of simple text documents.

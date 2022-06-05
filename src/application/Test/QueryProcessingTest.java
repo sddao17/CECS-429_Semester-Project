@@ -1,3 +1,4 @@
+
 package application.Test;
 
 import application.Application;
@@ -11,10 +12,8 @@ import org.junit.Test;
 
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
-import static application.Application.indexCorpus;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -79,7 +78,7 @@ public class QueryProcessingTest {
 
     @Test
     public void phraseQueryTest(){
-        String query = "no more parties in la";
+        String query = "\"no more parties in la\"";
         List<String> resultTitles = ResultTitles(query);
         List<String> expectedTitles = new ArrayList<>(){{
             add("one.txt");

@@ -162,7 +162,7 @@ public class BooleanQueryParser {
 			if (nextQuotationMark < 0) {
 				// No more literals in this subquery.
 				lengthOut = subLength - startIndex;
-				// the PhraseLiteral is between the two next quotations marks
+				// the PhraseLiteral is the rest of the String
 				phraseLiteral = subquery.substring(startIndex, lengthOut);
 			}
 			else {

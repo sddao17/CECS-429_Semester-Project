@@ -195,33 +195,42 @@ public class IndexTest {
     private boolean comparePostings(List<Posting> leftList, List<Posting> rightList) {
         // return false if they don't have the same number of postings
         if (leftList.size() != rightList.size()) {
-            System.err.println("Left (Actual): " + leftList.size() + "\nRight (expected): " + rightList.size());
+            System.err.println("Left Posting list size (Actual): " + leftList.size() +
+                    "\nRight Posting list size (Expected): " + rightList.size());
             return false;
         }
 
-        // compare postings by index number
-        for (int i = 0; i < leftList.size(); ++i) {
-            ArrayList<Integer> leftPositions = leftList.get(i).getPositions();
-            ArrayList<Integer> rightPositions = rightList.get(i).getPositions();
-            int leftPositionSize = leftPositions.size();
-            int rightPositionSize = rightPositions.size();
+        // compare left positions to right positions
+        for (Posting leftPosting : leftList) {
+            // store values for readability
+            ArrayList<Integer> leftPositions = leftPosting.getPositions();
+            boolean found = false;
 
-            // return false if the position sizes don't match
-            if (leftPositionSize != rightPositionSize) {
-                System.err.println("Left (Actual): " + leftPositions + "\nRight (Expected): " + rightPositions);
-                return false;
+            for (int currentLeftPosition : leftPositions) {
+                for (Posting rightPosting : rightList) {
+                    ArrayList<Integer> rightPositions = rightPosting.getPositions();
+
+                    // compare left positions to right positions
+                    for (int currentRightPosition : rightPositions) {
+                        // break if the positions don't match
+                        if (currentLeftPosition != currentRightPosition) {
+                            found = false;
+                            break;
+                        }
+                        found = true;
+                    }
+
+                    // stop checking the left lift against the rest of right lists if we've found a match
+                    if (found) {
+                        break;
+                    }
+                }
             }
 
-            // compare positions by index number
-            for (int j = 0; j < leftPositionSize; ++j) {
-                int currentLeftPosition = leftPositions.get(j);
-                int currentRightPosition = rightPositions.get(j);
-
-                // return false if the positions don't match
-                if (currentLeftPosition != currentRightPosition) {
-                    System.err.println("Left (Actual): " + leftPositions + "\nRight (Expected): " + rightPositions);
-                    return false;
-                }
+            // if we've checked all right lists and the left list was not found, return false
+            if (!found) {
+                System.err.println("Positions list was not found: " + leftPositions);
+                return false;
             }
         }
 
@@ -231,35 +240,35 @@ public class IndexTest {
 
     @Test
     public void testYeezyPositions() {
-        boolean positionsMatch = comparePostings(index.getPostings("yeezi"), indexMap.get("yeezi"));
+        boolean positionsMatch = comparePostings(indexMap.get("yeezi"), index.getPostings("yeezi"));
 
         assertTrue("Postings should be the same between the handmade index and the actual index.", positionsMatch);
     }
 
     @Test
     public void testLAPositions() {
-        boolean positionsMatch = comparePostings(index.getPostings("la"), indexMap.get("la"));
+        boolean positionsMatch = comparePostings(indexMap.get("la"), index.getPostings("la"));
 
         assertTrue("Postings should be the same between the handmade index and the actual index.", positionsMatch);
     }
 
     @Test
     public void testWavePositions() {
-        boolean positionsMatch = comparePostings(index.getPostings("wave"), indexMap.get("wave"));
+        boolean positionsMatch = comparePostings(indexMap.get("wave"), index.getPostings("wave"));
 
         assertTrue("Postings should be the same between the handmade index and the actual index.", positionsMatch);
     }
 
     @Test
     public void testKanyePositions() {
-        boolean positionsMatch = comparePostings(index.getPostings("kany"), indexMap.get("kany"));
+        boolean positionsMatch = comparePostings(indexMap.get("kany"), index.getPostings("kany"));
 
         assertTrue("Postings should be the same between the handmade index and the actual index.", positionsMatch);
     }
 
     @Test
     public void testJumpPositions() {
-        boolean positionsMatch = comparePostings(index.getPostings("jump"), indexMap.get("jump"));
+        boolean positionsMatch = comparePostings(indexMap.get("jump"), index.getPostings("jump"));
 
         assertTrue("Postings should be the same between the handmade index and the actual index.", positionsMatch);
     }

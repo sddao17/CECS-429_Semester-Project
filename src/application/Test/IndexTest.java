@@ -103,6 +103,11 @@ public class IndexTest {
                             add(2);
                         }
                     }));
+                    add(new Posting(2, new ArrayList<>() {
+                        {
+                            add(0);
+                        }
+                    }));
                 }
             });
             put("no", new ArrayList<>() {

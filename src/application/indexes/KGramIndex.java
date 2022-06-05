@@ -12,7 +12,7 @@ public class KGramIndex implements Index<String, String> {
     private final int k; // the number of adjacent characters from the term
 
     /**
-     * Constructs a k-gram and postings index using the input index, vocabulary, and `k` value.
+     * Constructs a k-gram and postings index using the input vocabulary and `k` value.
      */
     public KGramIndex(List<String> vocabulary, int inputK) {
         index = new HashMap<>();
@@ -72,5 +72,21 @@ public class KGramIndex implements Index<String, String> {
         Collections.sort(vocabulary);
 
         return vocabulary;
+    }
+
+    // testing purposes only
+    public static void main(String[] args) {
+        ArrayList<String> vocabulary = new ArrayList<>(){{
+            add("revive");
+            add("redacted");
+            add("rejuvenate");
+            add("revival");
+            add("revivers");
+        }};
+        KGramIndex kGramIndex = new KGramIndex(vocabulary, 3);
+        List<String> testVocabulary = kGramIndex.getVocabulary();
+        for (String token : testVocabulary) {
+            System.out.println(token + ": " + kGramIndex.getPostings(token));
+        }
     }
 }

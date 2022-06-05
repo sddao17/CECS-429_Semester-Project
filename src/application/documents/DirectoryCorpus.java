@@ -150,10 +150,10 @@ public class DirectoryCorpus implements DocumentCorpus {
 	/**
 	 * Constructs a corpus over a directory of various types of documents.
 	 */
-	public DirectoryCorpus loadDirectory(Path absolutePath) {
+	public static DirectoryCorpus loadDirectory(Path absolutePath) {
 		DirectoryCorpus corpus = new DirectoryCorpus(absolutePath);
-		registerFileDocumentFactory(".txt", TextFileDocument::loadTextFileDocument);
-		registerFileDocumentFactory(".json", JsonFileDocument::loadJsonFileDocument);
+		corpus.registerFileDocumentFactory(".txt", TextFileDocument::loadTextFileDocument);
+		corpus.registerFileDocumentFactory(".json", JsonFileDocument::loadJsonFileDocument);
 		return corpus;
 	}
 	

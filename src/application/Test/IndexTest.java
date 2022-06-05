@@ -195,8 +195,8 @@ public class IndexTest {
     private boolean comparePostings(List<Posting> leftList, List<Posting> rightList) {
         // return false if they don't have the same number of postings
         if (leftList.size() != rightList.size()) {
-            System.err.println("Left Posting list size (Actual): " + leftList.size() +
-                    "\nRight Posting list size (Expected): " + rightList.size());
+            System.err.println("Left Posting list size (Expected): " + leftList.size() +
+                    "\nRight Posting list size (Actual): " + rightList.size());
             return false;
         }
 

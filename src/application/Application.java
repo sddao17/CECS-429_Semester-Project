@@ -23,11 +23,9 @@ import java.util.*;
 public class Application {
 
     private static final int VOCABULARY_PRINT_SIZE = 1_000; // number of vocabulary terms to print
-    /* we need only one corpus, PositionalInvertedIndex, and KGramIndex active at a time,
-       and multiple methods need access to them */
-    private static DirectoryCorpus corpus;
-    private static Index<String, Posting> corpusIndex;
-    private static Index<String, Posting> kGramIndex;
+    private static DirectoryCorpus corpus;  // we need only one corpus,
+    private static Index index;             // PositionalInvertedIndex,
+    private static Index kGramIndex;        // and KGramIndex active at a time, and multiple methods need access to them
 
     public static void main(String[] args) {
         System.out.printf("""
@@ -46,7 +44,7 @@ public class Application {
         Scanner in = new Scanner(System.in);
         String directoryPath = in.nextLine().toLowerCase();
 
-        initializeComponents(Path.of(directoryPath));
+        initializeComponents(directoryPath);
 
         System.out.printf("""
                 %nSpecial Commands:
@@ -60,22 +58,22 @@ public class Application {
         startQueryLoop(in);
     }
 
-    private static void initializeComponents(Path directoryPath) {
-        corpus = new DirectoryCorpus(directoryPath);
-        corpus.loadDirectory(directoryPath);
+    private static void initializeComponents(String directoryPath) {
+        corpus = new DirectoryCorpus(Path.of(directoryPath));
+        corpus.registerFileDocumentFactory(".txt", TextFileDocument::loadTextFileDocument);
+        corpus.registerFileDocumentFactory(".json", JsonFileDocument::loadJsonFileDocument);
         // by default, our `k` value for k-gram indexes will be set to 3
-        corpusIndex = indexCorpus(corpus, 3);
+        index = indexCorpus(corpus, 3);
     }
 
-    public static Index<String, Posting> indexCorpus(DocumentCorpus corpus, int k) {
-        TrimSplitTokenProcessor processor = new TrimSplitTokenProcessor();
-        PositionalInvertedIndex index = new PositionalInvertedIndex();
-        List<String> tokenVocabulary = new ArrayList<>();
-
+    public static Index indexCorpus(DocumentCorpus corpus, int k) {
         /* 2. Index all documents in the corpus to build a positional inverted index.
           Print to the screen how long (in seconds) this process takes. */
         System.out.println("\nIndexing...");
         long startTime = System.nanoTime();
+
+        TrimSplitTokenProcessor processor = new TrimSplitTokenProcessor();
+        PositionalInvertedIndex index = new PositionalInvertedIndex();
 
         // scan all documents and process each token into terms of our vocabulary
         for (Document document : corpus.getDocuments()) {
@@ -85,10 +83,8 @@ public class Application {
             int currentPosition = 1;
 
             for (String token : tokens) {
-                // process the token before evaluating whether it exists within our index
+                // process the token before evaluating whether it exists within our matrix
                 List<String> terms = processor.processToken(token);
-                // add the unprocessed token to a separate list for our K-gram index
-                tokenVocabulary.add(token);
 
                 // since each token can produce multiple terms, add all terms using the same documentID and position
                 for (String term : terms) {
@@ -99,8 +95,8 @@ public class Application {
             }
         }
 
-        // after building the PositionalInvertedIndex, build the k-gram index using its unprocessed vocabulary
-        KGramIndex kGramIndex = new KGramIndex(tokenVocabulary, 3);
+        // after building the PositionalInvertedIndex, build the k-gram index using its vocabulary
+        //KGramIndex kGramIndex = new KGramIndex(index, index.getVocabulary(), 3);
 
         long endTime = System.nanoTime();
         double elapsedTimeInSeconds = (double) (endTime - startTime) / 1_000_000_000;
@@ -129,13 +125,13 @@ public class Application {
 
                 // 3(a, i). If it is a special query, perform that action.
                 switch (potentialCommand) {
-                    case ":index" -> initializeComponents(Path.of(parameter));
+                    case ":index" -> initializeComponents(parameter);
                     case ":stem" -> {
                         TokenStemmer stemmer = new TokenStemmer();
                         System.out.println(stemmer.processToken(parameter).get(0));
                     }
                     case ":vocab" -> {
-                        List<String> vocabulary = corpusIndex.getVocabulary();
+                        List<String> vocabulary = index.getVocabulary();
                         int vocabularyPrintSize = Math.min(vocabulary.size(), VOCABULARY_PRINT_SIZE);
                         for (int i = 0; i < vocabularyPrintSize; ++i) {
                             System.out.println(vocabulary.get(i));
@@ -150,7 +146,7 @@ public class Application {
                         // 3(a, ii). If it isn't a special query, then parse the query and retrieve its postings.
                         BooleanQueryParser parser = new BooleanQueryParser();
                         QueryComponent parsedQuery = parser.parseQuery(query);
-                        List<Posting> resultPostings = parsedQuery.getPostings(corpusIndex);
+                        List<Posting> resultPostings = parsedQuery.getPostings(index);
 
                         displayPostings(resultPostings, in);
                     }

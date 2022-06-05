@@ -27,7 +27,7 @@ public class IndexTest {
     @Test
     public void testYeezyPositions() {
         setupKanyeCorpus();
-        boolean positionsMatch = comparePostings(index.getPostings("yeezi"), (indexMap.get("yeezi")));
+        boolean positionsMatch = comparePostings(index.getPostings("yeezi"), indexMap.get("yeezi"));
 
         assertTrue("Postings should be the same between the handmade index and the actual index.", positionsMatch);
     }
@@ -35,7 +35,7 @@ public class IndexTest {
     @Test
     public void testLAPositions() {
         setupKanyeCorpus();
-        boolean positionsMatch = comparePostings(index.getPostings("la"), (indexMap.get("la")));
+        boolean positionsMatch = comparePostings(index.getPostings("la"), indexMap.get("la"));
 
         assertTrue("Postings should be the same between the handmade index and the actual index.", positionsMatch);
     }
@@ -43,7 +43,7 @@ public class IndexTest {
     @Test
     public void testWavePositions() {
         setupKanyeCorpus();
-        boolean positionsMatch = comparePostings(index.getPostings("wave"), (indexMap.get("wave")));
+        boolean positionsMatch = comparePostings(index.getPostings("wave"), indexMap.get("wave"));
 
         assertTrue("Postings should be the same between the handmade index and the actual index.", positionsMatch);
     }
@@ -51,7 +51,7 @@ public class IndexTest {
     @Test
     public void testKanyePositions() {
         setupKanyeCorpus();
-        boolean positionsMatch = comparePostings(index.getPostings("kany"), (indexMap.get("kany")));
+        boolean positionsMatch = comparePostings(index.getPostings("kany"), indexMap.get("kany"));
 
         assertTrue("Postings should be the same between the handmade index and the actual index.", positionsMatch);
     }
@@ -59,7 +59,7 @@ public class IndexTest {
     @Test
     public void testJumpPositions() {
         setupKanyeCorpus();
-        boolean positionsMatch = comparePostings(index.getPostings("jump"), (indexMap.get("jump")));
+        boolean positionsMatch = comparePostings(index.getPostings("jump"), indexMap.get("jump"));
 
         assertTrue("Postings should be the same between the handmade index and the actual index.", positionsMatch);
     }

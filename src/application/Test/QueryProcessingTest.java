@@ -24,7 +24,7 @@ public class QueryProcessingTest {
     String extensionType = ".txt";
     DocumentCorpus testCorpus = DirectoryCorpus.loadTextDirectory(
             Paths.get(directoryPathString).toAbsolutePath(), extensionType);
-    Index index = Application.indexCorpus(testCorpus, 3);
+    Index<String, Posting> index = Application.indexCorpus(testCorpus);
     BooleanQueryParser parser = new BooleanQueryParser();
 
     public List<String> ResultTitles(String query){

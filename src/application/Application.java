@@ -3,7 +3,6 @@ package application;
 
 import application.documents.*;
 import application.indexes.Index;
-import application.indexes.KGramIndex;
 import application.indexes.PositionalInvertedIndex;
 import application.indexes.Posting;
 import application.queries.BooleanQueryParser;
@@ -60,10 +59,10 @@ public class Application {
     private static void initializeComponents(Path directoryPath) {
         corpus = DirectoryCorpus.loadDirectory(directoryPath);
         // by default, our `k` value for k-gram indexes will be set to 3
-        index = indexCorpus(corpus, 3);
+        index = indexCorpus(corpus);
     }
 
-    public static Index<String, Posting> indexCorpus(DocumentCorpus corpus, int k) {
+    public static Index<String, Posting> indexCorpus(DocumentCorpus corpus) {
         /* 2. Index all documents in the corpus to build a positional inverted index.
           Print to the screen how long (in seconds) this process takes. */
         System.out.println("\nIndexing...");
@@ -91,9 +90,6 @@ public class Application {
                 ++currentPosition;
             }
         }
-
-        // after building the PositionalInvertedIndex, build the k-gram index using its vocabulary
-        //KGramIndex kGramIndex = new KGramIndex(index, index.getVocabulary(), 3);
 
         long endTime = System.nanoTime();
         double elapsedTimeInSeconds = (double) (endTime - startTime) / 1_000_000_000;

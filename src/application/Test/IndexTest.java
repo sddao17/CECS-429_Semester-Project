@@ -21,233 +21,176 @@ public class IndexTest {
     DocumentCorpus testCorpus = DirectoryCorpus.loadDirectory(directoryPath);
     Index<String, Posting> index = indexCorpus(testCorpus, 3);
     //inverted index by hand
-    HashMap<String, List<Posting>> indexMap;
-    int oneDocId, twoDocId, threeDocId, fourDocId, fiveDocId;
+    HashMap<String, List<Posting>> indexMap = new HashMap<>() {
+        {
+            // String term, ArrayList postings
+            put("350", new ArrayList<>() {
+                {
+                    // int documentID, ArrayList positions
+                    add(new Posting(1, new ArrayList<>() {
+                        {
+                            // int position
+                            add(3);
+                        }
+                    }));
+                }
+            });
+            put("boost", new ArrayList<>() {
+                {
+                    add(new Posting(1, new ArrayList<>() {
+                        {
+                            add(2);
+                        }
+                    }));
+                }
+            });
 
-    @Test
-    public void testYeezyPositions() {
-        setupKanyeCorpus();
-        boolean positionsMatch = comparePostings(index.getPostings("yeezi"), indexMap.get("yeezi"));
 
-        assertTrue("Postings should be the same between the handmade index and the actual index.", positionsMatch);
-    }
+            put("in", new ArrayList<>() {
+                {
+                    add(new Posting(0, new ArrayList<>() {
+                        {
+                            add(4);
+                        }
+                    }));
+                }
+            });
+            put("jump", new ArrayList<>() {
+                {
+                    add(new Posting(4, new ArrayList<>() {
+                        {
+                            add(3);
+                        }
+                    }));
+                }
+            });
+            put("jumpman", new ArrayList<>() {
+                {
+                    add(new Posting(4, new ArrayList<>() {
+                        {
+                            add(5);
+                        }
+                    }));
+                }
+            });
+            put("kany", new ArrayList<>() {
+                {
+                    add(new Posting(0, new ArrayList<>() {
+                        {
+                            add(7);
+                        }
+                    }));
+                }
+            });
+            put("la", new ArrayList<>() {
+                {
+                    add(new Posting(3, new ArrayList<>() {
+                        {
+                            add(1);
+                        }
+                    }));
+                    add(new Posting(0, new ArrayList<>() {
+                        {
+                            add(5);
+                        }
+                    }));
+                }
+            });
+            put("more", new ArrayList<>() {
+                {
+                    add(new Posting(0, new ArrayList<>() {
+                        {
+                            add(2);
+                        }
+                    }));
+                }
+            });
+            put("no", new ArrayList<>() {
+                {
+                    add(new Posting(0, new ArrayList<>() {
+                        {
+                            add(1);
+                        }
+                    }));
+                }
+            });
+            put("over", new ArrayList<>() {
+                {
+                    add(new Posting(4, new ArrayList<>() {
+                        {
+                            add(4);
+                        }
+                    }));
+                }
+            });
+            put("parti", new ArrayList<>() {
+                {
+                    add(new Posting(0, new ArrayList<>() {
+                        {
+                            add(3);
+                        }
+                    }));
+                }
+            });
+            put("ram", new ArrayList<>() {
+                {
+                    add(new Posting(3, new ArrayList<>() {
+                        {
+                            add(2);
+                        }
+                    }));
+                }
+            });
 
-    @Test
-    public void testLAPositions() {
-        setupKanyeCorpus();
-        boolean positionsMatch = comparePostings(index.getPostings("la"), indexMap.get("la"));
-
-        assertTrue("Postings should be the same between the handmade index and the actual index.", positionsMatch);
-    }
-
-    @Test
-    public void testWavePositions() {
-        setupKanyeCorpus();
-        boolean positionsMatch = comparePostings(index.getPostings("wave"), indexMap.get("wave"));
-
-        assertTrue("Postings should be the same between the handmade index and the actual index.", positionsMatch);
-    }
-
-    @Test
-    public void testKanyePositions() {
-        setupKanyeCorpus();
-        boolean positionsMatch = comparePostings(index.getPostings("kany"), indexMap.get("kany"));
-
-        assertTrue("Postings should be the same between the handmade index and the actual index.", positionsMatch);
-    }
-
-    @Test
-    public void testJumpPositions() {
-        setupKanyeCorpus();
-        boolean positionsMatch = comparePostings(index.getPostings("jump"), indexMap.get("jump"));
-
-        assertTrue("Postings should be the same between the handmade index and the actual index.", positionsMatch);
-    }
-
-    public void setupKanyeCorpus() {
-        for(int i = 0; i < 5; i++) {
-            String title = testCorpus.getDocument(i).getTitle();
-            switch (title) {
-                case "one.txt" -> oneDocId = i;
-                case "two.txt" -> twoDocId = i;
-                case "three.txt" -> threeDocId = i;
-                case "four.txt" -> fourDocId = i;
-                case "five.txt" -> fiveDocId = i;
-            }
+            put("runner", new ArrayList<>() {
+                {
+                    add(new Posting(2, new ArrayList<>() {
+                        {
+                            add(4);
+                        }
+                    }));
+                }
+            });
+            put("wave", new ArrayList<>() {
+                {
+                    add(new Posting(2, new ArrayList<>() {
+                        {
+                            add(3);
+                        }
+                    }));
+                }
+            });
+            put("west", new ArrayList<>() {
+                {
+                    add(new Posting(0, new ArrayList<>() {
+                        {
+                            add(7);
+                        }
+                    }));
+                }
+            });
+            put("yeezi", new ArrayList<>() {
+                {
+                    add(new Posting(1, new ArrayList<>() {
+                        {
+                            add(1);
+                        }
+                    }));
+                    add(new Posting(2, new ArrayList<>() {
+                        {
+                            add(2);
+                        }
+                    }));
+                    add(new Posting(4, new ArrayList<>() {
+                        {
+                            add(1);
+                            add(2);
+                        }
+                    }));
+                }
+            });
         }
-
-        //inverted index by hand
-        indexMap = new HashMap<>() {
-            {
-                // String term, ArrayList postings
-                put("350", new ArrayList<>() {
-                    {
-                        // int documentID, ArrayList positions
-                        add(new Posting(twoDocId, new ArrayList<>() {
-                            {
-                                // int position
-                                add(3);
-                            }
-                        }));
-                    }
-                });
-                put("boost", new ArrayList<>() {
-                    {
-                        add(new Posting(twoDocId, new ArrayList<>() {
-                            {
-                                add(2);
-                            }
-                        }));
-                    }
-                });
-
-
-                put("in", new ArrayList<>() {
-                    {
-                        add(new Posting(oneDocId, new ArrayList<>() {
-                            {
-                                add(4);
-                            }
-                        }));
-                    }
-                });
-                put("jump", new ArrayList<>() {
-                    {
-                        add(new Posting(fiveDocId, new ArrayList<>() {
-                            {
-                                add(3);
-                            }
-                        }));
-                    }
-                });
-                put("jumpman", new ArrayList<>() {
-                    {
-                        add(new Posting(fiveDocId, new ArrayList<>() {
-                            {
-                                add(5);
-                            }
-                        }));
-                    }
-                });
-                put("kany", new ArrayList<>() {
-                    {
-                        add(new Posting(oneDocId, new ArrayList<>() {
-                            {
-                                add(7);
-                            }
-                        }));
-                    }
-                });
-                put("la", new ArrayList<>() {
-                    {
-                        add(new Posting(fourDocId, new ArrayList<>() {
-                            {
-                                add(1);
-                            }
-                        }));
-                        add(new Posting(oneDocId, new ArrayList<>() {
-                            {
-                                add(5);
-                            }
-                        }));
-                    }
-                });
-                put("more", new ArrayList<>() {
-                    {
-                        add(new Posting(oneDocId, new ArrayList<>() {
-                            {
-                                add(2);
-                            }
-                        }));
-                    }
-                });
-                put("no", new ArrayList<>() {
-                    {
-                        add(new Posting(oneDocId, new ArrayList<>() {
-                            {
-                                add(1);
-                            }
-                        }));
-                    }
-                });
-                put("over", new ArrayList<>() {
-                    {
-                        add(new Posting(fiveDocId, new ArrayList<>() {
-                            {
-                                add(4);
-                            }
-                        }));
-                    }
-                });
-                put("parti", new ArrayList<>() {
-                    {
-                        add(new Posting(oneDocId, new ArrayList<>() {
-                            {
-                                add(3);
-                            }
-                        }));
-                    }
-                });
-                put("ram", new ArrayList<>() {
-                    {
-                        add(new Posting(fourDocId, new ArrayList<>() {
-                            {
-                                add(2);
-                            }
-                        }));
-                    }
-                });
-
-                put("runner", new ArrayList<>() {
-                    {
-                        add(new Posting(threeDocId, new ArrayList<>() {
-                            {
-                                add(4);
-                            }
-                        }));
-                    }
-                });
-                put("wave", new ArrayList<>() {
-                    {
-                        add(new Posting(threeDocId, new ArrayList<>() {
-                            {
-                                add(3);
-                            }
-                        }));
-                    }
-                });
-                put("west", new ArrayList<>() {
-                    {
-                        add(new Posting(oneDocId, new ArrayList<>() {
-                            {
-                                add(7);
-                            }
-                        }));
-                    }
-                });
-                put("yeezi", new ArrayList<>() {
-                    {
-                        add(new Posting(twoDocId, new ArrayList<>() {
-                            {
-                                add(1);
-                            }
-                        }));
-                        add(new Posting(threeDocId, new ArrayList<>() {
-                            {
-                                add(2);
-                            }
-                        }));
-                        add(new Posting(fiveDocId, new ArrayList<>() {
-                            {
-                                add(1);
-                                add(2);
-                            }
-                        }));
-                    }
-                });
-            }
-        };
-    }
+    };
 
     private boolean comparePostings(List<Posting> leftList, List<Posting> rightList) {
         // return false if they don't have the same number of postings
@@ -285,4 +228,38 @@ public class IndexTest {
         return true;
     }
 
+    @Test
+    public void testYeezyPositions() {
+        boolean positionsMatch = comparePostings(index.getPostings("yeezi"), indexMap.get("yeezi"));
+
+        assertTrue("Postings should be the same between the handmade index and the actual index.", positionsMatch);
+    }
+
+    @Test
+    public void testLAPositions() {
+        boolean positionsMatch = comparePostings(index.getPostings("la"), indexMap.get("la"));
+
+        assertTrue("Postings should be the same between the handmade index and the actual index.", positionsMatch);
+    }
+
+    @Test
+    public void testWavePositions() {
+        boolean positionsMatch = comparePostings(index.getPostings("wave"), indexMap.get("wave"));
+
+        assertTrue("Postings should be the same between the handmade index and the actual index.", positionsMatch);
+    }
+
+    @Test
+    public void testKanyePositions() {
+        boolean positionsMatch = comparePostings(index.getPostings("kany"), indexMap.get("kany"));
+
+        assertTrue("Postings should be the same between the handmade index and the actual index.", positionsMatch);
+    }
+
+    @Test
+    public void testJumpPositions() {
+        boolean positionsMatch = comparePostings(index.getPostings("jump"), indexMap.get("jump"));
+
+        assertTrue("Postings should be the same between the handmade index and the actual index.", positionsMatch);
+    }
 }

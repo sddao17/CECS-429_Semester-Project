@@ -3,7 +3,6 @@ package application;
 
 import application.documents.*;
 import application.indexes.Index;
-import application.indexes.KGramIndex;
 import application.indexes.PositionalInvertedIndex;
 import application.indexes.Posting;
 import application.queries.BooleanQueryParser;
@@ -22,10 +21,9 @@ import java.util.*;
  */
 public class Application {
 
-    private static final int VOCABULARY_PRINT_SIZE = 1_000; // number of vocabulary terms to print
+    private static final int VOCABULARY_PRINT_SIZE = 1_000;  // number of vocabulary terms to print
     private static DirectoryCorpus corpus;  // we need only one corpus,
-    private static Index index;             // PositionalInvertedIndex,
-    private static Index kGramIndex;        // and KGramIndex active at a time, and multiple methods need access to them
+    private static Index<String, Posting> index;  // and one PositionalInvertedIndex
 
     public static void main(String[] args) {
         System.out.printf("""
@@ -44,7 +42,7 @@ public class Application {
         Scanner in = new Scanner(System.in);
         String directoryPath = in.nextLine().toLowerCase();
 
-        initializeComponents(directoryPath);
+        initializeComponents(Path.of(directoryPath));
 
         System.out.printf("""
                 %nSpecial Commands:
@@ -58,15 +56,13 @@ public class Application {
         startQueryLoop(in);
     }
 
-    private static void initializeComponents(String directoryPath) {
-        corpus = new DirectoryCorpus(Path.of(directoryPath));
-        corpus.registerFileDocumentFactory(".txt", TextFileDocument::loadTextFileDocument);
-        corpus.registerFileDocumentFactory(".json", JsonFileDocument::loadJsonFileDocument);
+    private static void initializeComponents(Path directoryPath) {
+        corpus = DirectoryCorpus.loadDirectory(directoryPath);
         // by default, our `k` value for k-gram indexes will be set to 3
-        index = indexCorpus(corpus, 3);
+        index = indexCorpus(corpus);
     }
 
-    public static Index<String, Posting> indexCorpus(DocumentCorpus corpus, int k) {
+    public static Index<String, Posting> indexCorpus(DocumentCorpus corpus) {
         /* 2. Index all documents in the corpus to build a positional inverted index.
           Print to the screen how long (in seconds) this process takes. */
         System.out.println("\nIndexing...");
@@ -95,9 +91,6 @@ public class Application {
             }
         }
 
-        // after building the PositionalInvertedIndex, build the k-gram index using its vocabulary
-        //KGramIndex kGramIndex = new KGramIndex(index, index.getVocabulary(), 3);
-
         long endTime = System.nanoTime();
         double elapsedTimeInSeconds = (double) (endTime - startTime) / 1_000_000_000;
         System.out.println("Indexing complete." +
@@ -125,7 +118,7 @@ public class Application {
 
                 // 3(a, i). If it is a special query, perform that action.
                 switch (potentialCommand) {
-                    case ":index" -> initializeComponents(parameter);
+                    case ":index" -> initializeComponents(Path.of(parameter));
                     case ":stem" -> {
                         TokenStemmer stemmer = new TokenStemmer();
                         System.out.println(stemmer.processToken(parameter).get(0));

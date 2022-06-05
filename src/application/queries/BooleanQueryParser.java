@@ -157,17 +157,19 @@ public class BooleanQueryParser {
 		if (subquery.charAt(startIndex) == '\"' && subquery.indexOf('\"', startIndex + 1) > 0) {
 			// Locate the next quotation to find the end of this literal.
 			int nextQuotationMark = subquery.indexOf('\"', startIndex + 1);
+			String phraseLiteral;
 
 			if (nextQuotationMark < 0) {
 				// No more literals in this subquery.
 				lengthOut = subLength - startIndex;
+				// the PhraseLiteral is between the two next quotations marks
+				phraseLiteral = subquery.substring(startIndex, lengthOut);
 			}
 			else {
 				lengthOut = nextQuotationMark - startIndex + 1;
+				// the PhraseLiteral is between the two next quotations marks
+				phraseLiteral = subquery.substring(startIndex, nextQuotationMark);
 			}
-
-			// the PhraseLiteral is between the two next quotations marks
-			String phraseLiteral = subquery.substring(startIndex, nextQuotationMark);
 
 			return new Literal(
 					new StringBounds(startIndex, lengthOut),

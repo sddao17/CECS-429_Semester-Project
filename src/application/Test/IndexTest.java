@@ -16,49 +16,13 @@ import static application.Application.indexCorpus;
 import static org.junit.Assert.assertTrue;
 
 public class IndexTest {
-    //run test corpus through our index
+    // run test corpus through our index
     Path directoryPath = Path.of("./corpus/kanye-test");
     DocumentCorpus testCorpus = DirectoryCorpus.loadDirectory(directoryPath);
     Index<String, Posting> index = indexCorpus(testCorpus, 3);
     //inverted index by hand
     HashMap<String, List<Posting>> indexMap;
     int oneDocId, twoDocId, threeDocId, fourDocId, fiveDocId;
-
-    private boolean comparePostings(List<Posting> leftList, List<Posting> rightList) {
-        // return false if they don't have the same number of postings
-        if (leftList.size() != rightList.size()) {
-            System.out.println(leftList.size() + "\n" + rightList.size());
-            return false;
-        }
-
-        // compare postings by index number
-        for (int i = 0; i < leftList.size(); ++i) {
-            ArrayList<Integer> leftPositions = leftList.get(i).getPositions();
-            ArrayList<Integer> rightPositions = rightList.get(i).getPositions();
-            int leftPositionSize = leftPositions.size();
-            int rightPositionSize = rightPositions.size();
-
-            // immediately return false if the positions don't match
-            if (leftPositionSize != rightPositionSize) {
-                System.out.println(leftPositions + "\n" + rightPositions);
-                return false;
-            }
-
-            // compare positions by index number
-            for (int j = 0; j < leftPositionSize; ++j) {
-                int currentLeftPosition = leftPositions.get(j);
-                int currentRightPosition = rightPositions.get(j);
-
-                if (currentLeftPosition != currentRightPosition) {
-                    System.out.println(leftPositions + "\n" + rightPositions);
-                    return false;
-                }
-            }
-        }
-
-        // if we've reached this point, the positions lists match
-        return true;
-    }
 
     @Test
     public void testYeezyPositions() {
@@ -284,4 +248,41 @@ public class IndexTest {
             }
         };
     }
+
+    private boolean comparePostings(List<Posting> leftList, List<Posting> rightList) {
+        // return false if they don't have the same number of postings
+        if (leftList.size() != rightList.size()) {
+            System.out.println(leftList.size() + "\n" + rightList.size());
+            return false;
+        }
+
+        // compare postings by index number
+        for (int i = 0; i < leftList.size(); ++i) {
+            ArrayList<Integer> leftPositions = leftList.get(i).getPositions();
+            ArrayList<Integer> rightPositions = rightList.get(i).getPositions();
+            int leftPositionSize = leftPositions.size();
+            int rightPositionSize = rightPositions.size();
+
+            // immediately return false if the positions don't match
+            if (leftPositionSize != rightPositionSize) {
+                System.out.println(leftPositions + "\n" + rightPositions);
+                return false;
+            }
+
+            // compare positions by index number
+            for (int j = 0; j < leftPositionSize; ++j) {
+                int currentLeftPosition = leftPositions.get(j);
+                int currentRightPosition = rightPositions.get(j);
+
+                if (currentLeftPosition != currentRightPosition) {
+                    System.out.println(leftPositions + "\n" + rightPositions);
+                    return false;
+                }
+            }
+        }
+
+        // if we've reached this point, the positions lists match
+        return true;
+    }
+
 }

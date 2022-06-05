@@ -195,7 +195,7 @@ public class IndexTest {
     private boolean comparePostings(List<Posting> leftList, List<Posting> rightList) {
         // return false if they don't have the same number of postings
         if (leftList.size() != rightList.size()) {
-            System.out.println(leftList.size() + "\n" + rightList.size());
+            System.err.println("Left (Actual): " + leftList.size() + "\nRight (expected): " + rightList.size());
             return false;
         }
 
@@ -206,9 +206,9 @@ public class IndexTest {
             int leftPositionSize = leftPositions.size();
             int rightPositionSize = rightPositions.size();
 
-            // immediately return false if the positions don't match
+            // return false if the position sizes don't match
             if (leftPositionSize != rightPositionSize) {
-                System.out.println(leftPositions + "\n" + rightPositions);
+                System.err.println("Left (Actual): " + leftPositions + "\nRight (Expected): " + rightPositions);
                 return false;
             }
 
@@ -217,8 +217,9 @@ public class IndexTest {
                 int currentLeftPosition = leftPositions.get(j);
                 int currentRightPosition = rightPositions.get(j);
 
+                // return false if the positions don't match
                 if (currentLeftPosition != currentRightPosition) {
-                    System.out.println(leftPositions + "\n" + rightPositions);
+                    System.err.println("Left (Actual): " + leftPositions + "\nRight (Expected): " + rightPositions);
                     return false;
                 }
             }

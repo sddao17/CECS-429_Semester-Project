@@ -1,3 +1,4 @@
+
 package application.Test;
 
 import application.documents.DirectoryCorpus;
@@ -6,53 +7,113 @@ import application.indexes.Index;
 import application.indexes.Posting;
 import org.junit.Test;
 
-import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 
 import static application.Application.indexCorpus;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class IndexTest {
     //run test corpus through our index
-    String directoryPathString = "./corpus/kanye-test";
-    String extensionType = ".txt";
-    DocumentCorpus testCorpus = DirectoryCorpus.loadTextDirectory(
-            Paths.get(directoryPathString).toAbsolutePath(), extensionType);
-    Index index = indexCorpus(testCorpus, 3);
-    int oneDocId;
-    int twoDocId;
-    int threeDocId;
-    int fourDocId;
-    int fiveDocId;
+    Path directoryPath = Path.of("./corpus/kanye-test");
+    DocumentCorpus testCorpus = DirectoryCorpus.loadDirectory(directoryPath);
+    Index<String, Posting> index = indexCorpus(testCorpus, 3);
+    //inverted index by hand
+    HashMap<String, List<Posting>> indexMap;
+    int oneDocId, twoDocId, threeDocId, fourDocId, fiveDocId;
+
+    private boolean comparePostings(List<Posting> leftList, List<Posting> rightList) {
+        // return false if they don't have the same number of postings
+        if (leftList.size() != rightList.size()) {
+            System.out.println(leftList.size() + "\n" + rightList.size());
+            return false;
+        }
+
+        // compare postings by index number
+        for (int i = 0; i < leftList.size(); ++i) {
+            ArrayList<Integer> leftPositions = leftList.get(i).getPositions();
+            ArrayList<Integer> rightPositions = rightList.get(i).getPositions();
+            int leftPositionSize = leftPositions.size();
+            int rightPositionSize = rightPositions.size();
+
+            // immediately return false if the positions don't match
+            if (leftPositionSize != rightPositionSize) {
+                System.out.println(leftPositions + "\n" + rightPositions);
+                return false;
+            }
+
+            // compare positions by index number
+            for (int j = 0; j < leftPositionSize; ++j) {
+                int currentLeftPosition = leftPositions.get(j);
+                int currentRightPosition = rightPositions.get(j);
+
+                if (currentLeftPosition != currentRightPosition) {
+                    System.out.println(leftPositions + "\n" + rightPositions);
+                    return false;
+                }
+            }
+        }
+
+        // if we've reached this point, the positions lists match
+        return true;
+    }
 
     @Test
-    public void testKanyeCorpus(){
+    public void testYeezyPositions() {
+        setupKanyeCorpus();
+        boolean positionsMatch = comparePostings(index.getPostings("yeezi"), (indexMap.get("yeezi")));
 
-        for(int i=0; i<5; i++){
+        assertTrue("Postings should be the same between the handmade index and the actual index.", positionsMatch);
+    }
+
+    @Test
+    public void testLAPositions() {
+        setupKanyeCorpus();
+        boolean positionsMatch = comparePostings(index.getPostings("la"), (indexMap.get("la")));
+
+        assertTrue("Postings should be the same between the handmade index and the actual index.", positionsMatch);
+    }
+
+    @Test
+    public void testWavePositions() {
+        setupKanyeCorpus();
+        boolean positionsMatch = comparePostings(index.getPostings("wave"), (indexMap.get("wave")));
+
+        assertTrue("Postings should be the same between the handmade index and the actual index.", positionsMatch);
+    }
+
+    @Test
+    public void testKanyePositions() {
+        setupKanyeCorpus();
+        boolean positionsMatch = comparePostings(index.getPostings("kany"), (indexMap.get("kany")));
+
+        assertTrue("Postings should be the same between the handmade index and the actual index.", positionsMatch);
+    }
+
+    @Test
+    public void testJumpPositions() {
+        setupKanyeCorpus();
+        boolean positionsMatch = comparePostings(index.getPostings("jump"), (indexMap.get("jump")));
+
+        assertTrue("Postings should be the same between the handmade index and the actual index.", positionsMatch);
+    }
+
+    public void setupKanyeCorpus() {
+        for(int i = 0; i < 5; i++) {
             String title = testCorpus.getDocument(i).getTitle();
-            if(title.equals("one.txt")){
-                oneDocId = i;
-            }
-            else if(title.equals("two.txt")){
-                twoDocId = i;
-            }
-            else if(title.equals("three.txt")){
-                threeDocId = i;
-            }
-            else if(title.equals("four.txt")){
-                fourDocId = i;
-            }
-            else if(title.equals("five.txt")){
-                fiveDocId = i;
+            switch (title) {
+                case "one.txt" -> oneDocId = i;
+                case "two.txt" -> twoDocId = i;
+                case "three.txt" -> threeDocId = i;
+                case "four.txt" -> fourDocId = i;
+                case "five.txt" -> fiveDocId = i;
             }
         }
 
         //inverted index by hand
-        HashMap<String, List<Posting>> indexMap = new HashMap<>() {
+        indexMap = new HashMap<>() {
             {
                 // String term, ArrayList postings
                 put("350", new ArrayList<>() {
@@ -104,11 +165,11 @@ public class IndexTest {
                         }));
                     }
                 });
-                put("kanye", new ArrayList<>() {
+                put("kany", new ArrayList<>() {
                     {
                         add(new Posting(oneDocId, new ArrayList<>() {
                             {
-                                add(6);
+                                add(7);
                             }
                         }));
                     }
@@ -177,7 +238,7 @@ public class IndexTest {
                     {
                         add(new Posting(threeDocId, new ArrayList<>() {
                             {
-                                add(3);
+                                add(4);
                             }
                         }));
                     }
@@ -186,7 +247,7 @@ public class IndexTest {
                     {
                         add(new Posting(threeDocId, new ArrayList<>() {
                             {
-                                add(2);
+                                add(3);
                             }
                         }));
                     }
@@ -202,44 +263,25 @@ public class IndexTest {
                 });
                 put("yeezi", new ArrayList<>() {
                     {
+                        add(new Posting(twoDocId, new ArrayList<>() {
+                            {
+                                add(1);
+                            }
+                        }));
+                        add(new Posting(threeDocId, new ArrayList<>() {
+                            {
+                                add(2);
+                            }
+                        }));
                         add(new Posting(fiveDocId, new ArrayList<>() {
                             {
                                 add(1);
                                 add(2);
                             }
                         }));
-                        add(new Posting(threeDocId, new ArrayList<>() {
-                            {
-                                add(1);
-                            }
-                        }));
-                        add(new Posting(twoDocId, new ArrayList<>() {
-                            {
-                                add(1);
-                            }
-                        }));
                     }
                 });
-
             }
-
         };
-
-        int test;
-        if( (index.getPostings("yeezy").equals(indexMap.get("yeezy"))) &&
-                (index.getPostings("la").equals(indexMap.get("la"))) &&
-                (index.getPostings("wave").equals(indexMap.get("wave"))) &&
-                (index.getPostings("kanye").equals(indexMap.get("kanye"))) &&
-                (index.getPostings("jump").equals(indexMap.get("jump")))){
-            test = 0;
-        }
-        else{
-            test = 1;
-        }
-
-        assertEquals("Postings should be the same between the handmade index and the actual index.",0,0);
-
-        //assertequal index by hand by
-
     }
 }

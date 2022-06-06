@@ -73,8 +73,6 @@ public class Application {
 
         TrimSplitTokenProcessor processor = new TrimSplitTokenProcessor();
         PositionalInvertedIndex index = new PositionalInvertedIndex();
-        // initialize the k-gram and its unprocessed vocabulary
-        kGramIndex = new KGramIndex();
         List<String> tokenVocabulary = new ArrayList<>();
 
         // scan all documents and process each token into terms of our vocabulary
@@ -114,7 +112,7 @@ public class Application {
         startTime = System.nanoTime();
 
         // build the k-gram index using vocabulary tokens, not terms
-        kGramIndex.buildKGramIndex(tokenVocabulary, 3);
+        kGramIndex = new KGramIndex(tokenVocabulary, 3);
 
         endTime = System.nanoTime();
         elapsedTimeInSeconds = (double) (endTime - startTime) / 1_000_000_000;

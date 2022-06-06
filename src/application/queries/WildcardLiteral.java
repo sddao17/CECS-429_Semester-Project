@@ -32,8 +32,7 @@ public class WildcardLiteral implements QueryComponent {
     @Override
     public List<Posting> getPostings(Index<String, Posting> corpusIndex) {
         Index<String, String> corpusKGramIndex = Application.getKGramIndex();
-        KGramIndex kGramIndex = new KGramIndex();
-        kGramIndex.buildKGramIndex(new ArrayList<>(){{add(mTerm);}}, 3);
+        Index<String, String> kGramIndex = new KGramIndex(new ArrayList<>(){{add(mTerm);}}, 3);
         List<String> candidateTokens = new ArrayList<>();
         String[] splitTokens = mTerm.split("\\*");
 

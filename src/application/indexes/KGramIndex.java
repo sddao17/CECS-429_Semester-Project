@@ -14,12 +14,14 @@ public class KGramIndex implements Index<String, String> {
     /**
      * Constructs an empty k-gram index.
      */
-    public KGramIndex() {
+    public KGramIndex(List<String> vocabulary, int k) {
         kGramIndex = new HashMap<>();
         distinctKGrams = new ArrayList<>();
+
+        buildKGramIndex(vocabulary, k);
     }
 
-    public void buildKGramIndex(List<String> vocabulary, int k) {
+    private void buildKGramIndex(List<String> vocabulary, int k) {
         List<String> kGrams;
 
         // for each token, generate the k-grams and map its postings to the token
@@ -97,8 +99,7 @@ public class KGramIndex implements Index<String, String> {
             add("n*al");
             add("financial");
         }};
-        KGramIndex kGramIndex = new KGramIndex();
-        kGramIndex.buildKGramIndex(vocabulary, 3);
+        KGramIndex kGramIndex = new KGramIndex(vocabulary, 3);
         List<String> testVocabulary = kGramIndex.getVocabulary();
         for (String token : testVocabulary) {
             System.out.println(token + ": " + kGramIndex.getPostings(token));

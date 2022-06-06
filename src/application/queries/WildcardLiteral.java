@@ -30,8 +30,10 @@ public class WildcardLiteral implements QueryComponent {
     @Override
     public List<Posting> getPostings(Index<String, Posting> corpusIndex) {
         Index<String, String> corpusKGramIndex = Application.getKGramIndex();
-        Index<String, String> kGramIndex = new KGramIndex(new ArrayList<>(){{add(mTerm);}}, 3);
+        KGramIndex kGramIndex= new KGramIndex();
+        kGramIndex.buildKGramIndex(new ArrayList<>(){{add(mTerm);}}, 3);
         List<String> candidateTokens = new ArrayList<>();
+        String[] splitTokens = mTerm.split("\\*");
 
         // intersect terms within their respective vocabularies
         for (String wildcardToken : kGramIndex.getVocabulary()) {
@@ -46,17 +48,18 @@ public class WildcardLiteral implements QueryComponent {
                 }
             }
         }
-        System.out.println("Candidate tokens: " + candidateTokens);
+        //System.out.println("Candidate tokens: " + candidateTokens);
 
         List<String> finalTerms = new ArrayList<>();
 
         // post-filtering step: confirm that the candidate token matches the original pattern
         for (String candidateToken : candidateTokens) {
+            // only add the candidate token to the final terms once
             if (!finalTerms.contains(candidateToken)) {
                 int currentIndex = 0;
                 boolean candidateMatchesOrder = true;
 
-                for (String splitToken : kGramIndex.getVocabulary()) {
+                for (String splitToken : splitTokens) {
                     int tokenIndex = candidateToken.indexOf(splitToken, currentIndex);
                     if (tokenIndex < 0) {
                         candidateMatchesOrder = false;
@@ -65,14 +68,18 @@ public class WildcardLiteral implements QueryComponent {
                     currentIndex = tokenIndex + splitToken.length();
                 }
 
-                // if the candidate matches the original token, we can finally process and add the term
+                /* if the candidate matches the original token, we can finally process and add the term;
+                  only add the processed term once */
                 if (candidateMatchesOrder) {
                     TrimQueryTokenProcessor processor = new TrimQueryTokenProcessor();
-                    finalTerms.add(processor.processToken(candidateToken).get(0));
+                    String term = processor.processToken(candidateToken).get(0);
+                    if (!finalTerms.contains(term)) {
+                        finalTerms.add(term);
+                    }
                 }
             }
         }
-        System.out.println("Final terms: " + finalTerms);
+        //System.out.println("Final terms: " + finalTerms);
 
         // once we collect all of our final terms, we "OR" the postings to combine them and ignore duplicates
         List<QueryComponent> literals = new ArrayList<>();

@@ -73,7 +73,7 @@ public class Application {
 
         TrimSplitTokenProcessor processor = new TrimSplitTokenProcessor();
         PositionalInvertedIndex index = new PositionalInvertedIndex();
-        List<String> tokenVocabulary = new ArrayList<>();
+        kGramIndex = new KGramIndex();
 
         // scan all documents and process each token into terms of our vocabulary
         for (Document document : corpus.getDocuments()) {
@@ -88,9 +88,7 @@ public class Application {
                 String wildcardToken = wildcardProcessor.processToken(token).get(0);
 
                 // the tokens must be distinct
-                if (!tokenVocabulary.contains(wildcardToken)) {
-                    tokenVocabulary.add(wildcardToken);
-                }
+                kGramIndex.addToken(wildcardToken, 3);
 
                 // process the token before evaluating whether it exists within our index
                 List<String> terms = processor.processToken(token);
@@ -108,17 +106,7 @@ public class Application {
         double elapsedTimeInSeconds = (double) (endTime - startTime) / 1_000_000_000;
         System.out.println("Indexing complete." +
                 "\nElapsed time: " + elapsedTimeInSeconds + " seconds" +
-                "\n\nBuilding k-gram index...");
-        startTime = System.nanoTime();
-
-        // build the k-gram index using vocabulary tokens, not terms
-        kGramIndex = new KGramIndex(tokenVocabulary, 3);
-
-        endTime = System.nanoTime();
-        elapsedTimeInSeconds = (double) (endTime - startTime) / 1_000_000_000;
-        System.out.println("Indexing complete." +
-                "\nDistinct k-grams: " + kGramIndex.getDistinctKGrams().size() +
-                "\nElapsed time: " + elapsedTimeInSeconds + " seconds");
+                "\n\nDistinct k-grams: " + kGramIndex.getDistinctKGrams().size());
 
         return index;
     }

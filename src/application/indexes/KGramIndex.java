@@ -14,18 +14,47 @@ public class KGramIndex implements Index<String, String> {
     /**
      * Constructs an empty k-gram index.
      */
-    public KGramIndex(List<String> vocabulary, int k) {
+    public KGramIndex() {
         kGramIndex = new HashMap<>();
         distinctKGrams = new ArrayList<>();
-
-        buildKGramIndex(vocabulary, k);
     }
 
-    private void buildKGramIndex(List<String> vocabulary, int k) {
-        List<String> kGrams;
-
+    public void buildKGramIndex(List<String> vocabulary, int k) {
         // for each token, generate the k-grams and map its postings to the token
         for (String token : vocabulary) {
+            addToken(token, k);
+        }
+    }
+
+    @Override
+    public List<String> getPostings(String term) {
+        // return an empty list if the term doesn't exist in the map
+        if (!kGramIndex.containsKey(term))
+            return new ArrayList<>();
+
+        return kGramIndex.get(term);
+    }
+
+    @Override
+    public List<String> getVocabulary() {
+        // remember to return a sorted vocabulary
+        List<String> vocabulary = new ArrayList<>(kGramIndex.keySet().stream().toList());
+        Collections.sort(vocabulary);
+
+        return vocabulary;
+    }
+
+    public List<String> getDistinctKGrams() {
+        Collections.sort(distinctKGrams);
+
+        return distinctKGrams;
+    }
+
+    public void addToken(String token, int k) {
+        List<String> existingPostings = kGramIndex.get(token);
+        List<String> kGrams;
+
+        if (existingPostings == null) {
             String parsedToken = token;
             // if a token doesn't have asterisks in it, add the flag; add it otherwise
             if (!token.startsWith("*")) {
@@ -79,30 +108,6 @@ public class KGramIndex implements Index<String, String> {
         return kGrams;
     }
 
-    @Override
-    public List<String> getPostings(String term) {
-        // return an empty list if the term doesn't exist in the map
-        if (!kGramIndex.containsKey(term))
-            return new ArrayList<>();
-
-        return kGramIndex.get(term);
-    }
-
-    @Override
-    public List<String> getVocabulary() {
-        // remember to return a sorted vocabulary
-        List<String> vocabulary = new ArrayList<>(kGramIndex.keySet().stream().toList());
-        Collections.sort(vocabulary);
-
-        return vocabulary;
-    }
-
-    public List<String> getDistinctKGrams() {
-        Collections.sort(distinctKGrams);
-
-        return distinctKGrams;
-    }
-
     // testing purposes only
     public static void main(String[] args) {
         ArrayList<String> vocabulary = new ArrayList<>(){{
@@ -117,7 +122,8 @@ public class KGramIndex implements Index<String, String> {
             //add("*n");
             //add("*finan*cial*");
         }};
-        KGramIndex kGramIndex = new KGramIndex(vocabulary, 3);
+        KGramIndex kGramIndex = new KGramIndex();
+        kGramIndex.buildKGramIndex(vocabulary, 3);
         List<String> testVocabulary = kGramIndex.getVocabulary();
         for (String token : testVocabulary) {
             System.out.println(token + ": " + kGramIndex.getPostings(token));

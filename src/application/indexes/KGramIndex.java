@@ -8,49 +8,61 @@ import java.util.*;
  */
 public class KGramIndex implements Index<String, String> {
 
-    private final Map<String, List<String>> index;
-    private final int k; // the number of adjacent characters from the term
+    private final Map<String, List<String>> kGramIndex;
 
     /**
-     * Constructs a k-gram and postings index using the input vocabulary and `k` value.
+     * Constructs a corpus and k-gram index using the input token and value of `k`.
      */
-    public KGramIndex(List<String> vocabulary, int inputK) {
-        index = new HashMap<>();
-        k = inputK;
+    public KGramIndex(String token) {
+        kGramIndex = new HashMap<>();
 
-        buildKGramIndex(vocabulary);
+        buildKGramIndex(token);
     }
 
-    private void buildKGramIndex(List<String> vocabulary) {
-        // for each token, generate the k-grams and map its postings to the token
-        for (String token : vocabulary) {
-            /* generate all k-grams up to `k` for the token, then store it to be mapped to the token
-              from which it was generated */
-            List<String> kGrams = createKGrams(token);
+    private void buildKGramIndex(String token) {
+        // if the original token has a single or no characters, map it to its own term in the map
+        if (token.length() <= 1) {
+            kGramIndex.put(token, new ArrayList<>(){{add(token);}});
+        } else {
+            // add flags to the beginning/end of the token, then split on wildcards
+            String newToken = "$" + token + "$";
+            String[] splitTokens = newToken.split("\\*");
 
-            index.put(token, new ArrayList<>(kGrams));
+            // for each split token, generate the k-grams and map its postings to the token
+            for (int i = 0; i < splitTokens.length; ++i) {
+                String splitToken = splitTokens[i];
+                /* generate all k-grams up to `k` for each section of the token, map the generated k-grams
+                  to the token from which it was generated */
+                List<String> kGrams = createKGrams(splitToken);
+
+                // remove the flags we added earlier
+                if (splitTokens.length == 1) {
+                    kGramIndex.put(splitToken.substring(1, splitToken.length() - 1), new ArrayList<>(kGrams));
+                } else if (i == 0) {
+                    kGramIndex.put(splitToken.substring(1), new ArrayList<>(kGrams));
+                } else if (i == (splitTokens.length - 1)) {
+                    kGramIndex.put(splitToken.substring(0, splitToken.length() - 1), new ArrayList<>(kGrams));
+                } else {
+                    kGramIndex.put(splitToken, new ArrayList<>(kGrams));
+                }
+            }
         }
+        System.out.println(kGramIndex);
     }
 
     private List<String> createKGrams(String token) {
         List<String> kGrams = new ArrayList<>();
+        int k = token.length();
 
-        // for all integers leading up to k, add the substrings of variable length throughout the whole token
-        for (int i = 1; i <= k; ++i) {
-            for (int j = 0; j < (token.length() - i + 1); ++j) {
-                String currentKGram = token.substring(j, j + i);
+        if (k <= 2) {
+            kGrams.add(token);
+            return kGrams;
+        }
 
-                // if applicable, add a copy of the substrings denoting the beginning or ending of the token
-                if (j == 0 && currentKGram.length() < k) {
-                    kGrams.add("$" + currentKGram);
-                }
+        for (int i = 0; i < 2; ++i) {
+            String currentKGram = token.substring(i, k + i - 1);
 
-                kGrams.add(currentKGram);
-
-                if (j == (token.length() - i) && currentKGram.length() < k) {
-                    kGrams.add(currentKGram + "$");
-                }
-            }
+            kGrams.add(currentKGram);
         }
 
         return kGrams;
@@ -59,16 +71,16 @@ public class KGramIndex implements Index<String, String> {
     @Override
     public List<String> getPostings(String term) {
         // return an empty list if the term doesn't exist in the map
-        if (!index.containsKey(term))
+        if (!kGramIndex.containsKey(term))
             return new ArrayList<>();
 
-        return index.get(term);
+        return kGramIndex.get(term);
     }
 
     @Override
     public List<String> getVocabulary() {
         // remember to return a sorted vocabulary
-        List<String> vocabulary = new ArrayList<>(index.keySet().stream().toList());
+        List<String> vocabulary = new ArrayList<>(kGramIndex.keySet().stream().toList());
         Collections.sort(vocabulary);
 
         return vocabulary;
@@ -76,17 +88,17 @@ public class KGramIndex implements Index<String, String> {
 
     // testing purposes only
     public static void main(String[] args) {
-        ArrayList<String> vocabulary = new ArrayList<>(){{
-            add("revive");
-            add("redacted");
-            add("rejuvenate");
-            add("revival");
-            add("revivers");
-        }};
-        KGramIndex kGramIndex = new KGramIndex(vocabulary, 3);
-        List<String> testVocabulary = kGramIndex.getVocabulary();
-        for (String token : testVocabulary) {
-            System.out.println(token + ": " + kGramIndex.getPostings(token));
-        }
+        KGramIndex kGramIndex1 = new KGramIndex("");
+        KGramIndex kGramIndex2 = new KGramIndex("i");
+        KGramIndex kGramIndex3 = new KGramIndex("at");
+        KGramIndex kGramIndex4 = new KGramIndex("read");
+        KGramIndex kGramIndex5 = new KGramIndex("revive");
+        KGramIndex kGramIndex6 = new KGramIndex("redacted");
+        KGramIndex kGramIndex7 = new KGramIndex("re*en*ate");
+        KGramIndex kGramIndex8 = new KGramIndex("re*ers");
+        KGramIndex kGramIndex9 = new KGramIndex("red*a*d");
+
+        String testString = "testString";
+        System.out.println("Index of \"tSt\" in " + testString + " is: " + testString.indexOf("tSt"));
     }
 }

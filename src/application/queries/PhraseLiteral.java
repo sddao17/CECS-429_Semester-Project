@@ -57,7 +57,7 @@ public class PhraseLiteral implements QueryComponent {
 			List<Posting> rightPostings = index.getPostings(mTerms.get(i + 1));
 
 			// positional intersect our current intersections list with the next postings list
-			positionalIntersects.addAll(positionalIntersect(leftPostings, rightPostings, k));
+			positionalIntersects.addAll(positionalIntersect(leftPostings, rightPostings));
 
 			// mark the position of where the first terms' positional intersections end
 			if (i == 0) {
@@ -111,7 +111,7 @@ public class PhraseLiteral implements QueryComponent {
 		return finalIntersects;
 	}
 
-	private ArrayList<Object[]> positionalIntersect(List<Posting> leftList, List<Posting> rightList, int k) {
+	private ArrayList<Object[]> positionalIntersect(List<Posting> leftList, List<Posting> rightList) {
 		ArrayList<Object[]> positionalIntersects = new ArrayList<>();
 
 		int leftListIndex = 0;
@@ -159,8 +159,10 @@ public class PhraseLiteral implements QueryComponent {
 
 					// add all consecutive posting-position1-position2 tuples
 					for (int rightPosition : consecutivePositions) {
-						Object[] documentPositions = new Object[]{leftPosting, leftPosition, rightPosition};
-						positionalIntersects.add(documentPositions);
+						if (leftPosition < rightPosition) {
+							Object[] documentPositions = new Object[]{leftPosting, leftPosition, rightPosition};
+							positionalIntersects.add(documentPositions);
+						}
 					}
 
 					++leftPositionsIndex;

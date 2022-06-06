@@ -157,23 +157,21 @@ public class BooleanQueryParser {
 		if (subquery.charAt(startIndex) == '\"' && subquery.indexOf('\"', startIndex + 1) > 0) {
 			// Locate the next quotation to find the end of this literal.
 			int nextQuotationMark = subquery.indexOf('\"', startIndex + 1);
-			String phraseLiteral;
+			lengthOut = nextQuotationMark - startIndex + 1;
+			// the PhraseLiteral is between the two next quotations marks
+			String literal = subquery.substring(startIndex, nextQuotationMark);
 
-			if (nextQuotationMark < 0) {
-				// No more literals in this subquery.
-				lengthOut = subLength - startIndex;
-				// the PhraseLiteral is the rest of the string
-				phraseLiteral = subquery.substring(startIndex, lengthOut);
-			}
-			else {
-				lengthOut = nextQuotationMark - startIndex + 1;
-				// the PhraseLiteral is between the two next quotations marks
-				phraseLiteral = subquery.substring(startIndex, nextQuotationMark);
+			// if the user surrounds a single token in double quotes, treat it as a term literal
+			if (literal.indexOf(' ') < 0) {
+				return new Literal (
+						new StringBounds(startIndex, lengthOut),
+						new TermLiteral(literal)
+				);
 			}
 
-			return new Literal(
+			return new Literal (
 					new StringBounds(startIndex, lengthOut),
-					new PhraseLiteral(phraseLiteral)
+					new PhraseLiteral(literal)
 			);
 		}
 
@@ -189,9 +187,15 @@ public class BooleanQueryParser {
 
 		String literal = subquery.substring(startIndex, startIndex + lengthOut);
 
+		if (literal.contains("*")) {
+			return new Literal (
+					new StringBounds(startIndex, lengthOut),
+					new WildcardLiteral(literal));
+		}
+
 		// This is a term literal containing a single term.
-		return new Literal(
-		 new StringBounds(startIndex, lengthOut),
-		 new TermLiteral(literal));
+		return new Literal (
+				new StringBounds(startIndex, lengthOut),
+				new TermLiteral(literal));
 	}
 }

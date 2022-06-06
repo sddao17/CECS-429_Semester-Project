@@ -7,6 +7,7 @@ import application.indexes.PositionalInvertedIndex;
 import application.indexes.Posting;
 import application.queries.BooleanQueryParser;
 import application.queries.QueryComponent;
+import application.queries.WildcardLiteral;
 import application.text.EnglishTokenStream;
 import application.text.TokenStemmer;
 import application.text.TrimSplitTokenProcessor;
@@ -70,6 +71,7 @@ public class Application {
 
         TrimSplitTokenProcessor processor = new TrimSplitTokenProcessor();
         PositionalInvertedIndex index = new PositionalInvertedIndex();
+        WildcardLiteral.resetTokenVocab();
 
         // scan all documents and process each token into terms of our vocabulary
         for (Document document : corpus.getDocuments()) {
@@ -79,6 +81,8 @@ public class Application {
             int currentPosition = 1;
 
             for (String token : tokens) {
+                // before we normalize the token, keep an unprocessed vocabulary for wildcards
+                WildcardLiteral.addToTokenVocab(token);
                 // process the token before evaluating whether it exists within our matrix
                 List<String> terms = processor.processToken(token);
 
@@ -121,7 +125,7 @@ public class Application {
                     case ":index" -> initializeComponents(Path.of(parameter));
                     case ":stem" -> {
                         TokenStemmer stemmer = new TokenStemmer();
-                        System.out.println(stemmer.processToken(parameter).get(0));
+                        System.out.println(parameter + " -> " + stemmer.processToken(parameter).get(0));
                     }
                     case ":vocab" -> {
                         List<String> vocabulary = index.getVocabulary();
@@ -170,12 +174,16 @@ public class Application {
             if (query.equals("y")) {
                 System.out.print("Enter the document ID to view:\n >> ");
                 query = in.nextLine();
-                Document document = corpus.getDocument(Integer.parseInt(query));
-                EnglishTokenStream stream = new EnglishTokenStream(document.getContent());
+                try {
+                    Document document = corpus.getDocument(Integer.parseInt(query));
+                    EnglishTokenStream stream = new EnglishTokenStream(document.getContent());
 
-                // print the tokens to the console without processing them
-                stream.getTokens().forEach(c -> System.out.print(c + " "));
-                System.out.println();
+                    // print the tokens to the console without processing them
+                    stream.getTokens().forEach(c -> System.out.print(c + " "));
+                    System.out.println();
+                } catch (NumberFormatException err) {
+                    System.out.println("Error: expected an integer.");
+                }
             }
         }
     }

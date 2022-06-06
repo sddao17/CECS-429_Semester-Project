@@ -72,7 +72,7 @@ public class Search {
         panel.add(vocab);
         panel.setVisible(true);
 
-        //action when the user will click the submission button.
+        //action when the user will click the submit button.
         submit.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -106,6 +106,12 @@ public class Search {
                             panel.setVisible(false);
                             r.setIndex(indexList);
                             frame.add(r.vocabularyUI());
+                        }
+                        else{
+                           panel.setVisible(false);
+                           r.setQuery(query);
+                           r.setIndex(indexList);
+                           frame.add(r.resultsUI());
                         }
                 }
             }
@@ -159,4 +165,3 @@ public class Search {
 
         return panel;
     }
-}

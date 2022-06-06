@@ -1,38 +1,53 @@
 package application.UI;
 
+import application.documents.DirectoryCorpus;
+import application.indexes.Index;
+import application.indexes.Posting;
+import application.text.TokenStemmer;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.nio.file.Path;
+import java.util.List;
 
 public class Search {
-
-    //Initialization of the frame, button, label, and panel for the UI
-
+    /* Initialization of the UI components */
     JButton submit= new JButton("Submit");
     JLabel title = new JLabel();
     JLabel indexComplete = new JLabel();
     JLabel showTime = new JLabel();
     JPanel panel = new JPanel();
     JTextField input = new JTextField();
-    JRadioButton index = new JRadioButton();
-    JRadioButton stem = new JRadioButton();
-    JRadioButton vocab = new JRadioButton();
+    JRadioButton index = new JRadioButton("Index");
+    JRadioButton stem = new JRadioButton("Stem");
+    JRadioButton vocab = new JRadioButton("Vocab");
     JRadioButton search = new JRadioButton();
 
+    // takes in the time that has elapsed
+    private static double timeElapsed;
 
-    private double timeElapsed;
+    private static final int VOCABULARY_PRINT_SIZE = 1_000;  // number of vocabulary terms to print
+    private static DirectoryCorpus corpus;  // we need only one corpus,
+    private static Index<String, Posting> index1;  // and one PositionalInvertedIndex
+    private static CorpusSelection cSelect;
 
-    public void Search(double time){
+    /*sets the time that has elapsed that was calculated
+    * in the Corpus Selection class */
+    public void setTime(double time){
         timeElapsed = time;
     }
 
     public Component SearchUI(){
-
+        BoxLayout box = new BoxLayout(panel, BoxLayout.Y_AXIS);
         title.setText("Search");
         indexComplete.setText("Indexing complete");
-        showTime.setText("Time elapsed: " + timeElapsed);
+        showTime.setText("Time elapsed: " + timeElapsed + " seconds \n\n");
+
+        panel.setLayout(box);
+        input.setPreferredSize(new Dimension(1000,30));
+        input.setMaximumSize(input.getPreferredSize());
 
         panel.add(title);
         panel.add(indexComplete);
@@ -44,25 +59,44 @@ public class Search {
         panel.add(vocab);
         panel.setVisible(true);
 
+        //action when the user will click the submission button.
         submit.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if(index.isSelected()){
+                String query = input.getText();
+                String[] splitQuery = query.split(" ");
 
-                }
-                else if (stem.isSelected())
-                {
+                // skip empty input
+                if (splitQuery.length > 0) {
+                    String potentialCommand = splitQuery[0];
+                    String parameter = "";
+                    if (splitQuery.length > 1) {
+                        parameter = splitQuery[1];
+                    }
+                    if (index.isSelected()) {
+                        cSelect.initializeComponents(Path.of(parameter));
+                    } else if (stem.isSelected()) {
+                        TokenStemmer stemmer = new TokenStemmer();
+                        System.out.println(stemmer.processToken(parameter).get(0));
+                    } else if (vocab.isSelected()) {
+                        List<String> vocabulary = index1.getVocabulary();
+                        int vocabularyPrintSize = Math.min(vocabulary.size(), VOCABULARY_PRINT_SIZE);
+                        for (int i = 0; i < vocabularyPrintSize; ++i) {
+                            System.out.println(vocabulary.get(i));
+                        }
+                        if (vocabulary.size() > VOCABULARY_PRINT_SIZE) {
+                            System.out.println("...");
+                        }
+                        System.out.println("Found " + vocabulary.size() + " terms.");
+                    } else {
 
-                }
-                else if (vocab.isSelected()){
-
-                }
-                else{
-
+                    }
                 }
             }
         });
 
+        /*when the user clicks on the radio button the others will be disabled,
+        * once un clicked the others will be enabled again */
         stem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -76,7 +110,8 @@ public class Search {
                 }
             }
         });
-
+        /*when the user clicks on the radio button the others will be disabled,
+         * once un clicked the others will be enabled again */
         vocab.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -90,7 +125,8 @@ public class Search {
                 }
             }
         });
-
+        /*when the user clicks on the radio button the others will be disabled,
+         * once un clicked the others will be enabled again */
         index.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -107,5 +143,7 @@ public class Search {
 
         return panel;
     }
+
+
 
 }

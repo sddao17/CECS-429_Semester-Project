@@ -7,6 +7,7 @@ import application.indexes.PositionalInvertedIndex;
 import application.indexes.Posting;
 import application.text.EnglishTokenStream;
 import application.text.TrimSplitTokenProcessor;
+import application.UI.Search;
 
 import javax.swing.*;
 import java.awt.event.*;
@@ -16,21 +17,21 @@ import java.util.List;
 import java.util.Locale;
 import javax.swing.JPanel;
 
-
-
 public class CorpusSelection {
 
     //Initialization of the frame, button, label, panel, and combo box for the UI
-    JFrame frame = new JFrame();
+    static JFrame frame = new JFrame();
     JButton submitResult = new JButton("Submit");
     JLabel title = new JLabel();
     JPanel panel = new JPanel();
     JComboBox userSelection = new JComboBox();
+    private static Search search = new Search();
 
     //only one corpus is needed
     private static DirectoryCorpus corpus;
     //and one PositionalInvertedIndex
     private static Index<String, Posting> index;
+    private static double elapsedTimeInSeconds;
 
 
     public void CorpusSelection(){
@@ -68,6 +69,7 @@ public class CorpusSelection {
 
                 //retrieves the option the user selected from the combobox
                 String result = userSelection.getSelectedItem().toString();
+                result.toLowerCase();
                 //initialization of the directoryPath string to translate next from the result
                 String directoryPath;
                 //will convert the string to the file path to start indexing
@@ -91,30 +93,38 @@ public class CorpusSelection {
                 //removal of the indexing loading screen
                 //frame.remove(p2);
 
-
                 //After Indexing is completed, the search engine will be displayed.
+                frame.add(search.SearchUI());
             }
         });
     }
 
     public void corpusMenu(){
+        BoxLayout box = new BoxLayout(panel, BoxLayout.Y_AXIS);
         //sets the flow of the panel to be displayed on the screen
-        panel.setLayout(new FlowLayout());
+        panel.setLayout(box);
         //sets the text of the title label
         title.setText("Select a Corpus");
         //adds the title label to the panel
+        //title.setAlignmentX(10);
         panel.add(title);
         //array of the selection of corpus's for the user to choose from
         String[] corpus = {"Parks", "Moby Dick", "Parks Test", "Kanye Test"};
         //adding the array as the list of options to the combo box.
         userSelection.setModel(new DefaultComboBoxModel(corpus));
+        //userSelection.setPreferredSize(new Dimension(600,40));
+        //userSelection.setMaximumSize( userSelection.getPreferredSize());
+        //userSelection.setAlignmentX(-1);
+        //userSelection.setAlignmentY(100);
+        //submitResult.setAlignmentX(200);
         //adds the combo box to the panel
         panel.add(userSelection);
         //adds the submit button to the panel
+
         panel.add(submitResult);
     }
 
-    private static void initializeComponents(Path directoryPath) {
+    public static void initializeComponents(Path directoryPath) {
         corpus = DirectoryCorpus.loadDirectory(directoryPath);
         // by default, our `k` value for k-gram indexes will be set to 3
         index = indexCorpus(corpus);
@@ -123,7 +133,7 @@ public class CorpusSelection {
     public static Index<String, Posting> indexCorpus(DocumentCorpus corpus) {
         /* 2. Index all documents in the corpus to build a positional inverted index.
           Print to the screen how long (in seconds) this process takes. */
-        System.out.println("\nIndexing...");
+
         long startTime = System.nanoTime();
 
         TrimSplitTokenProcessor processor = new TrimSplitTokenProcessor();
@@ -150,9 +160,8 @@ public class CorpusSelection {
         }
 
         long endTime = System.nanoTime();
-        double elapsedTimeInSeconds = (double) (endTime - startTime) / 1_000_000_000;
-        System.out.println("Indexing complete." +
-                "\nElapsed time: " + elapsedTimeInSeconds + " seconds");
+        elapsedTimeInSeconds = (double) (endTime - startTime) / 1_000_000_000;
+        search.setTime(elapsedTimeInSeconds);
 
         return index;
     }

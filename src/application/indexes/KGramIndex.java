@@ -116,9 +116,9 @@ public class KGramIndex implements Index<String, String> {
             //add("*nal");
             //add("*al");
             //add("na*");
-            //add("na*al");
+            add("na*al");
             //add("n*al");
-            add("n*");
+            //add("n*");
             //add("*n");
             //add("*finan*cial*");
         }};

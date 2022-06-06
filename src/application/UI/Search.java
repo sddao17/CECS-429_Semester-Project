@@ -103,15 +103,9 @@ public class Search {
 
                         }
                         else if ( vocab.isSelected() ) {
-                            List<String> vocabulary = indexList.getVocabulary();
-                            int vocabularyPrintSize = Math.min(vocabulary.size(), VOCABULARY_PRINT_SIZE);
-                            for (int i = 0; i < vocabularyPrintSize; ++i) {
-                                System.out.println(vocabulary.get(i));
-                            }
-                            if (vocabulary.size() > VOCABULARY_PRINT_SIZE) {
-                                System.out.println("...");
-                            }
-                            System.out.println("Found " + vocabulary.size() + " terms.");
+                            panel.setVisible(false);
+                            r.setIndex(indexList);
+                            frame.add(r.vocabularyUI());
                         }
                 }
             }

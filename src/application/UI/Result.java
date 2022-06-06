@@ -17,7 +17,7 @@ public class Result {
     /* Will display the results of the query to the user*/
     public Component resultsUI(){
         JPanel panel = new JPanel();
-        
+
         return panel;
     }
 
@@ -56,6 +56,21 @@ public class Result {
 
     public Component indexUI(){
         JPanel content = new JPanel();
+        JLabel indexComplete = new JLabel();
+        indexComplete.setText("Indexing Completed");
+        content.add(indexComplete);
+        content.add(returnToSearch);
+        content.setVisible(true);
+
+        returnToSearch.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                content.setVisible(false);
+                Search search = new Search();
+                search.setFrame(frame);
+                frame.add(search.SearchUI());
+            }
+        });
         return content;
     }
 }

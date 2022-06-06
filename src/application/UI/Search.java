@@ -88,11 +88,11 @@ public class Search {
                     }
 
                     // 3(a, i). If it is a special query, perform that action.
-
                         if( index.isSelected() ) {
+                            panel.setVisible(false);
                             directoryPath = query.toLowerCase();
                             cSelect.initializeComponents(Path.of(directoryPath));
-
+                            frame.add(r.indexUI());
                         }
                         else if ( stem.isSelected() ) {
                             panel.setVisible(false);
@@ -165,5 +165,4 @@ public class Search {
 
         return panel;
     }
-
 }

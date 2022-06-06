@@ -53,8 +53,23 @@ public class PhraseLiteral implements QueryComponent {
 		// start positional intersecting with postings two at a time
 		for (int i = 0; i < mTerms.size() - 1; ++i) {
 			// store the current postings for readability
-			List<Posting> leftPostings = index.getPostings(mTerms.get(i));
-			List<Posting> rightPostings = index.getPostings(mTerms.get(i + 1));
+			String leftTerm = mTerms.get(i);
+			String rightTerm = mTerms.get(i + 1);
+			List<Posting> leftPostings;
+			List<Posting> rightPostings;
+
+			// if either term has asterisks in it, treat it as a WildcardLiteral
+			if (leftTerm.contains("*")) {
+				leftPostings = (new WildcardLiteral(leftTerm)).getPostings(index);
+			} else {
+				leftPostings = index.getPostings(leftTerm);
+			}
+
+			if (rightTerm.contains("*")) {
+				rightPostings = (new WildcardLiteral(rightTerm)).getPostings(index);
+			} else {
+				rightPostings = index.getPostings(rightTerm);
+			}
 
 			// positional intersect our current intersections list with the next postings list
 			positionalIntersects.addAll(positionalIntersect(leftPostings, rightPostings));

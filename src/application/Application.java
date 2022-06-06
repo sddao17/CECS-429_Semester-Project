@@ -3,14 +3,15 @@ package application;
 
 import application.documents.*;
 import application.indexes.Index;
+import application.indexes.KGramIndex;
 import application.indexes.PositionalInvertedIndex;
 import application.indexes.Posting;
 import application.queries.BooleanQueryParser;
 import application.queries.QueryComponent;
-import application.queries.WildcardLiteral;
 import application.text.EnglishTokenStream;
 import application.text.TokenStemmer;
 import application.text.TrimSplitTokenProcessor;
+import application.text.WildcardTokenProcessor;
 
 import java.nio.file.Path;
 import java.util.*;
@@ -25,7 +26,7 @@ public class Application {
     private static final int VOCABULARY_PRINT_SIZE = 1_000; // number of vocabulary terms to print
     private static DirectoryCorpus corpus;  // we need only one of each corpus and index active at a time,
     private static Index<String, Posting> corpusIndex;  // and multiple methods need access to them
-    private static Index<String, String> kGramIndex;
+    private static KGramIndex kGramIndex;
 
     public static void main(String[] args) {
         System.out.printf("""
@@ -72,7 +73,9 @@ public class Application {
 
         TrimSplitTokenProcessor processor = new TrimSplitTokenProcessor();
         PositionalInvertedIndex index = new PositionalInvertedIndex();
-        WildcardLiteral.resetTokenVocab();
+        // initialize the k-gram and its unprocessed vocabulary
+        kGramIndex = new KGramIndex();
+        List<String> tokenVocabulary = new ArrayList<>();
 
         // scan all documents and process each token into terms of our vocabulary
         for (Document document : corpus.getDocuments()) {
@@ -82,9 +85,16 @@ public class Application {
             int currentPosition = 1;
 
             for (String token : tokens) {
-                // before we normalize the token, keep an unprocessed vocabulary for wildcards
-                WildcardLiteral.addToTokenVocab(token);
-                // process the token before evaluating whether it exists within our matrix
+                // before we normalize the token, add it to a minimally processed vocabulary for wildcards
+                WildcardTokenProcessor wildcardProcessor = new WildcardTokenProcessor();
+                String wildcardToken = wildcardProcessor.processToken(token).get(0);
+
+                // the tokens must be distinct
+                if (!tokenVocabulary.contains(wildcardToken)) {
+                    tokenVocabulary.add(wildcardToken);
+                }
+
+                // process the token before evaluating whether it exists within our index
                 List<String> terms = processor.processToken(token);
 
                 // since each token can produce multiple terms, add all terms using the same documentID and position
@@ -99,6 +109,17 @@ public class Application {
         long endTime = System.nanoTime();
         double elapsedTimeInSeconds = (double) (endTime - startTime) / 1_000_000_000;
         System.out.println("Indexing complete." +
+                "\nElapsed time: " + elapsedTimeInSeconds + " seconds" +
+                "\n\nBuilding k-gram index...");
+        startTime = System.nanoTime();
+
+        // build the k-gram index using vocabulary tokens, not terms
+        kGramIndex.buildKGramIndex(tokenVocabulary, 3);
+
+        endTime = System.nanoTime();
+        elapsedTimeInSeconds = (double) (endTime - startTime) / 1_000_000_000;
+        System.out.println("Indexing complete." +
+                "\nDistinct k-grams: " + kGramIndex.getDistinctKGrams().size() +
                 "\nElapsed time: " + elapsedTimeInSeconds + " seconds");
 
         return index;
@@ -180,12 +201,16 @@ public class Application {
                     EnglishTokenStream stream = new EnglishTokenStream(document.getContent());
 
                     // print the tokens to the console without processing them
-                    stream.getTokens().forEach(c -> System.out.print(c + " "));
+                    stream.getTokens().forEach(token -> System.out.print(token + " "));
                     System.out.println();
                 } catch (NumberFormatException err) {
                     System.out.println("Error: expected an integer.");
                 }
             }
         }
+    }
+
+    public static Index<String, String> getKGramIndex() {
+        return kGramIndex;
     }
 }

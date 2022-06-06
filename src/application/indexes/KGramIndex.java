@@ -62,7 +62,7 @@ public class KGramIndex implements Index<String, String> {
             for (int j = 0; j < (token.length() - i + 1); ++j) {
                 String currentKGram = token.substring(j, j + i);
 
-                // ignore empty strings and flags
+                // ignore empty strings and excessive flags
                 if (!currentKGram.equals("") && !currentKGram.equals("$$") &&
                         !(currentKGram.startsWith("$") && currentKGram.endsWith("$"))) {
                     // add distinct tokens only

@@ -9,3 +9,4 @@ target/classes/application/queries/BooleanQueryParser$StringBounds.class
 target/classes/application/queries/BooleanQueryParser.class
 target/classes/application/queries/PhraseLiteral.class
 *.class
+*.class

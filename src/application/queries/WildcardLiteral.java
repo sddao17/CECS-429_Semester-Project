@@ -2,6 +2,7 @@
 package application.queries;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import application.Application;
@@ -19,10 +20,7 @@ public class WildcardLiteral implements QueryComponent {
     private final String mTerm;
 
     public WildcardLiteral(String term) {
-        // Somehow incorporate a TokenProcessor into the getPostings call sequence.
-        WildcardTokenProcessor processor = new WildcardTokenProcessor();
-
-        mTerm = processor.processToken(term).get(0);
+        mTerm = term;
     }
 
     public String getTerm() {
@@ -34,10 +32,9 @@ public class WildcardLiteral implements QueryComponent {
         Index<String, String> corpusKGramIndex = Application.getKGramIndex();
         Index<String, String> kGramIndex = new KGramIndex(new ArrayList<>(){{add(mTerm);}}, 3);
         List<String> candidateTokens = new ArrayList<>();
-        String[] splitTokens = mTerm.split("\\*");
 
         // intersect terms within their respective vocabularies
-        for (String wildcardToken : splitTokens) {
+        for (String wildcardToken : kGramIndex.getVocabulary()) {
             List<String> wildcardKGrams = kGramIndex.getPostings(wildcardToken);
 
             for (String corpusToken : corpusKGramIndex.getVocabulary()) {
@@ -59,7 +56,7 @@ public class WildcardLiteral implements QueryComponent {
                 int currentIndex = 0;
                 boolean candidateMatchesOrder = true;
 
-                for (String splitToken : splitTokens) {
+                for (String splitToken : kGramIndex.getVocabulary()) {
                     int tokenIndex = candidateToken.indexOf(splitToken, currentIndex);
                     if (tokenIndex < 0) {
                         candidateMatchesOrder = false;

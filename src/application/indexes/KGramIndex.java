@@ -26,18 +26,30 @@ public class KGramIndex implements Index<String, String> {
 
         // for each token, generate the k-grams and map its postings to the token
         for (String token : vocabulary) {
-            // if a token has asterisks in it, it's most likely a query; split it into separate k-grams
-            if (token.contains("*")) {
+            String parsedToken = token;
+            // if a token doesn't have asterisks in it, add the flag; add it otherwise
+            if (!token.startsWith("*")) {
+                parsedToken = "$" + parsedToken;
+            }
+            if (!token.endsWith("*")) {
+                parsedToken = parsedToken + "$";
+            }
+            // if the token has asterisks, it's most likely a query; split and remove them
+            if (parsedToken.contains("*")) {
+                if (parsedToken.startsWith("*")) {
+                    token = token.substring(1);
+                    parsedToken = parsedToken.substring(1);
+                }
                 String[] splitTokens = token.split("\\*");
-                String[] splitParsedTokens = ("$" + token + "$").split("\\*");
+                String[] splitParsedTokens = parsedToken.split("\\*");
+                System.out.println("Entered");
 
-                for (int i = 0; i < splitTokens.length; ++i) {
-                    String parsedToken = splitParsedTokens[i];
-                    kGrams = createKGrams(parsedToken, 3);
+                for (int i = 0; i < splitParsedTokens.length; ++i) {
+                    kGrams = createKGrams(splitParsedTokens[i], k);
                     kGramIndex.put(splitTokens[i], kGrams);
                 }
             } else {
-                kGrams = createKGrams("$" + token + "$", k);
+                kGrams = createKGrams(parsedToken, k);
                 kGramIndex.put(token, kGrams);
             }
         }
@@ -52,7 +64,8 @@ public class KGramIndex implements Index<String, String> {
                 String currentKGram = token.substring(j, j + i);
 
                 // ignore empty strings and flags
-                if (!currentKGram.equals("") && !currentKGram.equals("$")) {
+                if (!currentKGram.equals("") && !currentKGram.equals("$$") &&
+                        !(currentKGram.startsWith("$") && currentKGram.endsWith("$"))) {
                     // add distinct tokens only
                     if (!kGrams.contains(currentKGram)) {
                         kGrams.add(currentKGram);
@@ -94,10 +107,16 @@ public class KGramIndex implements Index<String, String> {
     // testing purposes only
     public static void main(String[] args) {
         ArrayList<String> vocabulary = new ArrayList<>(){{
-            add("national");
-            add("na*al");
-            add("n*al");
-            add("financial");
+            //add("national");
+            //add("nation*");
+            //add("*nal");
+            //add("*al");
+            //add("na*");
+            //add("na*al");
+            //add("n*al");
+            add("n*");
+            //add("*n");
+            //add("*finan*cial*");
         }};
         KGramIndex kGramIndex = new KGramIndex(vocabulary, 3);
         List<String> testVocabulary = kGramIndex.getVocabulary();

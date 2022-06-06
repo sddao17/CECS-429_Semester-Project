@@ -23,7 +23,7 @@ public abstract class TokenProcessor {
 		/* To normalize a token into a term, perform these steps in order:
           1. Remove all non-alphanumeric characters from the beginning and end of the token, but not the middle.
           (a) Example: Hello. becomes Hello ; 192.168.1.1 remains unchanged. */
-		return token.replaceAll("^[^a-zA-Z\\d\\s]+|[^a-zA-Z\\d\\s]+$", "");
+		return token.replaceAll("^[^a-zA-Z\\d\\s]+|[^a-zA-Z\\d\\s]+$\\p{}", "");
 	}
 
 	/**

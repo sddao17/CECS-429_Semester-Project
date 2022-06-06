@@ -42,7 +42,6 @@ public class KGramIndex implements Index<String, String> {
                 }
                 String[] splitTokens = token.split("\\*");
                 String[] splitParsedTokens = parsedToken.split("\\*");
-                System.out.println("Entered");
 
                 for (int i = 0; i < splitParsedTokens.length; ++i) {
                     kGrams = createKGrams(splitParsedTokens[i], k);

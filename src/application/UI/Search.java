@@ -2,7 +2,10 @@ package application.UI;
 
 import application.documents.DirectoryCorpus;
 import application.indexes.Index;
+import application.indexes.PositionalInvertedIndex;
 import application.indexes.Posting;
+import application.queries.BooleanQueryParser;
+import application.queries.QueryComponent;
 import application.text.TokenStemmer;
 
 import javax.swing.*;
@@ -11,6 +14,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
+
 
 public class Search {
     /* Initialization of the UI components */
@@ -24,20 +29,28 @@ public class Search {
     JRadioButton stem = new JRadioButton("Stem");
     JRadioButton vocab = new JRadioButton("Vocab");
     JRadioButton search = new JRadioButton();
-
+    JFrame frame;
+    String query;
+    String directoryPath;
     // takes in the time that has elapsed
     private static double timeElapsed;
 
     private static final int VOCABULARY_PRINT_SIZE = 1_000;  // number of vocabulary terms to print
     private static DirectoryCorpus corpus;  // we need only one corpus,
-    private static Index<String, Posting> index1;  // and one PositionalInvertedIndex
+    private static Index<String, Posting> indexList;  // and one PositionalInvertedIndex
     private static CorpusSelection cSelect;
+    Result r = new Result();
+
 
     /*sets the time that has elapsed that was calculated
     * in the Corpus Selection class */
     public void setTime(double time){
         timeElapsed = time;
     }
+
+    public void setFrame(JFrame window){ frame = window; }
+
+    public void setIndex(Index<String, Posting> index) { indexList = index; }
 
     public Component SearchUI(){
         BoxLayout box = new BoxLayout(panel, BoxLayout.Y_AXIS);
@@ -63,34 +76,43 @@ public class Search {
         submit.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                String query = input.getText();
+                r.setFrame(frame);
+                query = input.getText();
                 String[] splitQuery = query.split(" ");
 
-                // skip empty input
-                if (splitQuery.length > 0) {
-                    String potentialCommand = splitQuery[0];
-                    String parameter = "";
-                    if (splitQuery.length > 1) {
-                        parameter = splitQuery[1];
-                    }
-                    if (index.isSelected()) {
-                        cSelect.initializeComponents(Path.of(parameter));
-                    } else if (stem.isSelected()) {
-                        TokenStemmer stemmer = new TokenStemmer();
-                        System.out.println(stemmer.processToken(parameter).get(0));
-                    } else if (vocab.isSelected()) {
-                        List<String> vocabulary = index1.getVocabulary();
-                        int vocabularyPrintSize = Math.min(vocabulary.size(), VOCABULARY_PRINT_SIZE);
-                        for (int i = 0; i < vocabularyPrintSize; ++i) {
-                            System.out.println(vocabulary.get(i));
-                        }
-                        if (vocabulary.size() > VOCABULARY_PRINT_SIZE) {
-                            System.out.println("...");
-                        }
-                        System.out.println("Found " + vocabulary.size() + " terms.");
-                    } else {
 
+                if (splitQuery.length > 0) {
+                    String parameter = splitQuery[0];
+                    if (splitQuery.length > 1) {
+                        parameter = splitQuery[0];
                     }
+
+                    // 3(a, i). If it is a special query, perform that action.
+                        if( index.isSelected() ) {
+                            panel.setVisible(false);
+                            directoryPath = query.toLowerCase();
+                            cSelect.initializeComponents(Path.of(directoryPath));
+                            frame.add(r.indexUI());
+                        }
+                        else if ( stem.isSelected() ) {
+                            panel.setVisible(false);
+                            TokenStemmer stemmer = new TokenStemmer();
+                            System.out.println(stemmer.processToken(parameter).get(0));
+                            String stemResult = (stemmer.processToken(parameter).get(0));
+                            frame.add(r.stemUI(stemResult));
+
+                        }
+                        else if ( vocab.isSelected() ) {
+                            List<String> vocabulary = indexList.getVocabulary();
+                            int vocabularyPrintSize = Math.min(vocabulary.size(), VOCABULARY_PRINT_SIZE);
+                            for (int i = 0; i < vocabularyPrintSize; ++i) {
+                                System.out.println(vocabulary.get(i));
+                            }
+                            if (vocabulary.size() > VOCABULARY_PRINT_SIZE) {
+                                System.out.println("...");
+                            }
+                            System.out.println("Found " + vocabulary.size() + " terms.");
+                        }
                 }
             }
         });
@@ -143,7 +165,4 @@ public class Search {
 
         return panel;
     }
-
-
-
 }

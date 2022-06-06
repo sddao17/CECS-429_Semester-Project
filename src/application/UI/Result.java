@@ -40,6 +40,7 @@ public class Result {
     /* Will display the results of the query to the user*/
     public Component resultsUI(){
         JPanel content = new JPanel();
+        JScrollPane scroll = new JScrollPane(content);
         BooleanQueryParser parser = new BooleanQueryParser();
         QueryComponent parsedQuery = parser.parseQuery(query);
         List<Posting> resultPostings = parsedQuery.getPostings(indexList);
@@ -52,23 +53,37 @@ public class Result {
             JLabel doc = new JLabel("- " + corpus.getDocument(currentDocumentId).getTitle() +
                     " (ID: " + currentDocumentId + ")");
             doc.setCursor(new Cursor(Cursor.HAND_CURSOR));
-            /*doc.addMouseListener(new MouseAdapter() {
+            doc.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
                     super.mouseClicked(e);
                     content.setVisible(false);
                     JPanel contentDisplay = new JPanel();
-                    Document document = corpus.getDocument(Integer.parseInt(query));
+                    Document document = corpus.getDocument(currentDocumentId);
                     EnglishTokenStream stream = new EnglishTokenStream(document.getContent());
-                    JLabel output = new JLabel();
-                    // print the tokens to the console without processing them
-                    stream.getTokens().forEach(c -> output.setText(c + " "));
-                    contentDisplay.add(output);
-                    frame.add(contentDisplay);
-                    System.out.println();
 
+                    // print the tokens to the console without processing them
+                    stream.getTokens().forEach(c -> {
+                        JLabel output = new JLabel(c + " ");
+                        contentDisplay.add(output);
+                    });
+                    contentDisplay.add(returnToSearch);
+                    contentDisplay.setVisible(true);
+                    frame.add(contentDisplay);
+
+                    returnToSearch.addActionListener(new ActionListener() {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            contentDisplay.setVisible(false);
+                            Search search = new Search();
+                            search.setFrame(frame);
+                            frame.add(search.SearchUI());
+                        }
+                    });
                 }
-            });*/
+            });
+
+
             content.add(doc);
         }
 
@@ -121,6 +136,8 @@ public class Result {
 
     public Component vocabularyUI(){
         JPanel content = new JPanel();
+        JScrollPane scrollPane = new JScrollPane(content, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
+                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
         List<String> vocabulary = indexList.getVocabulary();
         int vocabularyPrintSize = Math.min(vocabulary.size(), VOCABULARY_PRINT_SIZE);

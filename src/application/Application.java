@@ -23,8 +23,9 @@ import java.util.*;
 public class Application {
 
     private static final int VOCABULARY_PRINT_SIZE = 1_000; // number of vocabulary terms to print
-    private static DirectoryCorpus corpus;  // we need only one corpus and index active at a time,
-    private static Index<String, Posting> index;  // and multiple methods need access to them
+    private static DirectoryCorpus corpus;  // we need only one of each corpus and index active at a time,
+    private static Index<String, Posting> corpusIndex;  // and multiple methods need access to them
+    private static Index<String, String> kGramIndex;
 
     public static void main(String[] args) {
         System.out.printf("""
@@ -60,7 +61,7 @@ public class Application {
     private static void initializeComponents(Path directoryPath) {
         corpus = DirectoryCorpus.loadDirectory(directoryPath);
         // by default, our `k` value for k-gram indexes will be set to 3
-        index = indexCorpus(corpus);
+        corpusIndex = indexCorpus(corpus);
     }
 
     public static Index<String, Posting> indexCorpus(DocumentCorpus corpus) {
@@ -128,7 +129,7 @@ public class Application {
                         System.out.println(parameter + " -> " + stemmer.processToken(parameter).get(0));
                     }
                     case ":vocab" -> {
-                        List<String> vocabulary = index.getVocabulary();
+                        List<String> vocabulary = corpusIndex.getVocabulary();
                         int vocabularyPrintSize = Math.min(vocabulary.size(), VOCABULARY_PRINT_SIZE);
 
                         for (int i = 0; i < vocabularyPrintSize; ++i) {
@@ -144,7 +145,7 @@ public class Application {
                         // 3(a, ii). If it isn't a special query, then parse the query and retrieve its postings.
                         BooleanQueryParser parser = new BooleanQueryParser();
                         QueryComponent parsedQuery = parser.parseQuery(query);
-                        List<Posting> resultPostings = parsedQuery.getPostings(index);
+                        List<Posting> resultPostings = parsedQuery.getPostings(corpusIndex);
 
                         displayPostings(resultPostings, in);
                     }

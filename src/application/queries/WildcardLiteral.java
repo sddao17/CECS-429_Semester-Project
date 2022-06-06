@@ -36,7 +36,7 @@ public class WildcardLiteral implements QueryComponent {
 
     @Override
     public List<Posting> getPostings(Index<String, Posting> index) {
-        KGramIndex kGramIndex = new KGramIndex(mTerm);
+        KGramIndex kGramIndex = new KGramIndex(index.getVocabulary());
         String[] kGramVocabulary = mTerm.split("\\*");
         List<String> candidateTerms = new ArrayList<>();
         List<String> finalTerms = new ArrayList<>();
@@ -45,7 +45,7 @@ public class WildcardLiteral implements QueryComponent {
         // traverse through the split tokens and get their generated k-grams
         for (String token : kGramVocabulary) {
             // for each k-gram, find all candidate terms from the main corpus vocabulary
-            for (String kGram : kGramIndex.getPostings(token)) {
+            for (String kGram : kGramIndex.getVocabulary()) {
 
                 // for efficiency, use the appropriate matching methods depending on whether it has a flag
                 if (kGram.startsWith("$")) {

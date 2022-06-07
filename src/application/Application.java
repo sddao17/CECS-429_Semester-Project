@@ -27,6 +27,7 @@ public class Application {
     private static DirectoryCorpus corpus;  // we need only one of each corpus and index active at a time,
     private static Index<String, Posting> corpusIndex;  // and multiple methods need access to them
     private static KGramIndex kGramIndex;
+    private static CorpusSelection cSelect;
 
     public static void main(String[] args) {
         System.out.printf("""
@@ -35,7 +36,10 @@ public class Application {
                 ./corpus/parks-test
                 ./corpus/kanye-test
                 ./corpus/moby-dick%n""");
+        
         startApplication();
+        //cSelect = new CorpusSelection();
+        //cSelect.CorpusSelectionUI();
     }
 
     private static void startApplication() {

@@ -41,17 +41,69 @@ public class WildcardQueryTest {
 
             String parsedContent = parsedTextBody.toString();
             parsedContent = parsedContent.replaceAll("\\[", "").replaceAll("]", "");
+            String[] splitQuery = query.split(" ");
 
             switch (queryType) {
+                case ("SINGLE") -> {
+                    String currentTitle = document.getTitle();
+
+                    if (queryMatchesTextBody(parsedContent, query) && !documentTitles.contains(currentTitle)) {
+                        documentTitles.add(document.getTitle());
+                    }
+                }
                 case ("OR") -> {
-                    String[] splitQuery = query.split(" ");
-                    
-                    documentTitles.add(document.getTitle());
+                    for (String subQuery : splitQuery) {
+                        if (queryMatchesTextBody(parsedContent, subQuery) && !documentTitles.contains(document.getTitle())) {
+                            documentTitles.add(document.getTitle());
+                        }
+                    }
+                }
+                case ("AND") -> {
+                    boolean allExist = true;
+
+                    for (String subQuery : splitQuery) {
+
+                        if (!queryMatchesTextBody(parsedContent, subQuery)) {
+                            allExist = false;
+                        }
+                    }
+
+                    if (allExist && !documentTitles.contains(document.getTitle())) {
+                        documentTitles.add(document.getTitle());
+                    }
+                }
+                case ("PHRASE") -> {
+                        if (queryMatchesTextBody(parsedContent, query) && !documentTitles.contains(document.getTitle())) {
+                            documentTitles.add(document.getTitle());
+                        }
                 }
             }
         }
 
         return documentTitles;
+    }
+
+    public boolean queryMatchesTextBody(String text, String query) {
+        String[] splitText = text.split(" ");
+        String[] splitQuery = text.split("\\*");
+
+        for (String token : splitText) {
+            boolean found = false;
+
+            for (String subQuery : splitQuery) {
+                if (token.matches(subQuery)) {
+                    found = true;
+                } else {
+                    found = false;
+                }
+            }
+
+            if (found) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public List<String> findTitles(String query) {

@@ -83,6 +83,4 @@ public class VocabularyUI {
         });
         return contentPanel;
     }
-
-
 }

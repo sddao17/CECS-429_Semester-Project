@@ -40,8 +40,11 @@ public class CorpusSelection {
     //KGramIndex to display to users after completion of indexing
     private static KGramIndex kGramIndex;
 
+    public static Index<String, String> getKGramIndex() {
+        return kGramIndex;
+    }
 
-    public void CorpusSelection(){
+    public void CorpusSelectionUI(){
         //call to the corpusMenu() method to get the components for the user to select
         corpusMenu();
         //adds the panel that contains the corpus menu into the frame
@@ -172,9 +175,4 @@ public class CorpusSelection {
 
         return index;
     }
-
-    public static Index<String, String> getKGramIndex() {
-        return kGramIndex;
-    }
-
 }

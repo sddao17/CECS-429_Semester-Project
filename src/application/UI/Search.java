@@ -89,7 +89,7 @@ public class Search {
         submit.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                r.setFrame(frame);
+
                 query = input.getText();
                 String[] splitQuery = query.split(" ");
 
@@ -123,9 +123,9 @@ public class Search {
                         else{
                            panel.setVisible(false);
                            r.setQuery(query);
-
                            r.setIndex(indexList);
-                           frame.add(r.resultsUI());
+                           r.setFrame(frame);
+                           r.resultsUI();
                         }
                 }
             }

@@ -16,26 +16,26 @@ public class BooleanQueryParser {
 	private static class StringBounds {
 		int start;
 		int length;
-		
+
 		StringBounds(int start, int length) {
 			this.start = start;
 			this.length = length;
 		}
 	}
-	
+
 	/**
 	 * Encapsulates a QueryComponent and the StringBounds that led to its parsing.
 	 */
 	private static class Literal {
 		StringBounds bounds;
 		QueryComponent literalComponent;
-		
+
 		Literal(StringBounds bounds, QueryComponent literalComponent) {
 			this.bounds = bounds;
 			this.literalComponent = literalComponent;
 		}
 	}
-	
+
 	/**
 	 * Given a boolean query, parses and returns a tree of QueryComponents representing the query.
 	 */
@@ -47,7 +47,7 @@ public class BooleanQueryParser {
 		  of the literals found. Repeat the scan-and-build-AND-query phase for each segment of the
 		  query separated by + signs. In the end, build a single OR query that composes all of the built
 		  AND subqueries. */
-		
+
 		List<QueryComponent> allSubqueries = new ArrayList<>();
 		do {
 			// Identify the next subquery: a portion of the query up to the next + sign.
@@ -55,20 +55,20 @@ public class BooleanQueryParser {
 			// Extract the identified subquery into its own string.
 			String subquery = query.substring(nextSubquery.start, nextSubquery.start + nextSubquery.length);
 			int subStart = 0;
-			
+
 			// Store all the individual components of this subquery.
 			List<QueryComponent> subqueryLiterals = new ArrayList<>(0);
 
 			do {
 				// Extract the next literal from the subquery.
 				Literal lit = findNextLiteral(subquery, subStart);
-				
+
 				// Add the literal component to the conjunctive list.
 				subqueryLiterals.add(lit.literalComponent);
-				
+
 				// Set the next index to start searching for a literal.
 				subStart = lit.bounds.start + lit.bounds.length;
-				
+
 			} while (subStart < subquery.length());
 			
 			/* After processing all literals, we are left with a conjunctive list
@@ -99,23 +99,23 @@ public class BooleanQueryParser {
 			return null;
 		}
 	}
-	
+
 	/**
 	 * Locates the start index and length of the next subquery in the given query string,
 	 * starting at the given index.
 	 */
 	private StringBounds findNextSubquery(String query, int startIndex) {
 		int lengthOut;
-		
+
 		// Find the start of the next subquery by skipping spaces and + signs.
 		char test = query.charAt(startIndex);
 		while (test == ' ' || test == '+') {
 			test = query.charAt(++startIndex);
 		}
-		
+
 		// Find the end of the next subquery.
 		int nextPlus = query.indexOf('+', startIndex + 1);
-		
+
 		if (nextPlus < 0) {
 			/* If there is no other + sign, then this is the final subquery in the
 			  query string. */
@@ -124,20 +124,20 @@ public class BooleanQueryParser {
 		else {
 			/* If there is another + sign, then the length of this subquery goes up
 			  to the next + sign. */
-		
+
 			// Move nextPlus backwards until finding a non-space non-plus non-quotation character.
 			test = query.charAt(nextPlus);
 			while (test == ' ' || test == '+') {
 				test = query.charAt(--nextPlus);
 			}
-			
+
 			lengthOut = 1 + nextPlus - startIndex;
 		}
-		
+
 		// startIndex and lengthOut give the bounds of the subquery.
 		return new StringBounds(startIndex, lengthOut);
 	}
-	
+
 	/**
 	 * Locates and returns the next literal from the given subquery string.
 	 */
@@ -157,24 +157,26 @@ public class BooleanQueryParser {
 		if (subquery.charAt(startIndex) == '\"' && subquery.indexOf('\"', startIndex + 1) > 0) {
 			// Locate the next quotation to find the end of this literal.
 			int nextQuotationMark = subquery.indexOf('\"', startIndex + 1);
-			String phraseLiteral;
+			lengthOut = nextQuotationMark - startIndex + 1;
+			// the PhraseLiteral is between the two next quotations marks
+			String literal = subquery.substring(startIndex + 1, nextQuotationMark);
+			String[] splitLiterals = literal.split(" ");
+			List<QueryComponent> components = new ArrayList<>();
 
-			if (nextQuotationMark < 0) {
-				// No more literals in this subquery.
-				lengthOut = subLength - startIndex;
-				// the PhraseLiteral is the rest of the String
-				phraseLiteral = subquery.substring(startIndex, lengthOut);
-			}
-			else {
-				lengthOut = nextQuotationMark - startIndex + 1;
-				// the PhraseLiteral is between the two next quotations marks
-				phraseLiteral = subquery.substring(startIndex, nextQuotationMark);
+			// crate a separate component for each individual literal found in the phrase
+			for (String currentLiteral : splitLiterals) {
+				// if it has an asterisk, it's a wildcard literal
+				if (currentLiteral.contains("*")) {
+					components.add(new WildcardLiteral(currentLiteral));
+				} else {
+					components.add(new TermLiteral(currentLiteral));
+				}
 			}
 
-			return new Literal(
+			// return the phrase literal as a list of separate query components
+			return new Literal (
 					new StringBounds(startIndex, lengthOut),
-					new PhraseLiteral(phraseLiteral)
-			);
+					new PhraseLiteral(components));
 		}
 
 		// Locate the next space to find the end of this literal.
@@ -189,9 +191,15 @@ public class BooleanQueryParser {
 
 		String literal = subquery.substring(startIndex, startIndex + lengthOut);
 
+		if (literal.contains("*")) {
+			return new Literal (
+					new StringBounds(startIndex, lengthOut),
+					new WildcardLiteral(literal));
+		}
+
 		// This is a term literal containing a single term.
-		return new Literal(
-		 new StringBounds(startIndex, lengthOut),
-		 new TermLiteral(literal));
+		return new Literal (
+				new StringBounds(startIndex, lengthOut),
+				new TermLiteral(literal));
 	}
 }

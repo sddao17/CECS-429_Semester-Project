@@ -28,7 +28,7 @@ public class Search {
     JRadioButton index = new JRadioButton("Index");
     JRadioButton stem = new JRadioButton("Stem");
     JRadioButton vocab = new JRadioButton("Vocab");
-    JRadioButton search = new JRadioButton();
+
     JFrame frame;
     String query;
     String directoryPath;
@@ -39,7 +39,10 @@ public class Search {
     private static DirectoryCorpus corpus;  // we need only one corpus,
     private static Index<String, Posting> indexList;  // and one PositionalInvertedIndex
     private static CorpusSelection cSelect;
-    Result r = new Result();
+    QueryResult r = new QueryResult();
+    StemUI stemming = new StemUI();
+    IndexingUI indexing = new IndexingUI();
+    VocabularyUI v = new VocabularyUI();
 
 
     /*sets the time that has elapsed that was calculated
@@ -52,7 +55,9 @@ public class Search {
 
     public void setIndex(Index<String, Posting> index) { indexList = index; }
 
+
     public Component SearchUI(){
+
         BoxLayout box = new BoxLayout(panel, BoxLayout.Y_AXIS);
         title.setText("Search");
         indexComplete.setText("Indexing complete");
@@ -92,24 +97,25 @@ public class Search {
                             panel.setVisible(false);
                             directoryPath = query.toLowerCase();
                             cSelect.initializeComponents(Path.of(directoryPath));
-                            frame.add(r.indexUI());
+                            indexing.setFrame(frame);
+                            frame.add(indexing.indexUI());
                         }
                         else if ( stem.isSelected() ) {
                             panel.setVisible(false);
-                            TokenStemmer stemmer = new TokenStemmer();
-                            System.out.println(stemmer.processToken(parameter).get(0));
-                            String stemResult = (stemmer.processToken(parameter).get(0));
-                            frame.add(r.stemUI(stemResult));
-
+                            stemming.setParameter(parameter);
+                            stemming.setFrame(frame);
+                            frame.add(stemming.stemUI());
                         }
                         else if ( vocab.isSelected() ) {
                             panel.setVisible(false);
-                            r.setIndex(indexList);
-                            frame.add(r.vocabularyUI());
+                            v.setIndex(indexList);
+                            v.setFrame(frame);
+                            v.vocabularyUI();
                         }
                         else{
                            panel.setVisible(false);
                            r.setQuery(query);
+
                            r.setIndex(indexList);
                            frame.add(r.resultsUI());
                         }
@@ -165,3 +171,4 @@ public class Search {
 
         return panel;
     }
+}

@@ -2,47 +2,49 @@ package application.UI;
 
 import application.documents.DirectoryCorpus;
 import application.indexes.Index;
-import application.indexes.PositionalInvertedIndex;
+import application.indexes.KGramIndex;
 import application.indexes.Posting;
-import application.queries.BooleanQueryParser;
-import application.queries.QueryComponent;
-import application.text.TokenStemmer;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.nio.file.Path;
-import java.util.List;
-import java.util.Locale;
 
-
+/***
+ * Search will display the search engine UI to the users, including the
+ * special cases that the user can do.
+ */
 public class Search {
     /* Initialization of the UI components */
-    JButton submit= new JButton("Submit");
-    JLabel title = new JLabel();
-    JLabel indexComplete = new JLabel();
-    JLabel showTime = new JLabel();
-    JPanel panel = new JPanel();
-    JTextField input = new JTextField();
-    JRadioButton index = new JRadioButton("Index");
-    JRadioButton stem = new JRadioButton("Stem");
-    JRadioButton vocab = new JRadioButton("Vocab");
+    private static JButton submit= new JButton("Submit");
+    private static JLabel title = new JLabel();
+    private static JLabel kIndex = new JLabel();
+    private static JLabel indexComplete = new JLabel();
+    private static JLabel showTime = new JLabel();
+    private static JPanel panel = new JPanel();
+    private static JTextField input = new JTextField();
+    private static JRadioButton index = new JRadioButton("Index");
+    private static JRadioButton stem = new JRadioButton("Stem");
+    private static JRadioButton vocab = new JRadioButton("Vocab");
+    private static JFrame frame;
 
-    JFrame frame;
-    String query;
-    String directoryPath;
+    //takes in the users input for the query
+    private static String query;
+    //the directory path for indexing a set of documents
+    private static String directoryPath;
     // takes in the time that has elapsed
     private static double timeElapsed;
-
+    //vocabulary size
     private static final int VOCABULARY_PRINT_SIZE = 1_000;  // number of vocabulary terms to print
     private static DirectoryCorpus corpus;  // we need only one corpus,
     private static Index<String, Posting> indexList;  // and one PositionalInvertedIndex
     private static CorpusSelection cSelect;
-    QueryResult r = new QueryResult();
-    StemUI stemming = new StemUI();
-    IndexingUI indexing = new IndexingUI();
-    VocabularyUI v = new VocabularyUI();
+    private static KGramIndex KGram;
+    private static QueryResult r = new QueryResult();
+    private static StemUI stemming = new StemUI();
+    private static IndexingUI indexing = new IndexingUI();
+    private static VocabularyUI v = new VocabularyUI();
 
 
     /*sets the time that has elapsed that was calculated
@@ -55,26 +57,32 @@ public class Search {
 
     public void setIndex(Index<String, Posting> index) { indexList = index; }
 
+    public void setKGramIndex(KGramIndex k){ KGram = k; }
 
     public Component SearchUI(){
-
+        //sets the layout for the panel
         BoxLayout box = new BoxLayout(panel, BoxLayout.Y_AXIS);
+        panel.setLayout(box);
+        //sets text for several of the labels
         title.setText("Search");
         indexComplete.setText("Indexing complete");
+        kIndex.setText("Distinct k-grams: "+ KGram.getDistinctKGrams().size());
         showTime.setText("Time elapsed: " + timeElapsed + " seconds \n\n");
 
-        panel.setLayout(box);
+        //sets preferred size for the text field
         input.setPreferredSize(new Dimension(1000,30));
+        //sets maximum size for the text field
         input.setMaximumSize(input.getPreferredSize());
-
+        //adds components to the panel
         panel.add(title);
         panel.add(indexComplete);
+        panel.add(kIndex);
         panel.add(showTime);
         panel.add(input);
-        panel.add(submit);
         panel.add(stem);
         panel.add(index);
         panel.add(vocab);
+        panel.add(submit);
         panel.setVisible(true);
 
         //action when the user will click the submit button.

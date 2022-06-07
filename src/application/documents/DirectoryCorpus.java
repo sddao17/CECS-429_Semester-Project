@@ -1,4 +1,3 @@
-
 package application.documents;
 
 import java.io.IOException;
@@ -20,15 +19,15 @@ public class DirectoryCorpus implements DocumentCorpus {
 
 	// The map from document ID to document.
 	private HashMap<Integer, Document> mDocuments;
-	
+
 	// Maintains a map of registered file types that the corpus knows how to load.
 	private final HashMap<String, FileDocumentFactory> mFactories = new HashMap<>();
-	
+
 	// A filtering function for identifying documents that should get loaded.
 	private final Predicate<String> mFileFilter;
-	
+
 	private final Path mDirectoryPath;
-	
+
 	/**
 	 * Constructs a corpus over an absolute directory path.
 	 * Before calling GetDocuments(), you must register a FileDocumentFactory with the RegisterFileDocumentFactory
@@ -39,7 +38,7 @@ public class DirectoryCorpus implements DocumentCorpus {
 	public DirectoryCorpus(Path directoryPath) {
 		this(directoryPath, s->true);
 	}
-	
+
 	/**
 	 * Constructs a corpus over an absolute directory path, only loading files whose file names satisfy
 	 * the given predicate filter.
@@ -48,67 +47,70 @@ public class DirectoryCorpus implements DocumentCorpus {
 		mFileFilter = fileFilter;
 		mDirectoryPath = directoryPath;
 	}
-	
+
 	/**
 	 * Reads all documents in the corpus into a map from ID to document object.
 	 */
 	private HashMap<Integer, Document> readDocuments() throws IOException {
 		Iterable<Path> allFiles = findFiles();
-		
+		// sort by path names (essentially the file names)
+		List<Path> sortedFiles = new ArrayList<>();
+		allFiles.forEach(sortedFiles::add);
+		Collections.sort(sortedFiles);
+
 		// Next build the mapping from document ID to document.
 		HashMap<Integer, Document> result = new HashMap<>();
 		int nextId = 0;
-		for (Path file : allFiles) {
+		for (Path file : sortedFiles) {
 			// Use the registered factory for the file's extension.
 			result.put(nextId, mFactories.get(getFileExtension(file)).createFileDocument(file, nextId));
 			nextId++;
 		}
 		return result;
 	}
-	
 	/**
 	 * Finds all file names that match the corpus filter predicate and have a known file extension.
 	 */
 	private Iterable<Path> findFiles() throws IOException {
 		List<Path> allFiles = new ArrayList<>();
-		
+
 		// First discover all the files in the directory that match the filter.
 		Files.walkFileTree(mDirectoryPath, new SimpleFileVisitor<>() {
-			
+
 			public FileVisitResult preVisitDirectory(Path dir,
-			                                         BasicFileAttributes attrs) {
+													 BasicFileAttributes attrs) {
 				// make sure we only process the current working directory
 				if (mDirectoryPath.equals(dir)) {
 					return FileVisitResult.CONTINUE;
 				}
 				return FileVisitResult.SKIP_SUBTREE;
 			}
-			
+
 			public FileVisitResult visitFile(Path file,
-			                                 BasicFileAttributes attrs) {
+											 BasicFileAttributes attrs) {
 				String extension = getFileExtension(file);
 				if (mFileFilter.test(file.toString()) && mFactories.containsKey(extension)) {
 					allFiles.add(file);
 				}
 				return FileVisitResult.CONTINUE;
 			}
-			
+
 			// don't throw exceptions if files are locked/other errors occur
 			public FileVisitResult visitFileFailed(Path file,
-			                                       IOException e) {
+												   IOException e) {
 				return FileVisitResult.CONTINUE;
 			}
 		});
 		return allFiles;
 	}
-	
+
 	// Stupid Java doesn't come with this method?
 	private static String getFileExtension(Path file) {
 		String fileName = file.getFileName().toString();
 		String extension = fileName.substring(fileName.lastIndexOf('.') + 1);
 		return "." + extension;
 	}
-	
+
 	@Override
 	public Iterable<Document> getDocuments() {
 		if (mDocuments == null) {
@@ -121,7 +123,7 @@ public class DirectoryCorpus implements DocumentCorpus {
 
 		return new ArrayList<>(mDocuments.values().stream().toList());
 	}
-	
+
 	@Override
 	public int getCorpusSize() {
 		if (mDocuments == null) {
@@ -133,12 +135,12 @@ public class DirectoryCorpus implements DocumentCorpus {
 		}
 		return mDocuments.size();
 	}
-	
+
 	@Override
 	public Document getDocument(int id) {
 		return mDocuments.get(id);
 	}
-	
+
 	/**
 	 * Registers a factory method for loading documents of the given file extension. By default, a corpus
 	 * does not know how to load any files -- this method must be called prior to getDocuments().
@@ -156,7 +158,7 @@ public class DirectoryCorpus implements DocumentCorpus {
 		corpus.registerFileDocumentFactory(".json", JsonFileDocument::loadJsonFileDocument);
 		return corpus;
 	}
-	
+
 	/**
 	 * Constructs a corpus over a directory of simple text documents.
 	 * @param fileExtension The extension of the text documents to load, e.g., ".txt".

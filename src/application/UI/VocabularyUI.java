@@ -76,6 +76,7 @@ public class VocabularyUI {
             public void actionPerformed(ActionEvent e) {
                 content.setVisible(false);
                 contentPanel.setVisible(false);
+                frame.remove(contentPanel);
                 Search search = new Search();
                 search.setFrame(frame);
                 frame.add(search.SearchUI());
@@ -84,3 +85,4 @@ public class VocabularyUI {
         return contentPanel;
     }
 }
+

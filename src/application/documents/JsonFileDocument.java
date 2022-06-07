@@ -13,7 +13,7 @@ import java.nio.file.Path;
 
 // TODO:
 // Incorporate directory-selection and JSON documents into your application.
-public class JsonFileDocument implements FileDocument {
+public class JsonFileDocument implements FileDocument, Comparable<Document> {
 
     private final int mDocumentId;
     private final Path mFilePath;
@@ -67,5 +67,10 @@ public class JsonFileDocument implements FileDocument {
      */
     public static FileDocument loadJsonFileDocument(Path absolutePath, int documentId) {
         return new JsonFileDocument(documentId, absolutePath);
+    }
+
+    @Override
+    public int compareTo(Document otherDocument) {
+        return documentTitle.compareTo(otherDocument.getTitle());
     }
 }

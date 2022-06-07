@@ -120,7 +120,6 @@ public class CorpusSelection {
     public static void initializeComponents(Path directoryPath) {
         corpus = DirectoryCorpus.loadDirectory(directoryPath);
         // by default, our `k` value for k-gram indexes will be set to 3
-        kGramIndex = new KGramIndex();
         index = indexCorpus(corpus);
        // passing the corpus to use for queries
         QueryResult r = new QueryResult();
@@ -132,7 +131,7 @@ public class CorpusSelection {
           Print to the screen how long (in seconds) this process takes. */
 
         long startTime = System.nanoTime();
-
+        kGramIndex = new KGramIndex();
         //TrimSplitTokenProcessor processor = new TrimSplitTokenProcessor();
         VocabularyTokenProcessor processor = new VocabularyTokenProcessor();
         PositionalInvertedIndex index = new PositionalInvertedIndex();

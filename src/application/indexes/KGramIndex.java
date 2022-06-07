@@ -107,26 +107,4 @@ public class KGramIndex implements Index<String, String> {
 
         return kGrams;
     }
-
-    // testing purposes only
-    public static void main(String[] args) {
-        ArrayList<String> vocabulary = new ArrayList<>(){{
-            //add("national");
-            //add("nation*");
-            //add("*nal");
-            //add("*al");
-            //add("na*");
-            add("na*al");
-            //add("n*al");
-            //add("n*");
-            //add("*n");
-            //add("*finan*cial*");
-        }};
-        KGramIndex kGramIndex = new KGramIndex();
-        kGramIndex.buildKGramIndex(vocabulary, 3);
-        List<String> testVocabulary = kGramIndex.getVocabulary();
-        for (String token : testVocabulary) {
-            System.out.println(token + ": " + kGramIndex.getPostings(token));
-        }
-    }
 }

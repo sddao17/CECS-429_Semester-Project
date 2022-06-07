@@ -15,10 +15,8 @@ public class WildcardTokenProcessor extends TokenProcessor {
     @Override
     public ArrayList<String> processToken(String token) {
         ArrayList<String> terms = new ArrayList<>();
-        /* To normalize a token into a term, perform these steps in order:
-          1. Remove all non-alphanumeric characters from the beginning and end of the token, but not the middle.
-          (a) Example: Hello. becomes Hello ; 192.168.1.1 remains unchanged. */
-        token = trimNonAlphanumeric(token);
+        // 1. Perform minimal processing on wildcard tokens.
+        token = this.trimNonAlphanumeric(token);
 
         // 2. Remove all apostrophes or quotation marks (single or double quotes) from anywhere in the string.
         token = removeQuotes(token);
@@ -39,5 +37,11 @@ public class WildcardTokenProcessor extends TokenProcessor {
         }
 
         return terms;
+    }
+
+    @Override
+    public String trimNonAlphanumeric(String token) {
+        // do minimal processing - keep asterisks
+        return token.replaceAll("^[^a-zA-Z\\d*]+|[^a-zA-Z\\d*]+$", "");
     }
 }

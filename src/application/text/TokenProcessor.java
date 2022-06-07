@@ -87,11 +87,4 @@ public abstract class TokenProcessor {
 		TokenStemmer stemmer = new TokenStemmer();
 		return stemmer.processToken(token).get(0);
 	}
-
-	public static void main(String[] args) {
-		String token = "!@)  !*)!@*##115!@(#*!)@#*  !@#(*!@)(#";
-
-		TrimSplitTokenProcessor processor = new TrimSplitTokenProcessor();
-		System.out.println(processor.trimNonAlphanumeric(token));
-	}
 }

@@ -10,7 +10,7 @@ import application.queries.BooleanQueryParser;
 import application.queries.QueryComponent;
 import application.text.EnglishTokenStream;
 import application.text.TokenStemmer;
-import application.text.TrimSplitTokenProcessor;
+import application.text.VocabularyTokenProcessor;
 import application.text.WildcardTokenProcessor;
 
 import java.nio.file.Path;
@@ -71,7 +71,7 @@ public class Application {
         System.out.println("\nIndexing...");
         long startTime = System.nanoTime();
 
-        TrimSplitTokenProcessor processor = new TrimSplitTokenProcessor();
+        VocabularyTokenProcessor processor = new VocabularyTokenProcessor();
         PositionalInvertedIndex index = new PositionalInvertedIndex();
         kGramIndex = new KGramIndex();
 
@@ -87,7 +87,7 @@ public class Application {
                 WildcardTokenProcessor wildcardProcessor = new WildcardTokenProcessor();
                 String wildcardToken = wildcardProcessor.processToken(token).get(0);
 
-                // the tokens must be distinct
+                // add each unprocessed token to our k-gram index as we traverse through the documents
                 kGramIndex.addToken(wildcardToken, 3);
 
                 // process the token before evaluating whether it exists within our index
@@ -105,8 +105,8 @@ public class Application {
         long endTime = System.nanoTime();
         double elapsedTimeInSeconds = (double) (endTime - startTime) / 1_000_000_000;
         System.out.println("Indexing complete." +
-                "\nElapsed time: " + elapsedTimeInSeconds + " seconds" +
-                "\n\nDistinct k-grams: " + kGramIndex.getDistinctKGrams().size());
+                "\nDistinct k-grams: " + kGramIndex.getDistinctKGrams().size() +
+                "\nElapsed time: " + elapsedTimeInSeconds + " seconds");
 
         return index;
     }
@@ -176,23 +176,17 @@ public class Application {
         /* 3(a, ii, C). Ask the user if they would like to select a document to view.
           If the user selects a document to view, print the entire content of the document to the screen. */
         if (resultPostings.size() > 0) {
-            System.out.print("Would you like to view a document's contents? (`y` to proceed)\n >> ");
-            String query = in.nextLine().toLowerCase();
+            System.out.print("Enter the document ID to view its contents (any other input to exit):\n >> ");
+            String query = in.nextLine();
+            // since error handling is not a priority requirement, use a try/catch for now
+            try {
+                Document document = corpus.getDocument(Integer.parseInt(query));
+                EnglishTokenStream stream = new EnglishTokenStream(document.getContent());
 
-            if (query.equals("y")) {
-                System.out.print("Enter the document ID to view:\n >> ");
-                query = in.nextLine();
-                try {
-                    Document document = corpus.getDocument(Integer.parseInt(query));
-                    EnglishTokenStream stream = new EnglishTokenStream(document.getContent());
-
-                    // print the tokens to the console without processing them
-                    stream.getTokens().forEach(token -> System.out.print(token + " "));
-                    System.out.println();
-                } catch (NumberFormatException err) {
-                    System.out.println("Error: expected an integer.");
-                }
-            }
+                // print the tokens to the console without processing them
+                stream.getTokens().forEach(token -> System.out.print(token + " "));
+                System.out.println();
+            } catch (Exception ignored) {}
         }
     }
 

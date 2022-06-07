@@ -42,6 +42,25 @@ public class WildcardTokenProcessor extends TokenProcessor {
     @Override
     public String trimNonAlphanumeric(String token) {
         // do minimal processing - keep asterisks
-        return token.replaceAll("^[^a-zA-Z\\d*]+|[^a-zA-Z\\d*]+$", "");
+        int startIndex = 0;
+        int endIndex = token.length() - 1;
+
+        while (isNotAlphanumeric(token.charAt(startIndex)) && startIndex < token.length() - 1) {
+            ++startIndex;
+        }
+
+        while (isNotAlphanumeric(token.charAt(endIndex)) && endIndex > 0) {
+            --endIndex;
+        }
+
+        if (startIndex >= endIndex) {
+            return "";
+        }
+
+        return token.substring(startIndex, endIndex + 1);
+    }
+
+    private boolean isNotAlphanumeric(char character) {
+        return !(Character.isLetterOrDigit(character) | character == '*');
     }
 }

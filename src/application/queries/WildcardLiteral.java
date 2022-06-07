@@ -60,21 +60,15 @@ public class WildcardLiteral implements QueryComponent {
           generated k-grams; intersect the postings by finding tokens that share the same k-gram patterns */
         for (String corpusToken : corpusKGramIndex.getVocabulary()) {
             ArrayList<String> corpusKGrams = new ArrayList<>(corpusKGramIndex.getPostings(corpusToken));
-            boolean matchFound = true;
 
             // intersect terms within their respective vocabularies
             for (String wildcardToken : kGramIndex.getVocabulary()) {
                 List<String> wildcardKGrams = kGramIndex.getPostings(wildcardToken);
 
                 // if the corpus KGrams list contains all wildcard k-grams, the corpus token is a candidate
-                if (!corpusKGrams.containsAll(wildcardKGrams)) {
-                    matchFound = false;
-                    break;
+                if (corpusKGrams.containsAll(wildcardKGrams)) {
+                    candidateTokens.add(corpusToken);
                 }
-            }
-
-            if (matchFound) {
-                candidateTokens.add(corpusToken);
             }
         }
 

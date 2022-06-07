@@ -56,14 +56,14 @@ public class KGramIndex implements Index<String, String> {
 
         if (existingPostings == null) {
             String parsedToken = token;
-            // if a token doesn't have asterisks in it, add the flag; add it otherwise
+            // if a token doesn't have asterisks at the start/end, add flags
             if (!token.startsWith("*")) {
                 parsedToken = "$" + parsedToken;
             }
             if (!token.endsWith("*")) {
                 parsedToken = parsedToken + "$";
             }
-            // if the token has asterisks, it's most likely a query; split and remove them
+            // if the token has asterisks, it's most likely a query; split and remove them, then create the k-grams
             if (parsedToken.contains("*")) {
                 if (parsedToken.startsWith("*")) {
                     token = token.substring(1);
@@ -106,5 +106,27 @@ public class KGramIndex implements Index<String, String> {
         }
 
         return kGrams;
+    }
+
+    // testing purposes only
+    public static void main(String[] args) {
+        ArrayList<String> vocabulary = new ArrayList<>(){{
+            //add("national");
+            //add("nation*");
+            //add("*nal");
+            //add("*al");
+            //add("na*");
+            //add("na*al");
+            add("nat*al");
+            //add("n*");
+            //add("*n");
+            //add("*finan*cial*");
+        }};
+        KGramIndex kGramIndex = new KGramIndex();
+        kGramIndex.buildKGramIndex(vocabulary, 3);
+        List<String> testVocabulary = kGramIndex.getVocabulary();
+        for (String token : testVocabulary) {
+            System.out.println(token + ": " + kGramIndex.getPostings(token));
+        }
     }
 }

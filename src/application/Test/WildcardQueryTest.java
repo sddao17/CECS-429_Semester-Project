@@ -23,10 +23,10 @@ public class WildcardQueryTest {
     Path directoryPath = Path.of("./corpus/parks-test");
     DirectoryCorpus testCorpus = DirectoryCorpus.loadDirectory(directoryPath);
     Index<String, Posting> index = Application.indexCorpus(testCorpus);
-    TokenProcessor processor = new VocabularyTokenProcessor();
+    TokenProcessor processor = new WildcardTokenProcessor();
     BooleanQueryParser parser = new BooleanQueryParser();
 
-    public List<String> scanTextBody(String query, String queryType) {
+    public List<String> scanDocuments(List<String> splitQuery, String queryType) {
         List<String> documentTitles = new ArrayList<>();
 
         // parse and scan the text body to see if the parsed query exists within it
@@ -41,20 +41,18 @@ public class WildcardQueryTest {
 
             String parsedContent = parsedTextBody.toString();
             parsedContent = parsedContent.replaceAll("\\[", "").replaceAll("]", "");
-            String[] splitQuery = query.split(" ");
+            //System.out.println(parsedContent);
 
             switch (queryType) {
-                case ("SINGLE") -> {
-                    String currentTitle = document.getTitle();
-
-                    if (queryMatchesTextBody(parsedContent, query) && !documentTitles.contains(currentTitle)) {
-                        documentTitles.add(document.getTitle());
-                    }
-                }
                 case ("OR") -> {
                     for (String subQuery : splitQuery) {
-                        if (queryMatchesTextBody(parsedContent, subQuery) && !documentTitles.contains(document.getTitle())) {
-                            documentTitles.add(document.getTitle());
+                        String[] splitSubQueries = subQuery.split(" \\+ ");
+
+                        for (String splitSubQuery : splitSubQueries) {
+                            if (queryMatchesTextBody(parsedContent, splitSubQuery) &&
+                                    !documentTitles.contains(document.getTitle())) {
+                                documentTitles.add(document.getTitle());
+                            }
                         }
                     }
                 }
@@ -62,7 +60,6 @@ public class WildcardQueryTest {
                     boolean allExist = true;
 
                     for (String subQuery : splitQuery) {
-
                         if (!queryMatchesTextBody(parsedContent, subQuery)) {
                             allExist = false;
                         }
@@ -73,7 +70,8 @@ public class WildcardQueryTest {
                     }
                 }
                 case ("PHRASE") -> {
-                        if (queryMatchesTextBody(parsedContent, query) && !documentTitles.contains(document.getTitle())) {
+                        if (queryMatchesTextBody(parsedContent, String.join(" ", splitQuery)) &&
+                                !documentTitles.contains(document.getTitle())) {
                             documentTitles.add(document.getTitle());
                         }
                 }
@@ -85,20 +83,12 @@ public class WildcardQueryTest {
 
     public boolean queryMatchesTextBody(String text, String query) {
         String[] splitText = text.split(" ");
-        String[] splitQuery = text.split("\\*");
+        if (query.length() == 1) {
+            query = query.replaceAll("\\+", "");
+        }
 
         for (String token : splitText) {
-            boolean found = false;
-
-            for (String subQuery : splitQuery) {
-                if (token.matches(subQuery)) {
-                    found = true;
-                } else {
-                    found = false;
-                }
-            }
-
-            if (found) {
+            if (token.matches(query)) {
                 return true;
             }
         }
@@ -120,12 +110,44 @@ public class WildcardQueryTest {
     }
 
     @Test
-    public void singleOrQuery() {
-        String query = "washington + visitor";
-        query = processor.processToken(query).get(0);
+    public void singleTrailingWildcardQuery() {
+        String query = "washing*";
+        List<String> splitQuery = processor.processToken(query);
 
         List<String> resultTitles = findTitles(query);
-        List<String> expectedTitles = scanTextBody(query, "OR");
+        //List<String> expectedTitles = scanDocuments(splitQuery, "OR");
+        List<String> expectedTitles = new ArrayList<>(){{add("George Washington Carver National Monument: Cooperating Association");}};
+
+
+        boolean titlesMatch = resultTitles.containsAll(expectedTitles) && expectedTitles.containsAll(resultTitles);
+
+        assertTrue("The list of document titles should match:\nActual: " +
+                resultTitles + "\nExpected: " + expectedTitles, titlesMatch);
+    }
+
+    @Test
+    public void singleLeadingWildcardQuery() {
+        String query = "*nal";
+        List<String> splitQuery = processor.processToken(query);
+
+        List<String> resultTitles = findTitles(query);
+        //List<String> expectedTitles = scanDocuments(splitQuery, "OR");
+        List<String> expectedTitles = new ArrayList<>(){{add("Sand Creek Massacre National Historic Site: Photo Gallery"); add("Kalaupapa National Historical Park: Joseph Dutton"); add("Kaloko-Honokōhau National Historical Park: Coral Reef Activities and Staff"); add("Kaloko-Honokōhau National Historical Park: Coral Reef Studies and Products"); add("Santa Fe National Historic Trail: Site Identification - Entrance"); add("Tallgrass Prairie National Preserve: Support Your Park"); add("George Washington Carver National Monument: Cooperating Association"); add("Tallgrass Prairie National Preserve: Work With Us"); add("Tallgrass Prairie National Preserve: Planning"); add("George Washington Carver National Monument: Support Your Park");}};
+
+        boolean titlesMatch = resultTitles.containsAll(expectedTitles) && expectedTitles.containsAll(resultTitles);
+
+        assertTrue("The list of document titles should match:\nActual: " +
+                resultTitles + "\nExpected: " + expectedTitles, titlesMatch);
+    }
+
+    @Test
+    public void singleOrWildcardQuery() {
+        String query = "washing* + visitor";
+        List<String> splitQuery = processor.processToken(query);
+
+        List<String> resultTitles = findTitles(query);
+        //List<String> expectedTitles = scanDocuments(splitQuery, "OR");
+        List<String> expectedTitles = new ArrayList<>(){{add("Tallgrass Prairie National Preserve: Support Your Park"); add("George Washington Carver National Monument: Cooperating Association");}};
 
         boolean titlesMatch = resultTitles.containsAll(expectedTitles) && expectedTitles.containsAll(resultTitles);
 
@@ -134,17 +156,77 @@ public class WildcardQueryTest {
     }
 
     @Test
-    public void andQueryTest() {
+    public void longOrWildcardQuery() {
+        String query = "i* + th*s + wash* + *ad";
+        List<String> splitQuery = processor.processToken(query);
 
+        List<String> resultTitles = findTitles(query);
+        //List<String> expectedTitles = scanDocuments(splitQuery, "OR");
+        List<String> expectedTitles = new ArrayList<>(){{add("Sand Creek Massacre National Historic Site: Photo Gallery"); add("Kalaupapa National Historical Park: Joseph Dutton"); add("Kaloko-Honokōhau National Historical Park: Coral Reef Activities and Staff"); add("Kaloko-Honokōhau National Historical Park: Coral Reef Studies and Products"); add("Santa Fe National Historic Trail: Site Identification - Entrance"); add("Tallgrass Prairie National Preserve: Support Your Park"); add("George Washington Carver National Monument: Cooperating Association"); add("Tallgrass Prairie National Preserve: Work With Us"); add("Tallgrass Prairie National Preserve: Planning"); add("George Washington Carver National Monument: Support Your Park");}};
+
+        boolean titlesMatch = resultTitles.containsAll(expectedTitles) && expectedTitles.containsAll(resultTitles);
+
+        assertTrue("The list of document titles should match:\nActual: " +
+                resultTitles + "\nExpected: " + expectedTitles, titlesMatch);
     }
 
     @Test
-    public void orQueryTest() {
+    public void singleAndWildcardQueryTest() {
+        String query = "mass*re hist*";
+        List<String> splitQuery = processor.processToken(query);
 
+        List<String> resultTitles = findTitles(query);
+        //List<String> expectedTitles = scanDocuments(splitQuery, "AND");
+        List<String> expectedTitles = new ArrayList<>(){{add("Sand Creek Massacre National Historic Site: Photo Gallery");}};
+
+        boolean titlesMatch = resultTitles.containsAll(expectedTitles) && expectedTitles.containsAll(resultTitles);
+
+        assertTrue("The list of document titles should match:\nActual: " +
+                resultTitles + "\nExpected: " + expectedTitles, titlesMatch);
     }
 
     @Test
-    public void phraseQueryTest() {
+    public void longAndWildcardQueryTest() {
+        String query = "nat*a*l *ark an* *he";
+        List<String> splitQuery = processor.processToken(query);
 
+        List<String> resultTitles = findTitles(query);
+        //List<String> expectedTitles = scanDocuments(splitQuery, "AND");
+        List<String> expectedTitles = new ArrayList<>(){{add("Sand Creek Massacre National Historic Site: Photo Gallery"); add("Kalaupapa National Historical Park: Joseph Dutton"); add("Kaloko-Honokōhau National Historical Park: Coral Reef Studies and Products"); add("Tallgrass Prairie National Preserve: Support Your Park"); add("Tallgrass Prairie National Preserve: Planning");}};
+
+        boolean titlesMatch = resultTitles.containsAll(expectedTitles) && expectedTitles.containsAll(resultTitles);
+
+        assertTrue("The list of document titles should match:\nActual: " +
+                resultTitles + "\nExpected: " + expectedTitles, titlesMatch);
+    }
+
+    @Test
+    public void singlePhraseWildcardQueryTest() {
+        String query = "\"nation* *ark\"";
+        List<String> splitQuery = processor.processToken(query);
+
+        List<String> resultTitles = findTitles(query);
+        //List<String> expectedTitles = scanDocuments(splitQuery, "AND");
+        List<String> expectedTitles = new ArrayList<>(){{add("Sand Creek Massacre National Historic Site: Photo Gallery"); add("Kaloko-Honokōhau National Historical Park: Coral Reef Studies and Products"); add("Tallgrass Prairie National Preserve: Support Your Park"); add("Tallgrass Prairie National Preserve: Planning"); add("George Washington Carver National Monument: Support Your Park");}};
+
+        boolean titlesMatch = resultTitles.containsAll(expectedTitles) && expectedTitles.containsAll(resultTitles);
+
+        assertTrue("The list of document titles should match:\nActual: " +
+                resultTitles + "\nExpected: " + expectedTitles, titlesMatch);
+    }
+
+    @Test
+    public void longPhraseWildcardQueryTest() {
+        String query = "\"nation* h*or*cal *ark\"";
+        List<String> splitQuery = processor.processToken(query);
+
+        List<String> resultTitles = findTitles(query);
+        //List<String> expectedTitles = scanDocuments(splitQuery, "AND");
+        List<String> expectedTitles = new ArrayList<>(){{add("Kaloko-Honokōhau National Historical Park: Coral Reef Studies and Products");}};
+
+        boolean titlesMatch = resultTitles.containsAll(expectedTitles) && expectedTitles.containsAll(resultTitles);
+
+        assertTrue("The list of document titles should match:\nActual: " +
+                resultTitles + "\nExpected: " + expectedTitles, titlesMatch);
     }
 }

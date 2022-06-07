@@ -8,7 +8,7 @@ import application.Application;
 import application.indexes.Index;
 import application.indexes.KGramIndex;
 import application.indexes.Posting;
-import application.text.QueryTokenProcessor;
+import application.text.TokenProcessor;
 import application.text.VocabularyTokenProcessor;
 import application.text.WildcardTokenProcessor;
 
@@ -23,7 +23,7 @@ public class WildcardLiteral implements QueryComponent {
         /* don't fully normalize the term yet; it will be normalized once we confirm the term's
           unprocessed counterpart is within the document.
           for now, keep the asterisks as the only non-alphanumeric character within our term */
-        WildcardTokenProcessor processor = new WildcardTokenProcessor();
+        TokenProcessor processor = new WildcardTokenProcessor();
 
         mTerm = processor.processToken(term).get(0);
     }
@@ -34,7 +34,6 @@ public class WildcardLiteral implements QueryComponent {
 
     @Override
     public List<Posting> getPostings(Index<String, Posting> corpusIndex) {
-        System.out.println("Wildcard literal: " + mTerm);
         Index<String, String> corpusKGramIndex = Application.getKGramIndex();
         KGramIndex kGramIndex = new KGramIndex();
         kGramIndex.buildKGramIndex(new ArrayList<>(){{add(mTerm);}}, 3);
@@ -61,15 +60,20 @@ public class WildcardLiteral implements QueryComponent {
           generated k-grams; intersect the postings by finding tokens that share the same k-gram patterns */
         for (String corpusToken : corpusKGramIndex.getVocabulary()) {
             ArrayList<String> corpusKGrams = new ArrayList<>(corpusKGramIndex.getPostings(corpusToken));
+            boolean containsAllKGrams = true;
 
             // intersect terms within their respective vocabularies
             for (String wildcardToken : kGramIndex.getVocabulary()) {
                 List<String> wildcardKGrams = kGramIndex.getPostings(wildcardToken);
 
                 // if the corpus KGrams list contains all wildcard k-grams, the corpus token is a candidate
-                if (corpusKGrams.containsAll(wildcardKGrams)) {
-                    candidateTokens.add(corpusToken);
+                if (!corpusKGrams.containsAll(wildcardKGrams)) {
+                    containsAllKGrams = false;
                 }
+            }
+
+            if (containsAllKGrams) {
+                candidateTokens.add(corpusToken);
             }
         }
 
@@ -81,60 +85,60 @@ public class WildcardLiteral implements QueryComponent {
 
         // post-filtering step: confirm that the candidate token matches the original pattern
         for (String candidateToken : candidateTokens) {
-                int tokenCount = 0;
-                int startIndex = 0;
-                int endIndex = 0;
-                int candidateIndex = 0;
-                boolean candidateMatchesOrder = true;
+            int tokenCount = 0;
+            int startIndex = 0;
+            int endIndex = 0;
+            int candidateIndex = 0;
+            boolean candidateMatchesOrder = true;
 
-                /* traverse through the original `mTerm`; for every substring leading to an asterisk, verify
-                  that the original token's substrings exists in the same order within the candidate token */
-                while (startIndex < mTerm.length()) {
-                    char currentChar = mTerm.charAt(endIndex);
+            /* traverse through the original `mTerm`; for every substring leading to an asterisk, verify
+              that the original token's substrings exists in the same order within the candidate token */
+            while (startIndex < mTerm.length()) {
+                char currentChar = mTerm.charAt(endIndex);
 
-                    // stop incrementing the right bound when reached either an asterisk or the last character
-                    while (currentChar != '*' && endIndex < mTerm.length() - 1) {
-                        ++endIndex;
-                        currentChar = mTerm.charAt(endIndex);
-                    }
-                    if (endIndex == mTerm.length() - 1  && currentChar != '*') {
-                        ++endIndex;
-                    }
-
-                    // if there is an asterisk at the first index, skip to the next substring
-                    if (mTerm.charAt(startIndex) != '*') {
-                        String tokenSubString = mTerm.substring(startIndex, endIndex);
-                        int currentCandidateIndex = candidateToken.indexOf(tokenSubString, candidateIndex);
-
-                        if (currentCandidateIndex < 0) {
-                            candidateMatchesOrder = false;
-                            break;
-                        } else {
-                            candidateIndex = currentCandidateIndex + tokenSubString.length();
-                            ++tokenCount;
-                        }
-                    }
-                    // increment towards the end of the string
-                    endIndex += 1;
-                    startIndex = endIndex;
+                // stop incrementing the right bound when reached either an asterisk or the last character
+                while (currentChar != '*' && endIndex < mTerm.length() - 1) {
+                    ++endIndex;
+                    currentChar = mTerm.charAt(endIndex);
+                }
+                if (endIndex == mTerm.length() - 1  && currentChar != '*') {
+                    ++endIndex;
                 }
 
-                /* if we've matched the number of split tokens (separated by asterisks) within the original token
-                  then the token fulfills the pattern */
-                if (tokenCount < originalTokens.length - 1) {
-                    candidateMatchesOrder = false;
-                }
+                // if there is an asterisk at the first index, skip to the next substring
+                if (mTerm.charAt(startIndex) != '*') {
+                    String tokenSubString = mTerm.substring(startIndex, endIndex);
+                    int currentCandidateIndex = candidateToken.indexOf(tokenSubString, candidateIndex);
 
-                /* if the candidate matches the original token, we can finally process and add the term;
-                  only add the processed term once */
-                if (candidateMatchesOrder) {
-                    VocabularyTokenProcessor processor = new VocabularyTokenProcessor();
-                    String term = processor.processToken(candidateToken).get(0);
-
-                    if (!finalTerms.contains(term)) {
-                        finalTerms.add(term);
+                    if (currentCandidateIndex < 0) {
+                        candidateMatchesOrder = false;
+                        break;
+                    } else {
+                        candidateIndex = currentCandidateIndex + tokenSubString.length();
+                        ++tokenCount;
                     }
                 }
+                // increment towards the end of the string
+                endIndex += 1;
+                startIndex = endIndex;
+            }
+
+            /* if we've matched the number of split tokens (separated by asterisks) within the original token
+              then the token fulfills the pattern */
+            if (tokenCount < originalTokens.length - 1) {
+                candidateMatchesOrder = false;
+            }
+
+            /* if the candidate matches the original token, we can finally process and add the term;
+              only add the processed term once */
+            if (candidateMatchesOrder) {
+                TokenProcessor processor = new VocabularyTokenProcessor();
+                String term = processor.processToken(candidateToken).get(0);
+
+                if (!finalTerms.contains(term)) {
+                    finalTerms.add(term);
+                }
+            }
         }
 
         return finalTerms;

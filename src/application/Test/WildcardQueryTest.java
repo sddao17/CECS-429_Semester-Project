@@ -3,88 +3,96 @@ package application.Test;
 
 import application.Application;
 import application.documents.DirectoryCorpus;
-import application.documents.DocumentCorpus;
+import application.documents.Document;
 import application.indexes.Index;
 import application.indexes.Posting;
 import application.queries.BooleanQueryParser;
 import application.queries.QueryComponent;
+import application.text.*;
 import org.junit.Test;
 
-import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class WildcardQueryTest {
 
 
-    String directoryPathString = "./corpus/kanye-test";
-    String extensionType = ".txt";
-    DocumentCorpus testCorpus = DirectoryCorpus.loadTextDirectory(
-            Paths.get(directoryPathString).toAbsolutePath(), extensionType);
+    Path directoryPath = Path.of("./corpus/parks-test");
+    DirectoryCorpus testCorpus = DirectoryCorpus.loadDirectory(directoryPath);
     Index<String, Posting> index = Application.indexCorpus(testCorpus);
+    TokenProcessor processor = new VocabularyTokenProcessor();
     BooleanQueryParser parser = new BooleanQueryParser();
 
-    public List<String> resultTitles(String query){
+    public List<String> scanTextBody(String query, String queryType) {
+        List<String> documentTitles = new ArrayList<>();
+
+        // parse and scan the text body to see if the parsed query exists within it
+        for (Document document : testCorpus.getDocuments()) {
+            StringBuilder parsedTextBody = new StringBuilder();
+            TokenStream stream = new EnglishTokenStream(document.getContent());
+            Iterable<String> content = stream.getTokens();
+
+            for (String token : content) {
+                parsedTextBody.append(processor.processToken(token)).append(" ");
+            }
+
+            String parsedContent = parsedTextBody.toString();
+            parsedContent = parsedContent.replaceAll("\\[", "").replaceAll("]", "");
+
+            switch (queryType) {
+                case ("OR") -> {
+                    String[] splitQuery = query.split(" ");
+                    
+                    documentTitles.add(document.getTitle());
+                }
+            }
+        }
+
+        return documentTitles;
+    }
+
+    public List<String> findTitles(String query) {
         QueryComponent parsedQuery = parser.parseQuery(query);
         List<Posting> resultPostings = parsedQuery.getPostings(index);
         List<String> resultTitles = new ArrayList<>();
+
         for (Posting posting : resultPostings) {
             int currentDocumentId = posting.getDocumentId();
 
             resultTitles.add(testCorpus.getDocument(currentDocumentId).getTitle());
         }
         return resultTitles;
-
     }
 
     @Test
-    public void singleQueryTest(){
-        List<String> resultTitles = resultTitles("yeezy");
+    public void singleOrQuery() {
+        String query = "washington + visitor";
+        query = processor.processToken(query).get(0);
 
-        List<String> expectedTitles = new ArrayList<>(){{
-            add("two.txt");
-            add("three.txt");
-            add("five.txt");
-        }};
+        List<String> resultTitles = findTitles(query);
+        List<String> expectedTitles = scanTextBody(query, "OR");
+
         boolean titlesMatch = resultTitles.containsAll(expectedTitles) && expectedTitles.containsAll(resultTitles);
 
-        assertTrue("The list of document titles should match.", titlesMatch);
+        assertTrue("The list of document titles should match:\nActual: " +
+                        resultTitles + "\nExpected: " + expectedTitles, titlesMatch);
     }
 
     @Test
-    public void andQueryTest(){
-        String query = "yeezy 350";
-        QueryComponent parsedQuery = parser.parseQuery(query);
-        List<Posting> resultPostings = parsedQuery.getPostings(index);
-        int queryDocumentId = resultPostings.get(0).getDocumentId();
-        assertEquals("The Document titles should be the same.",
-                "two.txt", testCorpus.getDocument(queryDocumentId).getTitle());
+    public void andQueryTest() {
+
     }
 
     @Test
-    public void orQueryTest(){
-        List<String> resultTitles = resultTitles("la + west");
-        List<String> expectedTitles = new ArrayList<>(){{
-            add("one.txt");
-            add("four.txt");
-        }};
-        boolean titlesMatch = resultTitles.containsAll(expectedTitles) && expectedTitles.containsAll(resultTitles);
+    public void orQueryTest() {
 
-        assertTrue("The list of document titles should match.", titlesMatch);
     }
 
     @Test
-    public void phraseQueryTest(){
-        String query = "\"no more parties in la\"";
-        List<String> resultTitles = resultTitles(query);
-        List<String> expectedTitles = new ArrayList<>(){{
-            add("one.txt");
-        }};
-        boolean titlesMatch = resultTitles.containsAll(expectedTitles) && expectedTitles.containsAll(resultTitles);
+    public void phraseQueryTest() {
 
-        assertTrue("The list of document titles should match.", titlesMatch);
     }
 }

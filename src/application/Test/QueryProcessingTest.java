@@ -27,7 +27,7 @@ public class QueryProcessingTest {
     Index<String, Posting> index = Application.indexCorpus(testCorpus);
     BooleanQueryParser parser = new BooleanQueryParser();
 
-    public List<String> ResultTitles(String query){
+    public List<String> findTitles(String query){
         QueryComponent parsedQuery = parser.parseQuery(query);
         List<Posting> resultPostings = parsedQuery.getPostings(index);
         List<String> resultTitles = new ArrayList<>();
@@ -42,7 +42,7 @@ public class QueryProcessingTest {
 
     @Test
     public void singleQueryTest(){
-        List<String> resultTitles = ResultTitles("yeezy");
+        List<String> resultTitles = findTitles("yeezy");
 
         List<String> expectedTitles = new ArrayList<>(){{
             add("two.txt");
@@ -66,7 +66,7 @@ public class QueryProcessingTest {
 
     @Test
     public void orQueryTest(){
-        List<String> resultTitles = ResultTitles("la + west");
+        List<String> resultTitles = findTitles("la + west");
         List<String> expectedTitles = new ArrayList<>(){{
             add("one.txt");
             add("four.txt");
@@ -79,7 +79,7 @@ public class QueryProcessingTest {
     @Test
     public void phraseQueryTest(){
         String query = "\"no more parties in la\"";
-        List<String> resultTitles = ResultTitles(query);
+        List<String> resultTitles = findTitles(query);
         List<String> expectedTitles = new ArrayList<>(){{
             add("one.txt");
         }};

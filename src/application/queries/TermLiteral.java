@@ -6,6 +6,7 @@ import java.util.List;
 import application.indexes.Index;
 import application.indexes.Posting;
 import application.text.QueryTokenProcessor;
+import application.text.TokenProcessor;
 
 /**
  * A TermLiteral represents a single term in a subquery.
@@ -16,7 +17,7 @@ public class TermLiteral implements QueryComponent {
 	
 	public TermLiteral(String term) {
 		// Somehow incorporate a TokenProcessor into the getPostings call sequence.
-		QueryTokenProcessor processor = new QueryTokenProcessor();
+		TokenProcessor processor = new QueryTokenProcessor();
 
 		mTerm = processor.processToken(term).get(0);
 	}
@@ -27,7 +28,6 @@ public class TermLiteral implements QueryComponent {
 	
 	@Override
 	public List<Posting> getPostings(Index<String, Posting> index) {
-		System.out.println("Term literal: " + mTerm);
 		return index.getPostings(mTerm);
 	}
 	

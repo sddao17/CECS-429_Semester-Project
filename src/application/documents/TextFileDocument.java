@@ -1,4 +1,3 @@
-
 package application.documents;
 
 import java.io.IOException;
@@ -13,7 +12,7 @@ public class TextFileDocument implements FileDocument, Comparable<Document> {
 
 	private final int mDocumentId;
 	private final Path mFilePath;
-	
+
 	/**
 	 * Constructs a TextFileDocument with the given document ID representing the file at the given
 	 * absolute file path.
@@ -22,17 +21,17 @@ public class TextFileDocument implements FileDocument, Comparable<Document> {
 		mDocumentId = id;
 		mFilePath = absoluteFilePath;
 	}
-	
+
 	@Override
 	public Path getFilePath() {
 		return mFilePath;
 	}
-	
+
 	@Override
 	public int getId() {
 		return mDocumentId;
 	}
-	
+
 	@Override
 	public Reader getContent() {
 		try {
@@ -41,12 +40,12 @@ public class TextFileDocument implements FileDocument, Comparable<Document> {
 			throw new RuntimeException(e);
 		}
 	}
-	
+
 	@Override
 	public String getTitle() {
 		return mFilePath.getFileName().toString();
 	}
-	
+
 	public static FileDocument loadTextFileDocument(Path absolutePath, int documentId) {
 		return new TextFileDocument(documentId, absolutePath);
 	}

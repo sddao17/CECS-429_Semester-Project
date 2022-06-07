@@ -1,4 +1,3 @@
-
 package application.text;
 
 import java.util.ArrayList;

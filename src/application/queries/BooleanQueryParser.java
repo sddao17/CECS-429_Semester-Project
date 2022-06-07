@@ -1,4 +1,3 @@
-
 package application.queries;
 
 import java.util.ArrayList;

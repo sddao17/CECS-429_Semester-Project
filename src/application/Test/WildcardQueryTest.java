@@ -1,4 +1,3 @@
-
 package application.Test;
 
 import application.Application;
@@ -70,10 +69,10 @@ public class WildcardQueryTest {
                     }
                 }
                 case ("PHRASE") -> {
-                        if (queryMatchesTextBody(parsedContent, String.join(" ", splitQuery)) &&
-                                !documentTitles.contains(document.getTitle())) {
-                            documentTitles.add(document.getTitle());
-                        }
+                    if (queryMatchesTextBody(parsedContent, String.join(" ", splitQuery)) &&
+                            !documentTitles.contains(document.getTitle())) {
+                        documentTitles.add(document.getTitle());
+                    }
                 }
             }
         }
@@ -152,7 +151,7 @@ public class WildcardQueryTest {
         boolean titlesMatch = resultTitles.containsAll(expectedTitles) && expectedTitles.containsAll(resultTitles);
 
         assertTrue("The list of document titles should match:\nActual: " +
-                        resultTitles + "\nExpected: " + expectedTitles, titlesMatch);
+                resultTitles + "\nExpected: " + expectedTitles, titlesMatch);
     }
 
     @Test

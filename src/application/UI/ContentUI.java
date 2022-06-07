@@ -78,6 +78,8 @@ public class ContentUI {
                 frame.add(search.SearchUI());
             }
         });
+
         return contentPanel;
+
     }
 }

@@ -1,4 +1,3 @@
-
 package application.queries;
 
 import java.util.ArrayList;
@@ -31,12 +30,14 @@ public class PhraseLiteral implements QueryComponent {
 
 	@Override
 	public List<Posting> getPostings(Index<String, Posting> index) {
+		System.out.println("Phrase literal: " + mComponents);
 		/* Program this method. Retrieve the postings for the individual terms in the phrase,
 		  and positional merge them together. */
 		/* store posting-position1-position2 tuples where all the terms are sequentially in +1 positional order,
 		  beginning with the postings of the first term */
 		// Object[0], Object[1], Object[2] --> Posting, position1 (int), position2 (int)
 		List<Object[]> positionalIntersects = new ArrayList<>();
+		List<Posting> finalIntersects = new ArrayList<>();
 		int firstTermIntersects = 0;
 		int numOfIntersections = 0;
 
@@ -130,7 +131,7 @@ public class PhraseLiteral implements QueryComponent {
 	}
 
 	private List<Posting> findFinalIntersects(List<Object[]> positionalIntersects, int firstTermIntersects,
-												   int numOfIntersections) {
+											  int numOfIntersections) {
 		List<Posting> finalIntersects = new ArrayList<>();
 		/* the first intersection results are the foundation of determining whether position tuples are consecutive;
 		  we start with comparing the first term intersections with all other term intersections;

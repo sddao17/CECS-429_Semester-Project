@@ -1,6 +1,7 @@
 
 package application;
 
+import application.UI.CorpusSelection;
 import application.documents.*;
 import application.indexes.Index;
 import application.indexes.KGramIndex;
@@ -30,6 +31,8 @@ public class Application {
     private static CorpusSelection cSelect;
 
     public static void main(String[] args) {
+        cSelect = new CorpusSelection();
+        cSelect.CorpusSelectionUI();
         System.out.printf("""
                 %nCopy/paste for testing:
                 ./corpus/parks

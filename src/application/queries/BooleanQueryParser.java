@@ -160,25 +160,11 @@ public class BooleanQueryParser {
 			lengthOut = nextQuotationMark - startIndex + 1;
 			// the PhraseLiteral is between the two next quotations marks
 			String literal = subquery.substring(startIndex + 1, nextQuotationMark);
-			System.out.println(literal);
 			String[] splitLiterals = literal.split(" ");
 			List<QueryComponent> components = new ArrayList<>();
 
-			if (splitLiterals.length <= 1) {
-				if (splitLiterals[0].contains("*")) {
-					return new Literal (
-							new StringBounds(startIndex, lengthOut),
-							new WildcardLiteral(literal));
-				} else {
-					return new Literal (
-							new StringBounds(startIndex, lengthOut),
-							new TermLiteral(literal));
-				}
-			}
-
 			// crate a separate component for each individual literal found in the phrase
 			for (String currentLiteral : splitLiterals) {
-				System.out.println("ENTERED: " + currentLiteral);
 				// if it has an asterisk, it's a wildcard literal
 				if (currentLiteral.contains("*")) {
 					components.add(new WildcardLiteral(currentLiteral));

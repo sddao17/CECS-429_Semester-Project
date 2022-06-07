@@ -9,6 +9,7 @@ import application.indexes.Index;
 import application.indexes.KGramIndex;
 import application.indexes.Posting;
 import application.text.QueryTokenProcessor;
+import application.text.VocabularyTokenProcessor;
 import application.text.WildcardTokenProcessor;
 
 /**
@@ -80,8 +81,6 @@ public class WildcardLiteral implements QueryComponent {
 
         // post-filtering step: confirm that the candidate token matches the original pattern
         for (String candidateToken : candidateTokens) {
-            // only add the candidate token to the final terms once
-            if (!finalTerms.contains(candidateToken)) {
                 int tokenCount = 0;
                 int startIndex = 0;
                 int endIndex = 0;
@@ -129,14 +128,13 @@ public class WildcardLiteral implements QueryComponent {
                 /* if the candidate matches the original token, we can finally process and add the term;
                   only add the processed term once */
                 if (candidateMatchesOrder) {
-                    QueryTokenProcessor processor = new QueryTokenProcessor();
+                    VocabularyTokenProcessor processor = new VocabularyTokenProcessor();
                     String term = processor.processToken(candidateToken).get(0);
 
                     if (!finalTerms.contains(term)) {
                         finalTerms.add(term);
                     }
                 }
-            }
         }
 
         return finalTerms;

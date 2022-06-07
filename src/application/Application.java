@@ -61,6 +61,7 @@ public class Application {
 
     private static void initializeComponents(Path directoryPath) {
         corpus = DirectoryCorpus.loadDirectory(directoryPath);
+        kGramIndex = new KGramIndex();
         // by default, our `k` value for k-gram indexes will be set to 3
         corpusIndex = indexCorpus(corpus);
     }
@@ -73,7 +74,6 @@ public class Application {
 
         VocabularyTokenProcessor processor = new VocabularyTokenProcessor();
         PositionalInvertedIndex index = new PositionalInvertedIndex();
-        kGramIndex = new KGramIndex();
 
         // scan all documents and process each token into terms of our vocabulary
         for (Document document : corpus.getDocuments()) {
@@ -106,7 +106,7 @@ public class Application {
         double elapsedTimeInSeconds = (double) (endTime - startTime) / 1_000_000_000;
         System.out.println("Indexing complete." +
                 "\nDistinct k-grams: " + kGramIndex.getDistinctKGrams().size() +
-                "\nElapsed time: " + elapsedTimeInSeconds + " seconds");
+                "\nTime elapsed: " + elapsedTimeInSeconds + " seconds");
 
         return index;
     }

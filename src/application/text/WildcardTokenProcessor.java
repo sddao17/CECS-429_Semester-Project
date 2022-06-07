@@ -42,6 +42,10 @@ public class WildcardTokenProcessor extends TokenProcessor {
     @Override
     public String trimNonAlphanumeric(String token) {
         // do minimal processing - keep asterisks
+        if (token.length() <= 0) {
+            return "";
+        }
+
         int startIndex = 0;
         int endIndex = token.length() - 1;
 

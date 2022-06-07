@@ -22,10 +22,9 @@ public class WildcardLiteral implements QueryComponent {
         /* don't fully normalize the term yet; it will be normalized once we confirm the term's
           unprocessed counterpart is within the document.
           for now, keep the asterisks as the only non-alphanumeric character within our term */
-        //WildcardTokenProcessor processor = new WildcardTokenProcessor();
+        WildcardTokenProcessor processor = new WildcardTokenProcessor();
 
-        //mTerm = processor.processToken(term).get(0);
-        mTerm = term;
+        mTerm = processor.processToken(term).get(0);
     }
 
     public String getTerm() {

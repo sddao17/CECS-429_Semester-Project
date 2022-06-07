@@ -25,7 +25,7 @@ public class QueryResult {
     private static DirectoryCorpus corpus;
     private static String query;
     private static JButton returnToSearch = new JButton("Return to Search");
-    private static JPanel content = new JPanel();
+
     private static JFrame frame;
 
     public void setFrame(JFrame window){ frame = window; }
@@ -38,7 +38,7 @@ public class QueryResult {
 
     /* Will display the results of the query to the user*/
     public Component resultsUI(){
-
+        JPanel content = new JPanel();
         BoxLayout box = new BoxLayout(content, BoxLayout.Y_AXIS);
         //sets the flow of the panel
         content.setLayout(box);
@@ -77,6 +77,7 @@ public class QueryResult {
                         if(e.getClickCount() > 1) {
                             content.setVisible(false);
                             contentPanel.setVisible(false);
+                            //frame.remove(contentPanel);
                             ContentUI viewDoc = new ContentUI();
                             viewDoc.setCorpus(corpus);
                             viewDoc.setFrame(frame);
@@ -105,6 +106,7 @@ public class QueryResult {
             public void actionPerformed(ActionEvent e) {
                 content.setVisible(false);
                 contentPanel.setVisible(false);
+                //frame.remove(contentPanel);
                 Search search = new Search();
                 search.setFrame(frame);
                 frame.add(search.SearchUI());

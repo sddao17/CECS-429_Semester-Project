@@ -45,7 +45,6 @@ public class ContentUI {
         stream.getTokens().forEach(c -> {
             JLabel output = new JLabel(c + " ");
             content.add(output);
-
         });
 
         //initialization of a scroll pane
@@ -72,14 +71,13 @@ public class ContentUI {
                 //hides the panels that were used to view the documents contents
                 content.setVisible(false);
                 contentPanel.setVisible(false);
+                //frame.remove(contentPanel);
                 //calls the search class and adds the Search UI to frame to revert back.
                 Search search = new Search();
                 search.setFrame(frame);
                 frame.add(search.SearchUI());
             }
         });
-
         return contentPanel;
-
     }
 }

@@ -10,7 +10,7 @@ import java.util.List;
  * by including a unified and split version of the words, converting the token to lowercase, and then stemming it.
  * @see TokenProcessor
  */
-public class TrimSplitTokenProcessor extends TokenProcessor {
+public class VocabularyTokenProcessor extends TokenProcessor {
 
     @Override
     public List<String> processToken(String token) {

@@ -37,4 +37,13 @@ public class Posting {
 	public void addPosition(int newPosition) {
 		mPositions.add(newPosition);
 	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (obj instanceof Posting otherPosting) {
+			return mDocumentId == otherPosting.mDocumentId;
+		}
+
+		return false;
+	}
 }

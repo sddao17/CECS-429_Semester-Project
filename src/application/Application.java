@@ -3,13 +3,15 @@ package application;
 
 import application.documents.*;
 import application.indexes.Index;
+import application.indexes.KGramIndex;
 import application.indexes.PositionalInvertedIndex;
 import application.indexes.Posting;
 import application.queries.BooleanQueryParser;
 import application.queries.QueryComponent;
 import application.text.EnglishTokenStream;
 import application.text.TokenStemmer;
-import application.text.TrimSplitTokenProcessor;
+import application.text.VocabularyTokenProcessor;
+import application.text.WildcardTokenProcessor;
 
 import java.nio.file.Path;
 import java.util.*;
@@ -21,9 +23,10 @@ import java.util.*;
  */
 public class Application {
 
-    private static final int VOCABULARY_PRINT_SIZE = 1_000;  // number of vocabulary terms to print
-    private static DirectoryCorpus corpus;  // we need only one corpus,
-    private static Index<String, Posting> index;  // and one PositionalInvertedIndex
+    private static final int VOCABULARY_PRINT_SIZE = 1_000; // number of vocabulary terms to print
+    private static DirectoryCorpus corpus;  // we need only one of each corpus and index active at a time,
+    private static Index<String, Posting> corpusIndex;  // and multiple methods need access to them
+    private static KGramIndex kGramIndex;
 
     public static void main(String[] args) {
         System.out.printf("""
@@ -59,7 +62,7 @@ public class Application {
     private static void initializeComponents(Path directoryPath) {
         corpus = DirectoryCorpus.loadDirectory(directoryPath);
         // by default, our `k` value for k-gram indexes will be set to 3
-        index = indexCorpus(corpus);
+        corpusIndex = indexCorpus(corpus);
     }
 
     public static Index<String, Posting> indexCorpus(DocumentCorpus corpus) {
@@ -68,7 +71,8 @@ public class Application {
         System.out.println("\nIndexing...");
         long startTime = System.nanoTime();
 
-        TrimSplitTokenProcessor processor = new TrimSplitTokenProcessor();
+        kGramIndex = new KGramIndex();
+        VocabularyTokenProcessor processor = new VocabularyTokenProcessor();
         PositionalInvertedIndex index = new PositionalInvertedIndex();
 
         // scan all documents and process each token into terms of our vocabulary
@@ -79,7 +83,14 @@ public class Application {
             int currentPosition = 1;
 
             for (String token : tokens) {
-                // process the token before evaluating whether it exists within our matrix
+                // before we normalize the token, add it to a minimally processed vocabulary for wildcards
+                WildcardTokenProcessor wildcardProcessor = new WildcardTokenProcessor();
+                String wildcardToken = wildcardProcessor.processToken(token).get(0);
+
+                // add each unprocessed token to our k-gram index as we traverse through the documents
+                kGramIndex.addToken(wildcardToken, 3);
+
+                // process the token before evaluating whether it exists within our index
                 List<String> terms = processor.processToken(token);
 
                 // since each token can produce multiple terms, add all terms using the same documentID and position
@@ -94,7 +105,8 @@ public class Application {
         long endTime = System.nanoTime();
         double elapsedTimeInSeconds = (double) (endTime - startTime) / 1_000_000_000;
         System.out.println("Indexing complete." +
-                "\nElapsed time: " + elapsedTimeInSeconds + " seconds");
+                "\nDistinct k-grams: " + kGramIndex.getDistinctKGrams().size() +
+                "\nTime elapsed: " + elapsedTimeInSeconds + " seconds");
 
         return index;
     }
@@ -121,11 +133,12 @@ public class Application {
                     case ":index" -> initializeComponents(Path.of(parameter));
                     case ":stem" -> {
                         TokenStemmer stemmer = new TokenStemmer();
-                        System.out.println(stemmer.processToken(parameter).get(0));
+                        System.out.println(parameter + " -> " + stemmer.processToken(parameter).get(0));
                     }
                     case ":vocab" -> {
-                        List<String> vocabulary = index.getVocabulary();
+                        List<String> vocabulary = corpusIndex.getVocabulary();
                         int vocabularyPrintSize = Math.min(vocabulary.size(), VOCABULARY_PRINT_SIZE);
+
                         for (int i = 0; i < vocabularyPrintSize; ++i) {
                             System.out.println(vocabulary.get(i));
                         }
@@ -139,7 +152,7 @@ public class Application {
                         // 3(a, ii). If it isn't a special query, then parse the query and retrieve its postings.
                         BooleanQueryParser parser = new BooleanQueryParser();
                         QueryComponent parsedQuery = parser.parseQuery(query);
-                        List<Posting> resultPostings = parsedQuery.getPostings(index);
+                        List<Posting> resultPostings = parsedQuery.getPostings(corpusIndex);
 
                         displayPostings(resultPostings, in);
                     }
@@ -163,19 +176,21 @@ public class Application {
         /* 3(a, ii, C). Ask the user if they would like to select a document to view.
           If the user selects a document to view, print the entire content of the document to the screen. */
         if (resultPostings.size() > 0) {
-            System.out.print("Would you like to view a document's contents? (`y` to proceed)\n >> ");
-            String query = in.nextLine().toLowerCase();
-
-            if (query.equals("y")) {
-                System.out.print("Enter the document ID to view:\n >> ");
-                query = in.nextLine();
+            System.out.print("Enter the document ID to view its contents (any other input to exit):\n >> ");
+            String query = in.nextLine();
+            // since error handling is not a priority requirement, use a try/catch for now
+            try {
                 Document document = corpus.getDocument(Integer.parseInt(query));
                 EnglishTokenStream stream = new EnglishTokenStream(document.getContent());
 
                 // print the tokens to the console without processing them
-                stream.getTokens().forEach(c -> System.out.print(c + " "));
+                stream.getTokens().forEach(token -> System.out.print(token + " "));
                 System.out.println();
-            }
+            } catch (Exception ignored) {}
         }
+    }
+
+    public static Index<String, String> getKGramIndex() {
+        return kGramIndex;
     }
 }

@@ -10,7 +10,7 @@ import java.util.List;
  * and then stemming it.
  * @see TokenProcessor
  */
-public class TrimQueryTokenProcessor extends TokenProcessor {
+public class QueryTokenProcessor extends TokenProcessor {
 
     @Override
     public List<String> processToken(String token) {

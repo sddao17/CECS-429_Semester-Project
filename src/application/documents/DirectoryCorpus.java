@@ -8,7 +8,6 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.function.Predicate;
@@ -54,21 +53,18 @@ public class DirectoryCorpus implements DocumentCorpus {
 	 */
 	private HashMap<Integer, Document> readDocuments() throws IOException {
 		Iterable<Path> allFiles = findFiles();
-		// sort by path names (essentially the file names)
-		List<Path> sortedFiles = new ArrayList<>();
-		allFiles.forEach(sortedFiles::add);
-		Collections.sort(sortedFiles);
-
+		
 		// Next build the mapping from document ID to document.
 		HashMap<Integer, Document> result = new HashMap<>();
 		int nextId = 0;
-		for (Path file : sortedFiles) {
+		for (Path file : allFiles) {
 			// Use the registered factory for the file's extension.
 			result.put(nextId, mFactories.get(getFileExtension(file)).createFileDocument(file, nextId));
 			nextId++;
 		}
 		return result;
 	}
+	
 	/**
 	 * Finds all file names that match the corpus filter predicate and have a known file extension.
 	 */

@@ -11,7 +11,6 @@ import java.io.StringReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-// TODO:
 // Incorporate directory-selection and JSON documents into your application.
 public class JsonFileDocument implements FileDocument, Comparable<Document> {
 

@@ -9,7 +9,7 @@ import java.nio.file.Path;
 /**
  * Represents a document that is saved as a simple text file in the local file system.
  */
-public class TextFileDocument implements FileDocument, Comparable<Document> {
+public class TextFileDocument implements FileDocument {
 
 	private final int mDocumentId;
 	private final Path mFilePath;
@@ -49,10 +49,5 @@ public class TextFileDocument implements FileDocument, Comparable<Document> {
 	
 	public static FileDocument loadTextFileDocument(Path absolutePath, int documentId) {
 		return new TextFileDocument(documentId, absolutePath);
-	}
-
-	@Override
-	public int compareTo(Document otherDocument) {
-		return getTitle().compareTo(otherDocument.getTitle());
 	}
 }

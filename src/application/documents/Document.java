@@ -6,7 +6,7 @@ import java.io.Reader;
 /**
  * Represents a document in an index.
  */
-public interface Document extends Comparable<Document> {
+public interface Document {
 
 	/**
 	 * The ID used by the index to represent the document.

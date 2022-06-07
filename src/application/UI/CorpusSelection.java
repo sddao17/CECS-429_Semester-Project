@@ -40,15 +40,19 @@ public class CorpusSelection {
         //adds the panel that contains the corpus menu into the frame
         frame.add(panel);
         //sets the initial size of the window
-        frame.setSize(700, 500);
+        frame.setPreferredSize(new Dimension(700,700));
+        frame.setMaximumSize(new Dimension(700,700));
+
+        frame.pack();
         //sets the maximum size of the window
-        frame.setMaximumSize(new Dimension(700,800));
+        //frame.setMaximumSize(new Dimension(700,500));
         //sets the location of the window
         frame.setLocationRelativeTo(null);
         //initializes the exit button on the window
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         //makes the window visible when the program runs
         frame.setVisible(true);
+
 
         //on click the frame will be redirected to the search panel after completion of the indexing.
         submitResult.addActionListener(new ActionListener() {
@@ -128,6 +132,9 @@ public class CorpusSelection {
         corpus = DirectoryCorpus.loadDirectory(directoryPath);
         // by default, our `k` value for k-gram indexes will be set to 3
         index = indexCorpus(corpus);
+       // passing the corpus to use for queries
+        QueryResult r = new QueryResult();
+        r.setCorpus(corpus);
     }
 
     public static Index<String, Posting> indexCorpus(DocumentCorpus corpus) {
@@ -162,6 +169,8 @@ public class CorpusSelection {
         long endTime = System.nanoTime();
         elapsedTimeInSeconds = (double) (endTime - startTime) / 1_000_000_000;
         search.setTime(elapsedTimeInSeconds);
+        search.setFrame(frame);
+        search.setIndex(index);
 
         return index;
     }

@@ -1,12 +1,10 @@
 package application.UI;
 
 import application.documents.DirectoryCorpus;
-import application.documents.Document;
 import application.indexes.Index;
 import application.indexes.Posting;
 import application.queries.BooleanQueryParser;
 import application.queries.QueryComponent;
-import application.text.EnglishTokenStream;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
@@ -24,6 +22,7 @@ public class QueryResult {
     private static String query;
 
     JButton returnToSearch = new JButton("Return to Search");
+    JPanel content = new JPanel();
     JFrame frame;
 
     public void setFrame(JFrame window){ frame = window; }
@@ -36,10 +35,17 @@ public class QueryResult {
 
     /* Will display the results of the query to the user*/
     public Component resultsUI(){
-        JPanel content = new JPanel();
+
         BoxLayout box = new BoxLayout(content, BoxLayout.Y_AXIS);
         //sets the flow of the panel to be displayed on the screen
         content.setLayout(box);
+        content.setMaximumSize(new Dimension(500,500));
+
+        JPanel contentPanel = new JPanel(null);
+        JScrollPane scrollDoc = new JScrollPane(content);
+        scrollDoc.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollDoc.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+        scrollDoc.setBounds(20,20,660,630);
 
         BooleanQueryParser parser = new BooleanQueryParser();
         QueryComponent parsedQuery = parser.parseQuery(query);
@@ -58,44 +64,21 @@ public class QueryResult {
             doc.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
-
-                        super.mouseClicked(e);
-                        content.setVisible(false);
-                        JPanel contentDisplay = new JPanel();
-                        Document document = corpus.getDocument(currentDocumentId);
-                        EnglishTokenStream stream = new EnglishTokenStream(document.getContent());
-
-                        // print the tokens to the console without processing them
-                        stream.getTokens().forEach(c -> {
-                            JLabel output = new JLabel(c + " ");
-                            contentDisplay.add(output);
-                        });
-                        contentDisplay.add(returnToSearch);
-                        contentDisplay.setVisible(true);
-                        frame.add(contentDisplay);
-
-                        returnToSearch.addActionListener(new ActionListener() {
-                            @Override
-                            public void actionPerformed(ActionEvent e) {
-                                contentDisplay.setVisible(false);
-                                Search search = new Search();
-                                search.setFrame(frame);
-                                frame.add(search.SearchUI());
-                            }
-                        });
+                        if(e.getClickCount() > 1) {
+                            content.setVisible(false);
+                            contentPanel.setVisible(false);
+                            ContentUI viewDoc = new ContentUI();
+                            viewDoc.setCorpus(corpus);
+                            viewDoc.setFrame(frame);
+                            viewDoc.setCurrentDocumentId(currentDocumentId);
+                            viewDoc.contentUI();
+                        }
                     }
-                
             });
             content.add(doc);
-            content.add(returnToSearch);
         }
 
-        content.setMaximumSize(new Dimension(500,500));
-        JScrollPane scrollDoc = new JScrollPane(content);
-        scrollDoc.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        scrollDoc.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
-        scrollDoc.setBounds(20,20,660,630);
-        JPanel contentPanel = new JPanel(null);
+        content.add(returnToSearch);
         contentPanel.setPreferredSize(new Dimension(500,500));
         contentPanel.add(scrollDoc);
         contentPanel.setMaximumSize(new Dimension(500,500));
@@ -112,14 +95,5 @@ public class QueryResult {
             }
         });
         return contentPanel;
-
     }
-
-    /* If a user selects the document then the contents will display*/
-    public Component displayContent(){
-       JPanel content = new JPanel();
-
-       return content;
-    }
-
 }

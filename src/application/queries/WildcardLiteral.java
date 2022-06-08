@@ -35,17 +35,16 @@ public class WildcardLiteral implements QueryComponent {
 
     @Override
     public List<Posting> getPostings(Index<String, Posting> corpusIndex) {
-        System.out.println("Wildcard literal: " + mTerm);
         Index<String, String> corpusKGramIndex = CSelect.getKGramIndex();
         KGramIndex kGramIndex = new KGramIndex();
         kGramIndex.buildKGramIndex(new ArrayList<>(){{add(mTerm);}}, 3);
         String[] originalTokens = mTerm.split("\\*");
 
         List<String> candidateTokens = findCandidates(corpusKGramIndex, kGramIndex);
-        System.out.println("Candidate tokens: " + candidateTokens);
+        //System.out.println("Candidate tokens: " + candidateTokens);
 
         List<String> finalTerms = postFilter(candidateTokens, originalTokens);
-        System.out.println("Final terms: " + finalTerms);
+        //System.out.println("Final terms: " + finalTerms);
 
         // once we collect all of our final terms, we "OR" the postings to combine them and ignore duplicates
         List<QueryComponent> literals = new ArrayList<>();
@@ -88,8 +87,8 @@ public class WildcardLiteral implements QueryComponent {
             int candidateIndex = 0;
             boolean candidateMatchesOrder = true;
 
-                /* traverse through the original `mTerm`; for every substring leading to an asterisk, verify
-                  that the original token's substrings exists in the same order within the candidate token */
+            /* traverse through the original `mTerm`; for every substring leading to an asterisk, verify
+              that the original token's substrings exists in the same order within the candidate token */
             while (startIndex < mTerm.length()) {
                 char currentChar = mTerm.charAt(endIndex);
 
@@ -120,14 +119,14 @@ public class WildcardLiteral implements QueryComponent {
                 startIndex = endIndex;
             }
 
-                /* if we've matched the number of split tokens (separated by asterisks) within the original token
-                  then the token fulfills the pattern */
+            /* if we've matched the number of split tokens (separated by asterisks) within the original token
+              then the token fulfills the pattern */
             if (tokenCount < originalTokens.length - 1) {
                 candidateMatchesOrder = false;
             }
 
-                /* if the candidate matches the original token, we can finally process and add the term;
-                  only add the processed term once */
+            /* if the candidate matches the original token, we can finally process and add the term;
+              only add the processed term once */
             if (candidateMatchesOrder) {
                 VocabularyTokenProcessor processor = new VocabularyTokenProcessor();
                 String term = processor.processToken(candidateToken).get(0);

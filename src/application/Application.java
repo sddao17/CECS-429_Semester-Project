@@ -65,7 +65,6 @@ public class Application {
 
     private static void initializeComponents(Path directoryPath) {
         corpus = DirectoryCorpus.loadDirectory(directoryPath);
-        kGramIndex = new KGramIndex();
         // by default, our `k` value for k-gram indexes will be set to 3
         corpusIndex = indexCorpus(corpus);
     }
@@ -76,6 +75,7 @@ public class Application {
         System.out.println("\nIndexing...");
         long startTime = System.nanoTime();
 
+        kGramIndex = new KGramIndex();
         VocabularyTokenProcessor processor = new VocabularyTokenProcessor();
         PositionalInvertedIndex index = new PositionalInvertedIndex();
 

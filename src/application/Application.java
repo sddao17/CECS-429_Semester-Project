@@ -45,9 +45,6 @@ public class Application {
 
         initializeComponents(Path.of(directoryPath));
 
-        String pathToPostingsBin = "./corpus/index";
-        List<Integer> bytePositions = DiskIndexWriter.writeIndex(corpusIndex, pathToPostingsBin);
-
         System.out.printf("""
                 %nSpecial Commands:
                 :index `directory-name`  --  Index the folder at the specified path.
@@ -63,6 +60,14 @@ public class Application {
     private static void initializeComponents(Path directoryPath) {
         corpus = DirectoryCorpus.loadDirectory(directoryPath);
         corpusIndex = indexCorpus(corpus);
+
+        String pathToPostingsBin = "./corpus/index";
+        List<Integer> bytePositions = DiskIndexWriter.writeIndex(corpusIndex, pathToPostingsBin);
+
+        String pathToIndexFile = "./corpus/index/diskIndex";
+        DiskPositionalIndex diskIndex = new DiskPositionalIndex(pathToIndexFile);
+
+        diskIndex.writeBTree(corpusIndex.getVocabulary(), bytePositions);
     }
 
     public static Index<String, Posting> indexCorpus(DocumentCorpus corpus) {
@@ -155,7 +160,8 @@ public class Application {
                         TokenProcessor processor = new VocabularyTokenProcessor();
 
                         List<Posting> resultPostings = parsedQuery.getPostings(corpusIndex, processor);
-                        resultPostings = getDistinct(resultPostings);
+                        // in case the query contains wildcards, only display each unique posting once
+                        resultPostings = getDistinctPostings(resultPostings);
 
                         displayPostings(resultPostings, in);
                     }
@@ -164,17 +170,17 @@ public class Application {
         } while (!query.equals(":q"));
     }
 
-    private static List<Posting> getDistinct(List<Posting> postings) {
+    private static List<Posting> getDistinctPostings(List<Posting> postings) {
         List<Posting> distinctPostings = new ArrayList<>();
-        List<Integer> distinctDocumentIds = new ArrayList<>();
+        int latestDocumentId = 0;
 
         for (Posting currentPosting : postings) {
             int currentDocumentId = currentPosting.getDocumentId();
 
-            if (!distinctDocumentIds.contains(currentDocumentId)) {
+            if (currentDocumentId != latestDocumentId) {
                 distinctPostings.add(currentPosting);
-                distinctDocumentIds.add(currentDocumentId);
             }
+            latestDocumentId = currentDocumentId;
         }
 
         return distinctPostings;

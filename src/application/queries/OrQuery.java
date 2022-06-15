@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import application.indexes.Index;
 import application.indexes.Posting;
+import application.text.TokenProcessor;
 
 /**
  * An OrQuery composes other QueryComponents and merges their postings with a union-type operation.
@@ -20,14 +21,14 @@ public class OrQuery implements QueryComponent {
 	}
 	
 	@Override
-	public List<Posting> getPostings(Index<String, Posting> index) {
+	public List<Posting> getPostings(Index<String, Posting> index, TokenProcessor processor) {
 		List<Posting> unions = new ArrayList<>();
 		
 		/* Program the merge for an OrQuery, by gathering the postings of the composed QueryComponents and
 		  unionizing the resulting postings. */
 		for (QueryComponent mComponent : mComponents) {
 			// store current posting for readability
-			List<Posting> currentPostings = mComponent.getPostings(index);
+			List<Posting> currentPostings = mComponent.getPostings(index, processor);
 
 			// unionize the current unions with the new postings
 			unions = unionizePostings(unions, currentPostings);

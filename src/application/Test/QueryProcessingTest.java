@@ -8,6 +8,7 @@ import application.indexes.Index;
 import application.indexes.Posting;
 import application.queries.BooleanQueryParser;
 import application.queries.QueryComponent;
+import application.text.QueryTokenProcessor;
 import org.junit.Test;
 
 import java.nio.file.Paths;
@@ -24,12 +25,12 @@ public class QueryProcessingTest {
     String extensionType = ".txt";
     DocumentCorpus testCorpus = DirectoryCorpus.loadTextDirectory(
             Paths.get(directoryPathString).toAbsolutePath(), extensionType);
-    Index index = Application.indexCorpus(testCorpus);
+    Index<String, Posting> index = Application.indexCorpus(testCorpus);
     BooleanQueryParser parser = new BooleanQueryParser();
 
     public List<String> ResultTitles(String query){
         QueryComponent parsedQuery = parser.parseQuery(query);
-        List<Posting> resultPostings = parsedQuery.getPostings(index);
+        List<Posting> resultPostings = parsedQuery.getPostings(index, new QueryTokenProcessor());
         List<String> resultTitles = new ArrayList<>();
         for (Posting posting : resultPostings) {
             int currentDocumentId = posting.getDocumentId();
@@ -58,7 +59,7 @@ public class QueryProcessingTest {
     public void andQueryTest(){
         String query = "yeezy 350";
         QueryComponent parsedQuery = parser.parseQuery(query);
-        List<Posting> resultPostings = parsedQuery.getPostings(index);
+        List<Posting> resultPostings = parsedQuery.getPostings(index, new QueryTokenProcessor());
         int queryDocumentId = resultPostings.get(0).getDocumentId();
         assertEquals("The Document titles should be the same.",
                 "two.txt", testCorpus.getDocument(queryDocumentId).getTitle());

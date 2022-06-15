@@ -1,3 +1,4 @@
+
 package application.Test;
 
 import application.Application;
@@ -159,7 +160,7 @@ public class WildcardQueryTest {
 
     public List<String> findTitles(String query) {
         QueryComponent parsedQuery = parser.parseQuery(query);
-        List<Posting> resultPostings = parsedQuery.getPostings(index);
+        List<Posting> resultPostings = parsedQuery.getPostings(index, new WildcardTokenProcessor());
         List<String> resultTitles = new ArrayList<>();
 
         for (Posting posting : resultPostings) {
@@ -171,7 +172,7 @@ public class WildcardQueryTest {
     }
 
     @Test
-    public void singleTrailingWildcardQuery() {
+    public void singleTrailingWildcardQueryTest() {
         String query = "washing*";
 
         List<String> resultTitles = findTitles(query);
@@ -186,7 +187,7 @@ public class WildcardQueryTest {
     }
 
     @Test
-    public void singleLeadingWildcardQuery() {
+    public void singleLeadingWildcardQueryTest() {
         String query = "*nal";
 
         List<String> resultTitles = findTitles(query);
@@ -201,7 +202,7 @@ public class WildcardQueryTest {
     }
 
     @Test
-    public void singleOrWildcardQuery() {
+    public void singleOrWildcardQueryTest() {
         String query = "washing* + visitor";
 
         List<String> resultTitles = findTitles(query);
@@ -216,7 +217,7 @@ public class WildcardQueryTest {
     }
 
     @Test
-    public void longOrWildcardQuery() {
+    public void longOrWildcardQueryTest() {
         String query = "i* + th*s + wash* + *ad";
 
         List<String> resultTitles = findTitles(query);
@@ -232,7 +233,7 @@ public class WildcardQueryTest {
 
     @Test
     public void singleAndWildcardQueryTest() {
-        String query = "mass*re hist*";
+        String query = "mass*e hist*";
 
         List<String> resultTitles = findTitles(query);
         List<String> expectedTitles = scanDocuments(query, "AND");

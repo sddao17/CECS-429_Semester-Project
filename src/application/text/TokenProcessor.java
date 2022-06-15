@@ -2,6 +2,7 @@
 package application.text;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -69,23 +70,15 @@ public abstract class TokenProcessor {
 	 */
 	public List<String> splitOnHyphens(String token) {
 		ArrayList<String> tokens = new ArrayList<>();
+
 		/* 3. For hyphens in words, do both:
           (a) Remove the hyphens from the token and then proceed with the modified token. */
-		String[] splitTerms = token.split("-");
+		tokens.add(token.replaceAll("-", ""));
 
         /* (b) Split the original hyphenated token into multiple tokens without a hyphen,
           and proceed with all split tokens. */
-		StringBuilder combinedTerms = new StringBuilder();
-
-		for (String currentTerm : splitTerms) {
-			tokens.add(currentTerm);
-			combinedTerms.append(currentTerm);
-		}
-
-		// add all terms in a single string if any hyphen exists
-		if (splitTerms.length > 1) {
-			tokens.add(combinedTerms.toString());
-		}
+		String[] splitTerms = token.split("-");
+		Collections.addAll(tokens, splitTerms);
 
 		return tokens;
 	}

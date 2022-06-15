@@ -14,6 +14,14 @@ public class VocabularyTokenProcessor extends TokenProcessor {
     @Override
     public List<String> processToken(String token) {
         List<String> terms = new ArrayList<>();
+
+        if (token.length() == 0) {
+            return terms;
+        } else if (token.length() == 1 && Character.isLetterOrDigit(token.charAt(0))) {
+            terms.add(token);
+            return terms;
+        }
+
         /* To normalize a token into a term, perform these steps in order:
           1. Remove all non-alphanumeric characters from the beginning and end of the token, but not the middle.
           (a) Example: Hello. becomes Hello ; 192.168.1.1 remains unchanged. */
@@ -34,7 +42,13 @@ public class VocabularyTokenProcessor extends TokenProcessor {
 
             // 5. Stem the token using an implementation of the Porter2 stemmer.
             currentToken = stem(currentToken);
-            terms.add(currentToken);
+            // continue to remove any special characters from split terms
+            if (currentToken.length() > 0 && !(Character.isLetterOrDigit(currentToken.charAt((0))) &&
+                    Character.isLetterOrDigit(currentToken.charAt((currentToken.length() - 1))))) {
+                terms.addAll(processToken(currentToken));
+            } else if (currentToken.length() > 0) {
+                terms.add(currentToken);
+            }
         }
 
         return terms;

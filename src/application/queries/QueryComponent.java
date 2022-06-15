@@ -1,7 +1,9 @@
+
 package application.queries;
 import java.util.List;
 
 import application.indexes.*;
+import application.text.TokenProcessor;
 
 /**
  * A QueryComponent is one piece of a larger query, whether that piece is a literal string or represents a merging of
@@ -12,5 +14,5 @@ public interface QueryComponent {
     /**
      * Retrieves a list of postings for the query component, using an Index as the source.
      */
-    List<Posting> getPostings(Index<String, Posting> index);
+    List<Posting> getPostings(Index<String, Posting> index, TokenProcessor processor);
 }

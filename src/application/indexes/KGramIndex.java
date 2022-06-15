@@ -1,4 +1,6 @@
+
 package application.indexes;
+
 
 import java.util.*;
 
@@ -8,14 +10,14 @@ import java.util.*;
 public class KGramIndex implements Index<String, String> {
 
     private final HashMap<String, List<String>> kGramIndex;
-    private final List<String> distinctKGrams;  // distinct tokens in the entire corpus vocabulary
+    private final TreeSet<String> distinctKGrams;  // distinct tokens in the entire corpus vocabulary
 
     /**
      * Constructs an empty k-gram index.
      */
     public KGramIndex() {
         kGramIndex = new HashMap<>();
-        distinctKGrams = new ArrayList<>();
+        distinctKGrams = new TreeSet<>();
     }
 
     public void buildKGramIndex(List<String> vocabulary, int k) {
@@ -43,9 +45,7 @@ public class KGramIndex implements Index<String, String> {
         return vocabulary;
     }
 
-    public List<String> getDistinctKGrams() {
-        Collections.sort(distinctKGrams);
-
+    public TreeSet<String> getDistinctKGrams() {
         return distinctKGrams;
     }
 
@@ -73,11 +73,11 @@ public class KGramIndex implements Index<String, String> {
 
                 for (int i = 0; i < splitParsedTokens.length; ++i) {
                     kGrams = createKGrams(splitParsedTokens[i], k);
-                    kGramIndex.put(splitTokens[i], kGrams);
+                    kGramIndex.putIfAbsent(splitTokens[i], kGrams);
                 }
             } else {
                 kGrams = createKGrams(parsedToken, k);
-                kGramIndex.put(token, kGrams);
+                kGramIndex.putIfAbsent(token, kGrams);
             }
         }
     }
@@ -86,21 +86,16 @@ public class KGramIndex implements Index<String, String> {
         List<String> kGrams = new ArrayList<>();
 
         // for all integers leading up to k, add the substrings of variable length throughout the whole token
-        for (int i = 0; i <= k; ++i) {
-            for (int j = 0; j < (token.length() - i + 1); ++j) {
-                String currentKGram = token.substring(j, j + i);
+        for (int i = 0; i < k; ++i) {
+            for (int j = 0; j < (token.length() - i); ++j) {
+                String currentKGram = token.substring(j, j + i + 1);
 
                 // ignore empty strings and excessive flags
-                if (!currentKGram.equals("") && !currentKGram.equals("$$") &&
-                        !(currentKGram.startsWith("$") && currentKGram.endsWith("$"))) {
-                    // add distinct tokens only
-                    if (!kGrams.contains(currentKGram)) {
-                        kGrams.add(currentKGram);
-                    }
-                    if (!distinctKGrams.contains(currentKGram)) {
-                        distinctKGrams.add(currentKGram);
-                    }
+                if (!currentKGram.equals("") && !currentKGram.equals("$") && !currentKGram.equals("$$")) {
+                    kGrams.add(currentKGram);
                 }
+
+                distinctKGrams.add(currentKGram);
             }
         }
 
@@ -116,7 +111,7 @@ public class KGramIndex implements Index<String, String> {
             //add("*al");
             //add("na*");
             //add("na*al");
-            add("nat*al");
+            add("park");
             //add("n*");
             //add("*n");
             //add("*finan*cial*");

@@ -1,17 +1,11 @@
+
 package application;
 
 import application.UI.CorpusSelection;
 import application.documents.*;
-import application.indexes.Index;
-import application.indexes.KGramIndex;
-import application.indexes.PositionalInvertedIndex;
-import application.indexes.Posting;
-import application.queries.BooleanQueryParser;
-import application.queries.QueryComponent;
-import application.text.EnglishTokenStream;
-import application.text.TokenStemmer;
-import application.text.VocabularyTokenProcessor;
-import application.text.WildcardTokenProcessor;
+import application.indexes.*;
+import application.queries.*;
+import application.text.*;
 
 import java.nio.file.Path;
 import java.util.*;
@@ -36,10 +30,10 @@ public class Application {
                 ./corpus/parks-test
                 ./corpus/kanye-test
                 ./corpus/moby-dick%n""");
-        //startApplication();
+        startApplication();
 
-        cSelect = new CorpusSelection();
-        cSelect.CorpusSelectionUI();
+        //cSelect = new CorpusSelection();
+        //cSelect.CorpusSelectionUI();
     }
 
     private static void startApplication() {
@@ -50,6 +44,9 @@ public class Application {
         String directoryPath = in.nextLine().toLowerCase();
 
         initializeComponents(Path.of(directoryPath));
+
+        String pathToPostingsBin = "./corpus/index";
+        List<Integer> bytePositions = DiskIndexWriter.writeIndex(corpusIndex, pathToPostingsBin);
 
         System.out.printf("""
                 %nSpecial Commands:
@@ -65,7 +62,6 @@ public class Application {
 
     private static void initializeComponents(Path directoryPath) {
         corpus = DirectoryCorpus.loadDirectory(directoryPath);
-        // by default, our `k` value for k-gram indexes will be set to 3
         corpusIndex = indexCorpus(corpus);
     }
 
@@ -76,8 +72,9 @@ public class Application {
         long startTime = System.nanoTime();
 
         kGramIndex = new KGramIndex();
-        VocabularyTokenProcessor processor = new VocabularyTokenProcessor();
         PositionalInvertedIndex index = new PositionalInvertedIndex();
+        VocabularyTokenProcessor vocabProcessor = new VocabularyTokenProcessor();
+        WildcardTokenProcessor wildcardProcessor = new WildcardTokenProcessor();
 
         // scan all documents and process each token into terms of our vocabulary
         for (Document document : corpus.getDocuments()) {
@@ -88,14 +85,13 @@ public class Application {
 
             for (String token : tokens) {
                 // before we normalize the token, add it to a minimally processed vocabulary for wildcards
-                WildcardTokenProcessor wildcardProcessor = new WildcardTokenProcessor();
-                String wildcardToken = wildcardProcessor.processToken(token).get(0);
+                List<String> wildcardTokens = wildcardProcessor.processToken(token);
 
                 // add each unprocessed token to our k-gram index as we traverse through the documents
-                kGramIndex.addToken(wildcardToken, 3);
+                kGramIndex.buildKGramIndex(wildcardTokens, 3);
 
-                // process the token before evaluating whether it exists within our index
-                List<String> terms = processor.processToken(token);
+                // process the vocabulary token before evaluating whether it exists within our index
+                List<String> terms = vocabProcessor.processToken(token);
 
                 // since each token can produce multiple terms, add all terms using the same documentID and position
                 for (String term : terms) {
@@ -156,13 +152,32 @@ public class Application {
                         // 3(a, ii). If it isn't a special query, then parse the query and retrieve its postings.
                         BooleanQueryParser parser = new BooleanQueryParser();
                         QueryComponent parsedQuery = parser.parseQuery(query);
-                        List<Posting> resultPostings = parsedQuery.getPostings(corpusIndex);
+                        TokenProcessor processor = new VocabularyTokenProcessor();
+
+                        List<Posting> resultPostings = parsedQuery.getPostings(corpusIndex, processor);
+                        resultPostings = getDistinct(resultPostings);
 
                         displayPostings(resultPostings, in);
                     }
                 }
             }
         } while (!query.equals(":q"));
+    }
+
+    private static List<Posting> getDistinct(List<Posting> postings) {
+        List<Posting> distinctPostings = new ArrayList<>();
+        List<Integer> distinctDocumentIds = new ArrayList<>();
+
+        for (Posting currentPosting : postings) {
+            int currentDocumentId = currentPosting.getDocumentId();
+
+            if (!distinctDocumentIds.contains(currentDocumentId)) {
+                distinctPostings.add(currentPosting);
+                distinctDocumentIds.add(currentDocumentId);
+            }
+        }
+
+        return distinctPostings;
     }
 
     private static void displayPostings(List<Posting> resultPostings, Scanner in) {

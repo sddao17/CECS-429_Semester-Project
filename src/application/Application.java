@@ -172,15 +172,15 @@ public class Application {
 
     private static List<Posting> getDistinctPostings(List<Posting> postings) {
         List<Posting> distinctPostings = new ArrayList<>();
-        int latestDocumentId = 0;
+        List<Integer> distinctDocumentIds = new ArrayList<>();
 
         for (Posting currentPosting : postings) {
             int currentDocumentId = currentPosting.getDocumentId();
 
-            if (currentDocumentId != latestDocumentId) {
+            if (!distinctDocumentIds.contains(currentDocumentId)) {
                 distinctPostings.add(currentPosting);
+                distinctDocumentIds.add(currentDocumentId);
             }
-            latestDocumentId = currentDocumentId;
         }
 
         return distinctPostings;

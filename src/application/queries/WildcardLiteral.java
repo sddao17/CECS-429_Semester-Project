@@ -36,12 +36,13 @@ public class WildcardLiteral implements QueryComponent {
 
         // minimally process the original token
         WildcardTokenProcessor wildCardProcessor = new WildcardTokenProcessor();
-        kGramIndex.buildKGramIndex(wildCardProcessor.processToken(mTerm), 3);
+        String processedTerm = wildCardProcessor.processToken(mTerm).get(0);
+        kGramIndex.addToken(processedTerm, 3);
 
         List<String> candidateTokens = findCandidates(corpusKGramIndex, kGramIndex);
-        //System.out.println("Candidate tokens: " + candidateTokens);
+        System.out.println("Candidate tokens: " + candidateTokens);
 
-        List<String> finalTokens = postFilter(candidateTokens);
+        List<String> finalTokens = postFilter(candidateTokens, processedTerm);
         System.out.println("Final tokens: " + finalTokens);
 
         List<String> finalTerms = new ArrayList<>();
@@ -77,28 +78,34 @@ public class WildcardLiteral implements QueryComponent {
           generated k-grams; intersect the postings by finding tokens that share the same k-gram patterns */
         for (String corpusToken : corpusKGramIndex.getVocabulary()) {
             ArrayList<String> corpusKGrams = new ArrayList<>(corpusKGramIndex.getPostings(corpusToken));
+            boolean candidateMatchesAll = true;
 
             // intersect terms within their respective vocabularies
             for (String wildcardToken : kGramIndex.getVocabulary()) {
                 List<String> wildcardKGrams = kGramIndex.getPostings(wildcardToken);
 
-                // if the corpus KGrams list contains all wildcard k-grams, the corpus token is a candidate
-                if (corpusKGrams.containsAll(wildcardKGrams)) {
-                    candidateTokens.add(corpusToken);
+                // if the token does not contain all wildcard k-grams, it cannot be a candidate
+                if (!corpusKGrams.containsAll(wildcardKGrams)) {
+                    candidateMatchesAll = false;
                 }
+            }
+
+            // only add candidates with all the k-grams from the wildcard query
+            if (candidateMatchesAll) {
+                candidateTokens.add(corpusToken);
             }
         }
 
         return candidateTokens;
     }
 
-    private List<String> postFilter(List<String> candidateTokens) {
+    private List<String> postFilter(List<String> candidateTokens, String processedTerm) {
         List<String> finalTokens = new ArrayList<>();
 
         // post-filtering step: confirm that the candidate token matches the original pattern
         for (String candidateToken : candidateTokens) {
             // convert our mTerm to a suitable regex matching pattern
-            String wildcardRegex = wildcardToRegex(mTerm);
+            String wildcardRegex = wildcardToRegex(processedTerm);
 
             // if the candidate matches the original token pattern, we can verify it as a valid term
             if (candidateToken.matches(wildcardRegex)) {

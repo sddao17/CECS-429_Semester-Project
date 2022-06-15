@@ -28,7 +28,7 @@ public class DiskPositionalIndex implements Index<String, Posting> {
         } catch (IOException e) {
             throw new RuntimeException();
         }
-        
+
         database.commit();
     }
 

@@ -12,9 +12,17 @@ public class DiskIndexWriter {
      * variable, as well as the absolute path to save the postings file.
      */
     public static List<Integer> writeIndex(Index<String, Posting> index, String pathToPostingBin) {
+        // create the directory for the index if it does not yet exist
+        File fileToWrite = new File(pathToPostingBin);
+        fileToWrite.mkdir();
         // 2a. Open a new file called "postings.bin" in binary write mode.
         String postingFileName = "postings.bin";
-        File fileToWrite = new File(pathToPostingBin, postingFileName);
+        fileToWrite = new File(pathToPostingBin, postingFileName);
+        try {
+            fileToWrite.createNewFile();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         /* 3. writeIndex should return a list of (8-byte) integer values, one value for each of the terms
           in the index vocabulary. Each integer value should equal the byte position of where the postings
           for the corresponding term from the vocabulary begin in postings.bin. */
@@ -47,14 +55,10 @@ public class DiskIndexWriter {
 
                     /* (2, iii, A). Write the posting's document ID as a 4-byte gap. (The first document in a list
                       is written as-is. All the rest are gaps from the previous value.) */
-                    if (i == 0) {
-                        dataStream.writeInt(currentDocumentId);
-                        latestDocumentId = currentDocumentId;
-                    } else {
-                        int gap = currentDocumentId - latestDocumentId;
-                        dataStream.writeInt(gap);
-                        latestDocumentId = gap;
-                    }
+                    int gap = currentDocumentId - latestDocumentId;
+                    dataStream.writeInt(gap);
+                    latestDocumentId = gap;
+
 
                     // (2, iii, B). Write tf(t,d) as a 4-byte integer.
                     dataStream.writeInt(currentPositions.size());
@@ -64,22 +68,18 @@ public class DiskIndexWriter {
 
                         /* (2, iii, C). Write the list of positions, each a 4-byte gap. (The first position
                           is written as-is. All the rest are gaps from the previous value.) */
-                        if (j == 0) {
-                            dataStream.writeInt(currentPosition);
-                            latestPosition = currentPosition;
-                        } else {
-                            int gap = currentPosition - latestPosition;
-                            dataStream.writeInt(gap);
-                            latestPosition = gap;
-                        }
+                        gap = currentPosition - latestPosition;
+                        dataStream.writeInt(gap);
+                        latestPosition = gap;
+
                     }
                 }
                 // (2, iv). Repeat for each term in the vocabulary.
             }
-            System.out.println("\nData written to `" + pathToPostingBin + "/" + postingFileName + "` successfully.");
+            System.out.println("\nPostings written to `" + pathToPostingBin + "/" + postingFileName + "` successfully.");
 
         } catch(IOException e) {
-            throw new RuntimeException();
+            e.printStackTrace();
         }
 
         return bytePositions;

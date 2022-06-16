@@ -39,13 +39,9 @@ public class Application {
     }
 
     private static void startApplication() {
-        /* 1. At startup, ask the user for the name of a directory that they would like to index,
-          and construct a DirectoryCorpus from that directory. */
-        System.out.print("\nEnter the path of the directory corpus:\n >> ");
         Scanner in = new Scanner(System.in);
-        String directoryPath = in.nextLine().toLowerCase();
 
-        initializeComponents(Path.of(directoryPath));
+        buildOrQueryIndexMenu(in);
 
         System.out.printf("""
                 %nSpecial Commands:
@@ -59,19 +55,64 @@ public class Application {
         startQueryLoop(in);
     }
 
+    private static void buildOrQueryIndexMenu(Scanner in) {
+        System.out.printf("""
+                %nSelect an option:
+                1. Build a new index
+                2. Query a pre-built index
+                 >>\040""");
+
+        String input;
+        boolean isValidInput = false;
+
+        do {
+            input = in.nextLine();
+
+            /* 1. At startup, ask the user for the name of a directory that they would like to index,
+              and construct a DirectoryCorpus from that directory. */
+            switch (input) {
+                case "1" -> {
+                    System.out.print("\nEnter the path of the directory corpus:\n >> ");
+                    input = in.nextLine();
+                    initializeComponents(Path.of(input));
+                    isValidInput = true;
+                }
+                case "2" -> {
+                    System.out.print("\nEnter the path of the directory corpus:\n >> ");
+                    input = in.nextLine();
+                    readFromComponents(Path.of(input));
+                    isValidInput = true;
+                }
+                default -> System.out.print("Invalid input; please try again: ");
+            }
+        } while (!isValidInput);
+    }
+
     private static void initializeComponents(Path directoryPath) {
         corpus = DirectoryCorpus.loadDirectory(directoryPath);
         corpusIndex = indexCorpus(corpus);
 
-        String pathToPostingsBin = "./corpus/index";
-        List<Integer> bytePositions = DiskIndexWriter.writeIndex(corpusIndex, pathToPostingsBin);
+        // write the `posting.bin` using the corpus index
+        String indexDirectoryPath = directoryPath + "/index";
+        List<Integer> bytePositions = DiskIndexWriter.writeIndex(corpusIndex, indexDirectoryPath);
 
-        String pathToIndexFile = "./corpus/index/diskIndex";
-        DiskPositionalIndex diskIndex = new DiskPositionalIndex(pathToIndexFile, pathToPostingsBin);
+        // initialize the B+ tree
+        String pathToIndexFile = directoryPath + "/index/diskIndex";
+        DiskPositionalIndex diskIndex = new DiskPositionalIndex(pathToIndexFile, indexDirectoryPath);
 
-        // clear any pre-existing data within the tree and database
-        diskIndex.clearTree();
+        // overwrite the B+ tree using the corpus index vocabulary and byte positions of the `postings.bin` file
         diskIndex.writeBTree(corpusIndex.getVocabulary(), bytePositions);
+    }
+
+    private static void readFromComponents(Path directoryPath) {
+        corpus = DirectoryCorpus.loadDirectory(directoryPath);
+        // initialize the B+ tree using a pre-constructed index on disk
+        String pathToIndexFile = directoryPath + "/index/diskIndex";
+        String indexDirectoryPath = directoryPath + "/index";
+        DiskPositionalIndex diskIndex = new DiskPositionalIndex(pathToIndexFile, indexDirectoryPath);
+        
+        diskIndex.loadBTree();
+        corpusIndex = diskIndex;
     }
 
     public static Index<String, Posting> indexCorpus(DocumentCorpus corpus) {

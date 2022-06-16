@@ -53,10 +53,11 @@ public class DiskPositionalIndex implements Index<String, Posting> {
     }
 
     public void loadBTree() {
-        // after committing, save the record ID to a file, so we can load it later
+        // load the persisted database and record ID into the B+ Tree
+        database = (DBStore) DBMaker.openFile(indexFileName).make();
         String diskIndexRecId = directoryPath + "/diskIndexRecId.bin";
         File fileToWrite = new File(diskIndexRecId);
-        long bTreeRecId = 0;
+        long bTreeRecId;
 
         try (FileInputStream fileStream = new FileInputStream(fileToWrite);
              BufferedInputStream bufferStream = new BufferedInputStream(fileStream);

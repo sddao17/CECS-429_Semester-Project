@@ -21,7 +21,7 @@ public class DiskPositionalIndex implements Index<String, Posting> {
 
     public void writeBTree(List<String> vocabulary, List<Integer> bytePositions) {
         try {
-            database = (DBStore) DBMaker.openFile(indexFileName).make();
+            database = (DBStore) DBMaker.openFile(indexFileName).closeOnExit().make();
             bTree = BTree.createInstance(database);
 
             for (int i = 0; i < vocabulary.size(); ++i) {
@@ -45,7 +45,7 @@ public class DiskPositionalIndex implements Index<String, Posting> {
         try (FileOutputStream fileStream = new FileOutputStream(fileToWrite);
              BufferedOutputStream bufferStream = new BufferedOutputStream(fileStream);
              DataOutputStream dataStream = new DataOutputStream(bufferStream)) {
-            dataStream.writeLong(bTree.getRecid());
+            bTree.writeExternal(dataStream);
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -54,20 +54,24 @@ public class DiskPositionalIndex implements Index<String, Posting> {
 
     public void loadBTree() {
         // load the persisted database and record ID into the B+ Tree
-        database = (DBStore) DBMaker.openFile(indexFileName).make();
         String diskIndexRecId = directoryPath + "/diskIndexRecId.bin";
-        File fileToWrite = new File(diskIndexRecId);
+        File fileToRead = new File(diskIndexRecId);
         long bTreeRecId;
 
-        try (FileInputStream fileStream = new FileInputStream(fileToWrite);
+        try (FileInputStream fileStream = new FileInputStream(fileToRead);
              BufferedInputStream bufferStream = new BufferedInputStream(fileStream);
              DataInputStream dataStream = new DataInputStream(bufferStream)) {
-            bTreeRecId = dataStream.readLong();
-            bTree = BTree.load(database, bTreeRecId);
+            boolean readOnly = false;
+            boolean transactionDisabled = true;
+            boolean lockingDisabled = false;
+            database = new DBStore(indexFileName, readOnly, transactionDisabled, lockingDisabled);
+            bTree = BTree.readExternal(dataStream, (Serialization) database.defaultSerializer());
 
-        } catch (IOException e) {
+        } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
+
+        database.commit();
     }
 
     /**

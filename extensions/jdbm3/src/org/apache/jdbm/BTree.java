@@ -502,9 +502,9 @@ public class BTree<K, V> {
     }
 
 
-    static BTree readExternal(DataInput in, Serialization ser)
+    public static <K extends Comparable, V> BTree<K, V> readExternal(DataInput in, Serialization ser)
             throws IOException, ClassNotFoundException {
-        BTree tree = new BTree();
+        BTree<K, V> tree = new BTree<>();
         tree._db = ser.db;
         tree._height = in.readInt();
         tree._recid = in.readLong();

@@ -79,7 +79,7 @@ public class DiskIndexWriter {
             System.out.println("\nData written to `" + pathToPostingBin + "/" + postingFileName + "` successfully.");
 
         } catch(IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException();
         }
 
         return bytePositions;

@@ -13,7 +13,9 @@ import java.util.*;
 /**
  * Search engine term project for CECS-429.
  * Date: May 24, 2022
- * @author Caitlin Martinez, Miguel Zavala, Steven Dao
+ * @author Caitlin Martinez
+ * @author Miguel Zavala
+ * @author Steven Dao
  */
 public class Application {
 
@@ -65,8 +67,10 @@ public class Application {
         List<Integer> bytePositions = DiskIndexWriter.writeIndex(corpusIndex, pathToPostingsBin);
 
         String pathToIndexFile = "./corpus/index/diskIndex";
-        DiskPositionalIndex diskIndex = new DiskPositionalIndex(pathToIndexFile);
+        DiskPositionalIndex diskIndex = new DiskPositionalIndex(pathToIndexFile, pathToPostingsBin);
 
+        // clear any pre-existing data within the tree and database
+        diskIndex.clearTree();
         diskIndex.writeBTree(corpusIndex.getVocabulary(), bytePositions);
     }
 

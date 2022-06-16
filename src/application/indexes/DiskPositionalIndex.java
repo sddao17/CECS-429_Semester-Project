@@ -30,7 +30,6 @@ public class DiskPositionalIndex implements Index<String, Posting> {
 
                 // third param specifies whether to replace duplicate entries; this doesn't apply to our index
                 bTree.insert(currentTerm, currentBytePosition, true);
-                System.out.println(bTree + ": " + currentTerm + ", " + currentBytePosition);
             }
 
         } catch (IOException e) {
@@ -40,7 +39,7 @@ public class DiskPositionalIndex implements Index<String, Posting> {
         database.commit();
 
         // after committing, save the record ID to a file, so we can load it later
-        String diskIndexRecId = directoryPath + "/diskIndexRecId";
+        String diskIndexRecId = directoryPath + "/diskIndexRecId.bin";
         File fileToWrite = new File(diskIndexRecId);
 
         try (FileOutputStream fileStream = new FileOutputStream(fileToWrite);
@@ -55,7 +54,7 @@ public class DiskPositionalIndex implements Index<String, Posting> {
 
     public void loadBTree() {
         // after committing, save the record ID to a file, so we can load it later
-        String diskIndexRecId = directoryPath + "/diskIndexRecId";
+        String diskIndexRecId = directoryPath + "/diskIndexRecId.bin";
         File fileToWrite = new File(diskIndexRecId);
         long bTreeRecId = 0;
 

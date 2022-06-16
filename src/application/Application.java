@@ -110,7 +110,7 @@ public class Application {
         String pathToIndexFile = directoryPath + "/index/diskIndex";
         String indexDirectoryPath = directoryPath + "/index";
         DiskPositionalIndex diskIndex = new DiskPositionalIndex(pathToIndexFile, indexDirectoryPath);
-        
+
         diskIndex.loadBTree();
         corpusIndex = diskIndex;
     }

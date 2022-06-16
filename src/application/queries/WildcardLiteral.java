@@ -40,10 +40,10 @@ public class WildcardLiteral implements QueryComponent {
         kGramIndex.addToken(processedTerm, 3);
 
         List<String> candidateTokens = findCandidates(corpusKGramIndex, kGramIndex);
-        System.out.println("Candidate tokens: " + candidateTokens);
+        //System.out.println("Candidate types: " + candidateTokens);
 
         List<String> finalTokens = postFilter(candidateTokens, processedTerm);
-        System.out.println("Final tokens: " + finalTokens);
+        System.out.println("Final types: " + finalTokens);
 
         List<String> finalTerms = new ArrayList<>();
         for (String finalToken : finalTokens) {

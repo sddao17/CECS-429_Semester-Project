@@ -55,9 +55,12 @@ public class NotQuery implements QueryComponent {
 
         return difference;
     }
+
     @Override
     public String toString() {
-        return
-                String.join(" ", mComponents.stream().map(c -> c.toString()).collect(Collectors.toList()));
+        // Returns a string of the form "[SUBQUERY] + [SUBQUERY] + [SUBQUERY]"
+        return "(" +
+                String.join(" - ", mComponents.stream().map(c -> c.toString()).collect(Collectors.toList()))
+                + ")";
     }
 }

@@ -44,7 +44,7 @@ public class NotQuery implements QueryComponent {
                 ++leftIndex;
                 ++rightIndex;
             }
-            else if(leftDocumentId< rightDocumentId){
+            else if (leftDocumentId < rightDocumentId) {
                 difference.add(leftPosting);
                 ++leftIndex;
             }

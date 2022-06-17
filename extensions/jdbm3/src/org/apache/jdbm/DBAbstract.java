@@ -28,7 +28,7 @@ import java.util.concurrent.ConcurrentNavigableMap;
  * An abstract class implementing most of DB.
  * It also has some JDBM package protected stuff (getNamedRecord)
  */
-abstract class DBAbstract implements DB {
+public abstract class DBAbstract implements DB {
 
 
     /**

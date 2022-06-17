@@ -93,23 +93,24 @@ public class Application {
         corpusIndex = indexCorpus(corpus);
 
         // write the `posting.bin` using the corpus index
-        String indexDirectoryPath = directoryPath + "/index";
-        List<Integer> bytePositions = DiskIndexWriter.writeIndex(corpusIndex, indexDirectoryPath);
+        String pathToIndexDirectory = directoryPath + "/index";
+        List<Integer> bytePositions = DiskIndexWriter.writeIndex(corpusIndex, pathToIndexDirectory);
 
         // initialize the B+ tree
-        String pathToIndexFile = directoryPath + "/index/diskIndex";
-        DiskPositionalIndex diskIndex = new DiskPositionalIndex(pathToIndexFile, indexDirectoryPath);
+        String pathToIndexBin = directoryPath + "/index/diskIndex.bin";
+        DiskPositionalIndex diskIndex = new DiskPositionalIndex(pathToIndexBin, pathToIndexDirectory);
 
         // overwrite the B+ tree using the corpus index vocabulary and byte positions of the `postings.bin` file
-        diskIndex.writeBTree(corpusIndex.getVocabulary(), bytePositions);
+        diskIndex.writeIndexes(corpusIndex.getVocabulary(), bytePositions);
+        corpusIndex = diskIndex;
     }
 
     private static void readFromComponents(Path directoryPath) {
         corpus = DirectoryCorpus.loadDirectory(directoryPath);
         // initialize the B+ tree using a pre-constructed index on disk
-        String pathToIndexFile = directoryPath + "/index/diskIndex";
-        String indexDirectoryPath = directoryPath + "/index";
-        DiskPositionalIndex diskIndex = new DiskPositionalIndex(pathToIndexFile, indexDirectoryPath);
+        String pathToIndexBin = directoryPath + "/index/diskIndex.bin";
+        String pathToIndexDirectory = directoryPath + "/index";
+        DiskPositionalIndex diskIndex = new DiskPositionalIndex(pathToIndexBin, pathToIndexDirectory);
 
         diskIndex.loadBTree();
         corpusIndex = diskIndex;

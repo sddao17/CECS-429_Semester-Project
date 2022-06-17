@@ -34,14 +34,14 @@ public class PhraseLiteral implements QueryComponent {
 	public List<Posting> getPostings(Index<String, Posting> index, TokenProcessor processor) {
 		/* Program this method. Retrieve the postings for the individual terms in the phrase,
 		  and positional merge them together. */
-
 		// if the phrase only contains one component, simply return its postings
 		if (mComponents.size() == 1) {
 			return mComponents.get(0).getPostings(index, processor);
 		}
+
 		/* store posting-position1-position2 tuples where all the terms are sequentially in +1 positional order,
 		  beginning with the postings of the first term */
-		// Object[0], Object[1], Object[2] --> Posting, position1 (int), position2 (int)
+		// int[0], int[1], int[2] --> doc id, position1 (int), position2 (int)
 		List<int[]> positionalIntersects = new ArrayList<>();
 		int firstTermIntersects = 0;
 		int numOfIntersections = 0;

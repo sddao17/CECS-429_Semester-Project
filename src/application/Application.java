@@ -85,55 +85,55 @@ public class Application {
         System.out.print("\nEnter the path of the directory corpus:\n >> ");
         String directoryString = in.nextLine();
         Path directoryPath = Path.of(directoryString);
-
-        /* 2. Index all documents in the corpus to build a positional index.
-          Print to the screen how long (in seconds) this process takes. */
-        System.out.println("\nIndexing...");
-        long startTime = System.nanoTime();
+        corpus = DirectoryCorpus.loadDirectory(directoryPath);
 
         // depending on the user's input, either build the index from scratch or read from an on-disk index
         switch (input) {
             case "1" -> initializeComponents(directoryPath);
             case "2" -> readFromComponents(directoryPath);
         }
-
-        long endTime = System.nanoTime();
-        double elapsedTimeInSeconds = (double) (endTime - startTime) / 1_000_000_000;
-        System.out.printf("""
-                Indexing complete.
-                Time elapsed: %s seconds
-                
-                Found %s documents.
-                Distinct k-grams: %s
-                """, elapsedTimeInSeconds, corpus.getCorpusSize(), kGramIndex);
     }
 
     private static void initializeComponents(Path directoryPath) {
-        corpus = DirectoryCorpus.loadDirectory(directoryPath);
         corpusIndex = indexCorpus(corpus);
 
-        // write the `posting.bin` using the corpus index
+        System.out.println("\nWriting files to index directory...");
+        // write the `posting.bin` using the corpus index to disk
         String pathToIndexDirectory = directoryPath + "/index";
         List<Integer> bytePositions = DiskIndexWriter.writeIndex(corpusIndex, pathToIndexDirectory);
+        System.out.println("Postings written to `" + pathToIndexDirectory + "` successfully.");
 
-        // initialize the B+ tree and vocabulary list on disk
+        // write the B+ tree mappings of term -> byte positions to disk
         try (DiskPositionalIndex diskIndex = new DiskPositionalIndex(pathToIndexDirectory)) {
             // overwrite the B+ tree using the corpus index vocabulary and byte positions of the `postings.bin` file
             diskIndex.writeBTreeToDisk(corpusIndex.getVocabulary(), bytePositions);
         }
+        System.out.println("B+ Tree written to `" + pathToIndexDirectory + "` successfully.");
+
+        // after writing the components to disk, we can terminate the program
+        System.exit(0);
     }
 
     private static void readFromComponents(Path directoryPath) {
-        corpus = DirectoryCorpus.loadDirectory(directoryPath);
-        // initialize the B+ tree using a pre-constructed index on disk
-        String pathToIndexDirectory = directoryPath + "/index";
-        DiskPositionalIndex diskIndex = new DiskPositionalIndex(pathToIndexDirectory);
+        System.out.println("\nReading from the on-disk index...");
 
-        diskIndex.readBTreeFromDisk();
-        corpusIndex = diskIndex;
+        String pathToIndexDirectory = directoryPath + "/index";
+        // initialize the B+ tree using a pre-constructed index on disk
+        corpusIndex = new DiskPositionalIndex(pathToIndexDirectory);
+        ((DiskPositionalIndex) corpusIndex).readBTreeFromDisk();
+
+        System.out.printf("""
+                Reading complete.
+                %nFound %s documents.
+                Distinct k-grams: %s
+                """, corpus.getCorpusSize(), kGramIndex);
     }
 
     public static Index<String, Posting> indexCorpus(DocumentCorpus corpus) {
+        /* 2. Index all documents in the corpus to build a positional inverted index.
+          Print to the screen how long (in seconds) this process takes. */
+        System.out.println("\nIndexing...");
+        long startTime = System.nanoTime();
 
         kGramIndex = new KGramIndex();
         PositionalInvertedIndex index = new PositionalInvertedIndex();
@@ -165,6 +165,16 @@ public class Application {
                 ++currentPosition;
             }
         }
+
+        long endTime = System.nanoTime();
+        double timeElapsedInSeconds = (double) (endTime - startTime) / 1_000_000_000;
+        System.out.printf("""
+                Indexing complete.
+                Time elapsed: %s seconds
+                
+                Found %s documents.
+                Distinct k-grams: %s
+                """, timeElapsedInSeconds, corpus.getCorpusSize(), kGramIndex);
 
         return index;
     }

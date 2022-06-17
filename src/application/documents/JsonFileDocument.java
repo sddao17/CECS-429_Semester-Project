@@ -22,8 +22,11 @@ public class JsonFileDocument implements FileDocument, Comparable<Document> {
     public JsonFileDocument(int id, Path absoluteFilePath) {
         mDocumentId = id;
         mFilePath = absoluteFilePath;
-        documentTitle = absoluteFilePath.getFileName().toString();
 
+        readFile();
+    }
+
+    private void readFile() {
         // store a dedicated parser object that can read JSON files
         JSONParser parser = new JSONParser();
 

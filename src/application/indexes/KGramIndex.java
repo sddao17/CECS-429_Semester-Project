@@ -37,6 +37,16 @@ public class KGramIndex implements Index<String, String> {
     }
 
     @Override
+    public List<String> getPositionlessPostings(String term) {
+        // return an empty list if the term doesn't exist in the map
+        if (!kGramIndex.containsKey(term))
+            return new ArrayList<>();
+
+        // by default, k-grams do not store positions
+        return kGramIndex.get(term);
+    }
+
+    @Override
     public List<String> getVocabulary() {
         // remember to return a sorted vocabulary
         List<String> vocabulary = new ArrayList<>(kGramIndex.keySet().stream().toList());

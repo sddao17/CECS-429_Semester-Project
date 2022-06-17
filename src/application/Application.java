@@ -70,6 +70,7 @@ public class Application {
         String input;
         boolean isValidInput = false;
 
+        // simple input check
         do {
             input = in.nextLine();
 
@@ -254,7 +255,6 @@ public class Application {
         for (Posting posting : resultPostings) {
             int currentDocumentId = posting.getDocumentId();
 
-
             System.out.println("- " + corpus.getDocument(currentDocumentId).getTitle() +
                     " (ID: " + currentDocumentId + ")");
         }
@@ -267,6 +267,7 @@ public class Application {
         if (resultPostings.size() > 0) {
             System.out.print("Enter the document ID to view its contents (any other input to exit):\n >> ");
             String query = in.nextLine();
+
             // since error handling is not a priority requirement, use a try/catch for now
             try {
                 Document document = corpus.getDocument(Integer.parseInt(query));

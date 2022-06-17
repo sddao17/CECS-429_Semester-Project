@@ -42,29 +42,27 @@ public class DiskIndexWriter {
                 List<Posting> postings = index.getPostings(term);
                 // 2 (c, i). Write dft to the file as a 4-byte integer.
                 dataStream.writeInt(postings.size());
-
                 int latestDocumentId = 0;
 
                 // 2 (c, iii). For each posting:
                 for (Posting currentPosting : postings) {
                     // store values for readability
                     List<Integer> currentPositions = currentPosting.getPositions();
-                    int currentDocumentId = currentPosting.getDocumentId();
-                    latestDocumentId = currentDocumentId;
-                    int latestPosition = 0;
-
                     /* (2, iii, A). Write the posting's document ID as a 4-byte gap. (The first document in a list
                       is written as-is. All the rest are gaps from the previous value.) */
+                    int currentDocumentId = currentPosting.getDocumentId() - latestDocumentId;
                     dataStream.writeInt(currentDocumentId);
-
+                    latestDocumentId = currentDocumentId;
 
                     // (2, iii, B). Write tf(t,d) as a 4-byte integer.
                     dataStream.writeInt(currentPositions.size());
 
+                    int latestPosition = 0;
+
                     for (int currentPosition : currentPositions) {
                         /* (2, iii, C). Write the list of positions, each a 4-byte gap. (The first position
                           is written as-is. All the rest are gaps from the previous value.) */
-                        currentPosition = currentPosition;
+                        currentPosition = currentPosition - latestPosition;
                         dataStream.writeInt(currentPosition);
                         latestPosition = currentPosition;
 

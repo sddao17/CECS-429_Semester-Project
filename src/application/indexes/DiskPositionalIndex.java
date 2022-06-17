@@ -41,14 +41,12 @@ public class DiskPositionalIndex implements Index<String, Posting>, Closeable {
                 String currentTerm = vocabulary.get(i);
                 byte[] bytes = currentTerm.getBytes();
                 int currentBytesLength = bytes.length;
+                int currentBytePosition = bytePositions.get(i);
 
+                // write the byte length, followed by the bytes themselves, then the byte position
                 dataStream.writeInt(currentBytesLength);
                 dataStream.write(bytes);
-
-                // since the byte positions are in ascending order, we can write them as gaps
-                int currentBytePosition = bytePositions.get(i);
                 dataStream.writeInt(currentBytePosition);
-
                 bTree.insert(currentTerm, currentBytePosition, false);
             }
 
@@ -66,7 +64,6 @@ public class DiskPositionalIndex implements Index<String, Posting>, Closeable {
              DataInputStream dataStream = new DataInputStream(bufferStream)) {
             // write the total size of the vocabulary
             int vocabularySize = dataStream.readInt();
-            int latestBytePosition = 0;
 
             // traverse through the vocabulary terms
             for (int i = 0; i < vocabularySize; ++i) {
@@ -79,9 +76,8 @@ public class DiskPositionalIndex implements Index<String, Posting>, Closeable {
                     term.append((char) dataStream.read());
                 }
 
-                // since the byte positions are originally in ascending order, store the next byte position as a gap
+                // insert the byte position associated with the term
                 int currentBytePosition = dataStream.readInt();
-
                 bTree.insert(term.toString(), currentBytePosition, false);
             }
 
@@ -112,16 +108,16 @@ public class DiskPositionalIndex implements Index<String, Posting>, Closeable {
             for (int i = 0; i < postingsSize; ++i) {
                 ArrayList<Integer> positions = new ArrayList<>();
                 // first document ID is as-is; the rest are gaps
-                int currentDocumentId = randomAccessPosting.readInt();
-                latestDocumentId = currentDocumentId;
+                int currentDocumentId = randomAccessPosting.readInt() + latestDocumentId;
+                latestDocumentId = currentDocumentId - latestDocumentId;
                 int positionsSize = randomAccessPosting.readInt();
                 int latestPosition = 0;
 
                 for (int j = 0; j < positionsSize; ++j) {
-                    int currentPosition = randomAccessPosting.readInt();
-                    latestPosition = currentPosition;
-
+                    // first position is as-is; the rest are gaps
+                    int currentPosition = randomAccessPosting.readInt() + latestPosition;
                     positions.add(currentPosition);
+                    latestPosition = currentPosition - latestPosition;
                 }
                 Posting newPosting = new Posting(currentDocumentId, positions);
                 resultPostings.add(newPosting);
@@ -142,6 +138,7 @@ public class DiskPositionalIndex implements Index<String, Posting>, Closeable {
      * @param term the term to find postings for
      * @return the term's list of postings excluding positions.
      */
+    @Override
     public List<Posting> getPositionlessPostings(String term) {
         List<Posting> resultPostings = new ArrayList<>();
 
@@ -156,16 +153,20 @@ public class DiskPositionalIndex implements Index<String, Posting>, Closeable {
 
             // iterate through all postings for the term
             for (int i = 0; i < postingsSize; ++i) {
-                int currentDocumentId = randomAccessPosting.readInt();
-                latestDocumentId = currentDocumentId;
                 // first document ID is as-is; the rest are gaps
-                Posting newPosting = new Posting(currentDocumentId, new ArrayList<>());
+                int currentDocumentId = randomAccessPosting.readInt() + latestDocumentId;
+                latestDocumentId = currentDocumentId - latestDocumentId;
 
+                // ignore reading the positions and only add the document ID
+                Posting newPosting = new Posting(currentDocumentId, new ArrayList<>());
                 resultPostings.add(newPosting);
             }
 
         } catch (IOException e) {
-            throw new RuntimeException();
+            e.printStackTrace();
+        } catch (NullPointerException e) {
+            // bTree.get(term) returning null means that the term does not exist in the vocabulary
+            return new ArrayList<>();
         }
 
         return resultPostings;
@@ -183,7 +184,7 @@ public class DiskPositionalIndex implements Index<String, Posting>, Closeable {
 
             // traverse through the vocabulary terms
             for (int i = 0; i < vocabularySize; ++i) {
-                // read each String byte length as a gap
+                // read each String byte length normally
                 int currentBytesLength = dataStream.readInt();
                 StringBuilder term = new StringBuilder();
 

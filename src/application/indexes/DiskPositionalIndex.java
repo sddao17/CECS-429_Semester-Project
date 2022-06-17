@@ -7,84 +7,83 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DiskPositionalIndex implements Index<String, Posting> {
+public class DiskPositionalIndex implements Index<String, Posting>, Closeable {
 
-    private DBStore database;
+    private final DB database;
     private BTree<String, Integer> bTree;
-    private final String pathToIndexBin;
-    private final String pathToIndexDirectory;
-    private final String pathToVocabList;
+    private final String pathToVocabTableBin;   // the path to the B+ Tree mappings of terms -> byte positions
+    private final String pathToPostingsBin;   // the path to the `postings.bin` files
+    private RandomAccessFile randomAccessVocabTable;    // keep the file open until the program ends, then close it
+    private RandomAccessFile randomAccessPosting;    // keep the file open until the program ends, then close it
 
-    public DiskPositionalIndex(String newPathToIndexBin, String newDirectoryPath) {
-        pathToIndexBin = newPathToIndexBin;
-        pathToIndexDirectory = newDirectoryPath;
-        pathToVocabList = newDirectoryPath + "/vocabList.bin";
-    }
+    public DiskPositionalIndex(String newDirectoryPath) {
+        // the directory of the indexes on disk
+        pathToVocabTableBin = newDirectoryPath + "/vocabTable.bin";
+        pathToPostingsBin = newDirectoryPath + "/postings.bin";
+        database = DBMaker.openFile(newDirectoryPath + "/db").deleteFilesAfterClose().closeOnExit().make();
 
-    public void writeIndexes(List<String> vocabulary, List<Integer> bytePositions) {
-        writeVocabList(vocabulary);
-        writeBTree(vocabulary, bytePositions);
-    }
-
-    public void writeVocabList(List<String> vocabulary) {
-        File fileToWrite = new File(pathToVocabList);
-
-        try (FileOutputStream fileStream = new FileOutputStream(fileToWrite);
-             BufferedOutputStream bufferStream = new BufferedOutputStream(fileStream);
-             DataOutputStream dataStream = new DataOutputStream(bufferStream)) {
-            // write the total size of the vocabulary
-            dataStream.writeInt(vocabulary.size());
-            int latestBytesLength = 0;
-
-            // traverse through the vocabulary terms
-            for (String term : vocabulary) {
-                // store values for readability
-                byte[] bytes = term.getBytes();
-                int currentBytesLength = bytes.length;
-                // write each String byte length as a gap
-                dataStream.writeInt(currentBytesLength - latestBytesLength);
-                latestBytesLength = currentBytesLength;
-
-                dataStream.write(bytes);
-            }
-
+        try {
+            bTree = BTree.createInstance((DBAbstract) database);
+            // read from the `vocabTable.bin` file and extract the postings from each term
+            randomAccessVocabTable = new RandomAccessFile(pathToVocabTableBin, "rw");
+            randomAccessPosting = new RandomAccessFile(pathToPostingsBin, "r");
         } catch(IOException e) {
             e.printStackTrace();
         }
     }
 
-    public void writeBTree(List<String> vocabulary, List<Integer> bytePositions) {
+    public void writeBTreeToDisk(List<String> vocabulary, List<Integer> bytePositions) {
         try {
-            database = (DBStore) DBMaker.openFile(pathToIndexBin).closeOnExit().make();
-            bTree = BTree.createInstance(database);
+            // write to a `vocabTable.bin` file and store the byte positions for each term
+            randomAccessVocabTable = new RandomAccessFile(pathToVocabTableBin, "rw");
+            // write the size of the vocabulary as the first 4 bytes
+            randomAccessVocabTable.writeInt(vocabulary.size());
 
             for (int i = 0; i < vocabulary.size(); ++i) {
                 String currentTerm = vocabulary.get(i);
-                int currentBytePosition = bytePositions.get(i);
+                byte[] bytes = currentTerm.getBytes();
+                int currentBytesLength = bytes.length;
 
-                // third param specifies whether to replace duplicate entries; this doesn't apply to our index
+                randomAccessVocabTable.writeInt(currentBytesLength);
+                randomAccessVocabTable.write(bytes);
+
+                // since the byte positions are in ascending order, we can write them as gaps
+                int currentBytePosition = bytePositions.get(i);
+                randomAccessVocabTable.writeInt(currentBytePosition);
+
                 bTree.insert(currentTerm, currentBytePosition, false);
             }
 
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-        database.commit();
-
-        System.out.println(database.calculateStatistics());
     }
 
-    public void loadBTree() {
-        // load the persisted database and record ID into the B+ Tree
+    public void readBTreeFromDisk() {
+        // load the persisted index into the B+ Tree
         try {
-            database = new DBStore(pathToIndexBin, false, true, true);
-            System.out.println(database.getCollections());
-            bTree = BTree.load(database, bTree.getRecid());
+            // write the total size of the vocabulary
+            int vocabularySize = randomAccessVocabTable.readInt();
+            int latestBytePosition = 0;
 
-            System.out.println(database.calculateStatistics());
+            // traverse through the vocabulary terms
+            for (int i = 0; i < vocabularySize; ++i) {
+                // read each String byte length normally
+                int currentBytesLength = randomAccessVocabTable.readInt();
+                StringBuilder term = new StringBuilder();
 
-        } catch(IOException e) {
+                // convert each byte to a character and build to our original term
+                for (int j = 0; j < currentBytesLength; ++j) {
+                    term.append((char) randomAccessVocabTable.read());
+                }
+
+                // since the byte positions are originally in ascending order, store the next byte position as a gap
+                int currentBytePosition = randomAccessVocabTable.readInt();
+
+                bTree.insert(term.toString(), currentBytePosition, false);
+            }
+
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
@@ -97,46 +96,40 @@ public class DiskPositionalIndex implements Index<String, Posting> {
     @Override
     public List<Posting> getPostings(String term) {
         List<Posting> resultPostings = new ArrayList<>();
-        String pathToPostingsBin = pathToIndexDirectory + "/postings.bin";
-        File fileToRead = new File(pathToPostingsBin);
 
-        try (FileInputStream fileStream = new FileInputStream(fileToRead);
-             BufferedInputStream bufferStream = new BufferedInputStream(fileStream);
-             DataInputStream dataStream = new DataInputStream(bufferStream)) {
+        try {
             // retrieve the byte position value for the term key within the B+ Tree
             int bytePosition = bTree.get(term);
-            System.out.println(term + " --> " + bytePosition);
             // jump to the offset containing the term's postings
-            dataStream.skipBytes(bytePosition);
+            randomAccessPosting.seek(bytePosition);
             // the current int value at the offset is the size of the postings list
-            int postingsSize = dataStream.readInt();
+            int postingsSize = randomAccessPosting.readInt();
             int latestDocumentId = 0;
 
             // iterate through all postings for the term
             for (int i = 0; i < postingsSize; ++i) {
-                ArrayList<Integer> positionsList = new ArrayList<>();
-                // after df(t) is doc id, then tf(t, d)
-                int currentDocumentId = dataStream.readInt();
-                int positionsSize = dataStream.readInt();
+                ArrayList<Integer> positions = new ArrayList<>();
+                // first document ID is as-is; the rest are gaps
+                int currentDocumentId = randomAccessPosting.readInt();
+                latestDocumentId = currentDocumentId;
+                int positionsSize = randomAccessPosting.readInt();
                 int latestPosition = 0;
 
                 for (int j = 0; j < positionsSize; ++j) {
-                    int currentPosition = dataStream.readInt();
-
-                    // the first position is as-is; the rest are gaps
-                    positionsList.add(currentPosition + latestPosition);
+                    int currentPosition = randomAccessPosting.readInt();
                     latestPosition = currentPosition;
+
+                    positions.add(currentPosition);
                 }
-
-                // the first document ID is as-is; the rest are gaps
-                Posting newPosting = new Posting(currentDocumentId + latestDocumentId, positionsList);
-
+                Posting newPosting = new Posting(currentDocumentId, positions);
                 resultPostings.add(newPosting);
-                latestDocumentId = currentDocumentId;
             }
 
         } catch (IOException e) {
             e.printStackTrace();
+        } catch (NullPointerException e) {
+            // bTree.get(term) returning null means that the term does not exist in the vocabulary
+            return new ArrayList<>();
         }
 
         return resultPostings;
@@ -149,28 +142,24 @@ public class DiskPositionalIndex implements Index<String, Posting> {
      */
     public List<Posting> getPositionlessPostings(String term) {
         List<Posting> resultPostings = new ArrayList<>();
-        String pathToPostingsBin = pathToIndexDirectory + "/postings.bin";
-        File fileToRead = new File(pathToPostingsBin);
 
-        try (FileInputStream fileStream = new FileInputStream(fileToRead);
-             BufferedInputStream bufferStream = new BufferedInputStream(fileStream);
-             DataInputStream dataStream = new DataInputStream(bufferStream)) {
+        try {
             // retrieve the byte position value for the term key within the B+ Tree
             int bytePosition = bTree.get(term);
             // jump to the offset containing the term's postings
-            dataStream.skipBytes(bytePosition);
+            randomAccessPosting.skipBytes(bytePosition);
             // the current int value at the offset is the size of the postings list
-            int postingsSize = dataStream.readInt();
+            int postingsSize = randomAccessPosting.readInt();
             int latestDocumentId = 0;
 
             // iterate through all postings for the term
             for (int i = 0; i < postingsSize; ++i) {
-                int currentDocumentId = dataStream.readInt();
+                int currentDocumentId = randomAccessPosting.readInt();
+                latestDocumentId = currentDocumentId;
                 // first document ID is as-is; the rest are gaps
-                Posting newPosting = new Posting(currentDocumentId + latestDocumentId, new ArrayList<>());
+                Posting newPosting = new Posting(currentDocumentId, new ArrayList<>());
 
                 resultPostings.add(newPosting);
-                latestDocumentId = currentDocumentId;
             }
 
         } catch (IOException e) {
@@ -183,36 +172,44 @@ public class DiskPositionalIndex implements Index<String, Posting> {
     @Override
     public List<String> getVocabulary() {
         List<String> vocabulary = new ArrayList<>();
-        File fileToRead = new File(pathToVocabList);
 
-        // read from the `vocabList.bin` file and extract the bytes from each term
-        try (FileInputStream fileStream = new FileInputStream(fileToRead);
-             BufferedInputStream bufferStream = new BufferedInputStream(fileStream);
-             DataInputStream dataStream = new DataInputStream(bufferStream)) {
+        try {
             // write the total size of the vocabulary
-            int vocabularySize = dataStream.readInt();
-            int latestBytesLength = 0;
+            int vocabularySize = randomAccessPosting.readInt();
 
             // traverse through the vocabulary terms
             for (int i = 0; i < vocabularySize; ++i) {
                 // read each String byte length as a gap
-                int currentBytesLength = dataStream.readInt() + latestBytesLength;
-                latestBytesLength = currentBytesLength;
+                int currentBytesLength = randomAccessPosting.readInt();
                 StringBuilder term = new StringBuilder();
 
                 // convert each byte to a character and build to our original term
                 for (int j = 0; j < currentBytesLength; ++j) {
-                    term.append((char) dataStream.readByte());
+                    term.append((char) randomAccessPosting.readByte());
                 }
 
                 vocabulary.add(term.toString());
+
+                // after reading the term bytes, skip the next byte position since we only need the vocabulary
+                randomAccessPosting.skipBytes(4);
             }
 
-        } catch(IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
 
         // vocabulary should already be sorted
         return vocabulary;
+    }
+
+    @Override
+    public void close() {
+        try {
+            randomAccessVocabTable.close();
+            randomAccessPosting.close();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

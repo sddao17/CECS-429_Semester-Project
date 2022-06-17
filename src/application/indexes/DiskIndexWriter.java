@@ -46,37 +46,32 @@ public class DiskIndexWriter {
                 int latestDocumentId = 0;
 
                 // 2 (c, iii). For each posting:
-                for (int i = 0; i < postings.size(); ++i) {
+                for (Posting currentPosting : postings) {
                     // store values for readability
-                    Posting currentPosting = postings.get(i);
                     List<Integer> currentPositions = currentPosting.getPositions();
                     int currentDocumentId = currentPosting.getDocumentId();
+                    latestDocumentId = currentDocumentId;
                     int latestPosition = 0;
 
                     /* (2, iii, A). Write the posting's document ID as a 4-byte gap. (The first document in a list
                       is written as-is. All the rest are gaps from the previous value.) */
-                    int gap = currentDocumentId - latestDocumentId;
-                    dataStream.writeInt(gap);
-                    latestDocumentId = gap;
+                    dataStream.writeInt(currentDocumentId);
 
 
                     // (2, iii, B). Write tf(t,d) as a 4-byte integer.
                     dataStream.writeInt(currentPositions.size());
 
-                    for (int j = 0; j < currentPositions.size(); ++j) {
-                        int currentPosition = currentPositions.get(j);
-
+                    for (int currentPosition : currentPositions) {
                         /* (2, iii, C). Write the list of positions, each a 4-byte gap. (The first position
                           is written as-is. All the rest are gaps from the previous value.) */
-                        gap = currentPosition - latestPosition;
-                        dataStream.writeInt(gap);
-                        latestPosition = gap;
+                        currentPosition = currentPosition;
+                        dataStream.writeInt(currentPosition);
+                        latestPosition = currentPosition;
 
                     }
                 }
                 // (2, iv). Repeat for each term in the vocabulary.
             }
-            System.out.println("\nPostings written to `" + pathToPostingBin + "/" + postingFileName + "` successfully.");
 
         } catch(IOException e) {
             e.printStackTrace();

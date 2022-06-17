@@ -17,11 +17,28 @@ public class JsonFileDocument implements FileDocument, Comparable<Document> {
     private final int mDocumentId;
     private final Path mFilePath;
     private String documentTitle;
+    private StringReader content;
 
     public JsonFileDocument(int id, Path absoluteFilePath) {
         mDocumentId = id;
         mFilePath = absoluteFilePath;
         documentTitle = absoluteFilePath.getFileName().toString();
+
+        // store a dedicated parser object that can read JSON files
+        JSONParser parser = new JSONParser();
+
+        try {
+            // use the parser to extract the JSON file at the given path and store it as an object
+            Object obj = parser.parse(Files.newBufferedReader(mFilePath));
+            JSONObject jsonObject = (JSONObject) obj;
+
+            // using its accessor method, convert the JSON object's fields to a String/StringReader
+            documentTitle = (String) jsonObject.get("title");
+            content = new StringReader((String) jsonObject.get("body"));
+
+        } catch (IOException | ParseException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -36,21 +53,7 @@ public class JsonFileDocument implements FileDocument, Comparable<Document> {
 
     @Override
     public Reader getContent() {
-        // store a dedicated parser object that can read JSON files
-        JSONParser parser = new JSONParser();
-
-        try {
-            // use the parser to extract the JSON file at the given path and store it as an object
-            Object obj = parser.parse(Files.newBufferedReader(mFilePath));
-            JSONObject jsonObject = (JSONObject) obj;
-
-            // using its accessor method, convert the JSON object's fields to a String/StringReader
-            documentTitle = (String) jsonObject.get("title");
-            return new StringReader((String) jsonObject.get("body"));
-
-        } catch (IOException | ParseException e) {
-            throw new RuntimeException(e);
-        }
+        return content;
     }
 
     @Override

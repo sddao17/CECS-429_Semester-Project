@@ -27,13 +27,13 @@ public class TermLiteral implements QueryComponent {
 	public List<Posting> getPostings(Index<String, Posting> index, TokenProcessor processor) {
 		// Somehow incorporate a TokenProcessor into the getPostings call sequence.
 		List<String> processedTerms = processor.processToken(mTerm);
-		List<Posting> resultPostings = new ArrayList<>();
 
-		for (String processedTerm : processedTerms) {
-			resultPostings.addAll(index.getPostings(processedTerm));
+		// return the first element if it exists
+		if (processedTerms.size() > 0) {
+			return new ArrayList<>(index.getPostings(processedTerms.get(0)));
+		} else {
+			return new ArrayList<>();
 		}
-
-		return resultPostings;
 	}
 
 	@Override

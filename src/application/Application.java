@@ -53,6 +53,11 @@ public class Application {
                 """, VOCABULARY_PRINT_SIZE);
 
         startQueryLoop(in);
+
+        // if the index was on-disk, close open file resources
+        if (corpusIndex instanceof DiskPositionalIndex) {
+            ((DiskPositionalIndex) corpusIndex).close();
+        }
     }
 
     private static void buildOrQueryIndexMenu(Scanner in) {
@@ -60,7 +65,7 @@ public class Application {
                 %nSelect an option:
                 1. Build a new index
                 2. Query a pre-built index
-                 >>\040""");
+                %n >>\040""");
 
         String input;
         boolean isValidInput = false;
@@ -68,24 +73,39 @@ public class Application {
         do {
             input = in.nextLine();
 
-            /* 1. At startup, ask the user for the name of a directory that they would like to index,
-              and construct a DirectoryCorpus from that directory. */
-            switch (input) {
-                case "1" -> {
-                    System.out.print("\nEnter the path of the directory corpus:\n >> ");
-                    input = in.nextLine();
-                    initializeComponents(Path.of(input));
-                    isValidInput = true;
-                }
-                case "2" -> {
-                    System.out.print("\nEnter the path of the directory corpus:\n >> ");
-                    input = in.nextLine();
-                    readFromComponents(Path.of(input));
-                    isValidInput = true;
-                }
-                default -> System.out.print("Invalid input; please try again: ");
+            if (input.equals("1") || input.equals("2")) {
+                isValidInput = true;
+            } else {
+                System.out.print("Invalid input; please try again: ");
             }
         } while (!isValidInput);
+
+        /* 1. At startup, ask the user for the name of a directory that they would like to index,
+          and construct a DirectoryCorpus from that directory. */
+        System.out.print("\nEnter the path of the directory corpus:\n >> ");
+        String directoryString = in.nextLine();
+        Path directoryPath = Path.of(directoryString);
+
+        /* 2. Index all documents in the corpus to build a positional index.
+          Print to the screen how long (in seconds) this process takes. */
+        System.out.println("\nIndexing...");
+        long startTime = System.nanoTime();
+
+        // depending on the user's input, either build the index from scratch or read from an on-disk index
+        switch (input) {
+            case "1" -> initializeComponents(directoryPath);
+            case "2" -> readFromComponents(directoryPath);
+        }
+
+        long endTime = System.nanoTime();
+        double elapsedTimeInSeconds = (double) (endTime - startTime) / 1_000_000_000;
+        System.out.printf("""
+                Indexing complete.
+                Time elapsed: %s seconds
+                
+                Found %s documents.
+                Distinct k-grams: %s
+                """, elapsedTimeInSeconds, corpus.getCorpusSize(), kGramIndex);
     }
 
     private static void initializeComponents(Path directoryPath) {
@@ -96,31 +116,24 @@ public class Application {
         String pathToIndexDirectory = directoryPath + "/index";
         List<Integer> bytePositions = DiskIndexWriter.writeIndex(corpusIndex, pathToIndexDirectory);
 
-        // initialize the B+ tree
-        String pathToIndexBin = directoryPath + "/index/diskIndex.bin";
-        DiskPositionalIndex diskIndex = new DiskPositionalIndex(pathToIndexBin, pathToIndexDirectory);
-
-        // overwrite the B+ tree using the corpus index vocabulary and byte positions of the `postings.bin` file
-        diskIndex.writeIndexes(corpusIndex.getVocabulary(), bytePositions);
-        corpusIndex = diskIndex;
+        // initialize the B+ tree and vocabulary list on disk
+        try (DiskPositionalIndex diskIndex = new DiskPositionalIndex(pathToIndexDirectory)) {
+            // overwrite the B+ tree using the corpus index vocabulary and byte positions of the `postings.bin` file
+            diskIndex.writeBTreeToDisk(corpusIndex.getVocabulary(), bytePositions);
+        }
     }
 
     private static void readFromComponents(Path directoryPath) {
         corpus = DirectoryCorpus.loadDirectory(directoryPath);
         // initialize the B+ tree using a pre-constructed index on disk
-        String pathToIndexBin = directoryPath + "/index/diskIndex.bin";
         String pathToIndexDirectory = directoryPath + "/index";
-        DiskPositionalIndex diskIndex = new DiskPositionalIndex(pathToIndexBin, pathToIndexDirectory);
+        DiskPositionalIndex diskIndex = new DiskPositionalIndex(pathToIndexDirectory);
 
-        diskIndex.loadBTree();
+        diskIndex.readBTreeFromDisk();
         corpusIndex = diskIndex;
     }
 
     public static Index<String, Posting> indexCorpus(DocumentCorpus corpus) {
-        /* 2. Index all documents in the corpus to build a positional inverted index.
-          Print to the screen how long (in seconds) this process takes. */
-        System.out.println("\nIndexing...");
-        long startTime = System.nanoTime();
 
         kGramIndex = new KGramIndex();
         PositionalInvertedIndex index = new PositionalInvertedIndex();
@@ -152,12 +165,6 @@ public class Application {
                 ++currentPosition;
             }
         }
-
-        long endTime = System.nanoTime();
-        double elapsedTimeInSeconds = (double) (endTime - startTime) / 1_000_000_000;
-        System.out.println("Indexing complete." +
-                "\nDistinct k-grams: " + kGramIndex.getDistinctKGrams().size() +
-                "\nTime elapsed: " + elapsedTimeInSeconds + " seconds");
 
         return index;
     }
@@ -236,6 +243,7 @@ public class Application {
         // 3(a, ii, A). Output the names of the documents returned from the query, one per line.
         for (Posting posting : resultPostings) {
             int currentDocumentId = posting.getDocumentId();
+
 
             System.out.println("- " + corpus.getDocument(currentDocumentId).getTitle() +
                     " (ID: " + currentDocumentId + ")");

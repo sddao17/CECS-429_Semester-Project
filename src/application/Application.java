@@ -105,10 +105,8 @@ public class Application {
         System.out.println("Postings written to `" + pathToIndexDirectory + "` successfully.");
 
         // write the B+ tree mappings of term -> byte positions to disk
-        try (DiskPositionalIndex diskIndex = new DiskPositionalIndex(pathToIndexDirectory)) {
-            // overwrite the B+ tree using the corpus index vocabulary and byte positions of the `postings.bin` file
-            diskIndex.writeBTreeToDisk(corpusIndex.getVocabulary(), bytePositions);
-        }
+        String pathToBTreeBin = pathToIndexDirectory + "/bTree.bin";
+        DiskIndexWriter.writeBTree(pathToBTreeBin, corpusIndex.getVocabulary(), bytePositions);
         System.out.println("B+ Tree written to `" + pathToIndexDirectory + "` successfully.");
 
         // after writing the components to disk, we can terminate the program

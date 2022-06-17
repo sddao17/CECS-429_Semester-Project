@@ -29,34 +29,6 @@ public class DiskPositionalIndex implements Index<String, Posting>, Closeable {
         }
     }
 
-    public void writeBTreeToDisk(List<String> vocabulary, List<Integer> bytePositions) {
-        // overwrite any existing files
-        try (FileOutputStream fileStream = new FileOutputStream(pathToBTreeBin, false);
-            BufferedOutputStream bufferStream = new BufferedOutputStream(fileStream);
-            DataOutputStream dataStream = new DataOutputStream(bufferStream)) {
-            // write the size of the vocabulary as the first 4 bytes
-            dataStream.writeInt(vocabulary.size());
-
-            for (int i = 0; i < vocabulary.size(); ++i) {
-                String currentTerm = vocabulary.get(i);
-                byte[] bytes = currentTerm.getBytes();
-                int currentBytesLength = bytes.length;
-                int currentBytePosition = bytePositions.get(i);
-
-                // write the byte length, followed by the bytes themselves, then the byte position
-                dataStream.writeInt(currentBytesLength);
-                dataStream.write(bytes);
-                dataStream.writeInt(currentBytePosition);
-                bTree.insert(currentTerm, currentBytePosition, false);
-            }
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        database.commit();
-    }
-
     public void readBTreeFromDisk() {
         // load the persisted index into the B+ Tree
         try (FileInputStream fileStream = new FileInputStream(pathToBTreeBin);

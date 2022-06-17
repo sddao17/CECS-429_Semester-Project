@@ -8,7 +8,7 @@ import java.util.List;
 public class DiskIndexWriter {
 
     /**
-     * 2. Create a class DiskIndexWriter with a single method writeIndex. You should pass your index
+     * 2. Create a class DiskIndexWriter with a method writeIndex. You should pass your index
      * variable, as well as the absolute path to save the postings file.
      */
     public static List<Integer> writeIndex(Index<String, Posting> index, String pathToPostingBin) {
@@ -76,5 +76,30 @@ public class DiskIndexWriter {
         }
 
         return bytePositions;
+    }
+
+    public static void writeBTree(String pathToBTreeBin, List<String> vocabulary, List<Integer> bytePositions) {
+        // overwrite any existing files
+        try (FileOutputStream fileStream = new FileOutputStream(pathToBTreeBin, false);
+             BufferedOutputStream bufferStream = new BufferedOutputStream(fileStream);
+             DataOutputStream dataStream = new DataOutputStream(bufferStream)) {
+            // write the size of the vocabulary as the first 4 bytes
+            dataStream.writeInt(vocabulary.size());
+
+            for (int i = 0; i < vocabulary.size(); ++i) {
+                String currentTerm = vocabulary.get(i);
+                byte[] bytes = currentTerm.getBytes();
+                int currentBytesLength = bytes.length;
+                int currentBytePosition = bytePositions.get(i);
+
+                // write the byte length, followed by the bytes themselves, then the byte position
+                dataStream.writeInt(currentBytesLength);
+                dataStream.write(bytes);
+                dataStream.writeInt(currentBytePosition);
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

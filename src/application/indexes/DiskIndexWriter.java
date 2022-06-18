@@ -8,6 +8,20 @@ import java.util.Set;
 
 public class DiskIndexWriter {
 
+    public static RandomAccessFile randomAccessor;
+
+    public static void setNewRandomAccessor(String pathToFile) {
+        // create a new file
+        File newFile = new File(pathToFile);
+        newFile.delete();
+        try {
+            DiskIndexWriter.randomAccessor = new RandomAccessFile(newFile, "rw");
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
     /**
      * 2. Create a class DiskIndexWriter with a method writeIndex. You should pass your index
      * variable, as well as the absolute path to save the postings file.
@@ -154,6 +168,16 @@ public class DiskIndexWriter {
                 dataStream.writeInt(currentBytesLength);
                 dataStream.write(bytes);
             }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void writeLdToBinFile(int docId, double ld) {
+        try {
+            randomAccessor.seek((long) docId * Double.SIZE);
+            randomAccessor.writeDouble(ld);
 
         } catch (IOException e) {
             e.printStackTrace();

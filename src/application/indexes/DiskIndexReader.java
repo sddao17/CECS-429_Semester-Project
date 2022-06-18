@@ -6,10 +6,7 @@ import org.apache.jdbm.DB;
 import org.apache.jdbm.DBMaker;
 import org.apache.jdbm.DBStore;
 
-import java.io.BufferedInputStream;
-import java.io.DataInputStream;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -56,7 +53,7 @@ public class DiskIndexReader {
         return bTree;
     }
 
-    public static KGramIndex readKGramsFromDisk(String pathToKGramsBin) {
+    public static KGramIndex readKGrams(String pathToKGramsBin) {
         KGramIndex kgramIndex = new KGramIndex();
         // overwrite any existing files
         try (FileInputStream fileStream = new FileInputStream(pathToKGramsBin);
@@ -118,5 +115,20 @@ public class DiskIndexReader {
         }
 
         return kgramIndex;
+    }
+
+    public static double readLdFromBinFile(RandomAccessFile randomAccessor, int documentId) {
+        int bytePosition = documentId * Double.BYTES;
+        double documentWeight = 0;
+
+        try {
+            randomAccessor.seek(bytePosition);
+            documentWeight = randomAccessor.readDouble();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return documentWeight;
     }
 }

@@ -7,6 +7,9 @@ import application.indexes.*;
 import application.queries.*;
 import application.text.*;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.RandomAccessFile;
 import java.nio.file.Path;
 import java.util.*;
 
@@ -23,6 +26,7 @@ public class Application {
     private static final String POSTINGS_FILE_SUFFIX = "/postings.bin";
     private static final String BTREE_FILE_SUFFIX = "/bTree.bin";
     private static final String KGRAMS_FILE_SUFFIX = "/kGrams.bin";
+    private static final String DOC_WEIGHTS_FILE_SUFFIX = "/docWeights.bin";
     private static final int VOCABULARY_PRINT_SIZE = 1_000; // number of vocabulary terms to print
     private static DirectoryCorpus corpus;  // we need only one of each corpus and index active at a time,
     private static Index<String, Posting> corpusIndex;  // and multiple methods need access to them
@@ -106,8 +110,9 @@ public class Application {
         String pathToPostingsBin = pathToIndexDirectory + POSTINGS_FILE_SUFFIX;
         String pathToBTreeBin = pathToIndexDirectory + BTREE_FILE_SUFFIX;
         String pathToKGramsBin = pathToIndexDirectory + KGRAMS_FILE_SUFFIX;
+        String pathToDocWeightsBin = pathToIndexDirectory + DOC_WEIGHTS_FILE_SUFFIX;
 
-        corpusIndex = indexCorpus(corpus);
+        corpusIndex = indexCorpus(corpus, pathToDocWeightsBin);
 
         System.out.println("\nWriting files to index directory...");
         // write the `posting.bin` using the corpus index to disk
@@ -132,14 +137,13 @@ public class Application {
         String pathToBTreeBin = pathToIndexDirectory + BTREE_FILE_SUFFIX;
         String pathToKGramsBin = pathToIndexDirectory + KGRAMS_FILE_SUFFIX;
 
-        System.out.println("\nReading from the on-disk index" +
-                "...");
+        System.out.println("\nReading from the on-disk index...");
 
         // initialize the B+ tree and k-grams using pre-constructed indexes on disk
-        DiskPositionalIndex diskIndex = new DiskPositionalIndex(pathToPostingsBin, pathToBTreeBin, pathToKGramsBin);
+        DiskPositionalIndex diskIndex = new DiskPositionalIndex(pathToPostingsBin, pathToBTreeBin);
         diskIndex.setBTree(DiskIndexReader.readBTree(pathToBTreeBin));
-        kGramIndex = DiskIndexReader.readKGramsFromDisk(pathToKGramsBin);
         corpusIndex = diskIndex;
+        kGramIndex = DiskIndexReader.readKGrams(pathToKGramsBin);
 
         System.out.printf("""
                 Reading complete.
@@ -148,7 +152,7 @@ public class Application {
                 """, corpus.getCorpusSize(), kGramIndex.getDistinctKGrams().size());
     }
 
-    public static Index<String, Posting> indexCorpus(DocumentCorpus corpus) {
+    public static Index<String, Posting> indexCorpus(DocumentCorpus corpus, String pathToDocWeightsBin) {
         /* 2. Index all documents in the corpus to build a positional inverted index.
           Print to the screen how long (in seconds) this process takes. */
         System.out.println("\nIndexing...");
@@ -158,9 +162,11 @@ public class Application {
         PositionalInvertedIndex index = new PositionalInvertedIndex();
         VocabularyTokenProcessor vocabProcessor = new VocabularyTokenProcessor();
         WildcardTokenProcessor wildcardProcessor = new WildcardTokenProcessor();
+        DiskIndexWriter.setNewRandomAccessor(pathToDocWeightsBin);
 
         // scan all documents and process each token into terms of our vocabulary
         for (Document document : corpus.getDocuments()) {
+            Map<String, Integer> tftds = new HashMap<>();
             EnglishTokenStream stream = new EnglishTokenStream(document.getContent());
             Iterable<String> tokens = stream.getTokens();
             // at the beginning of each document reading, the position always starts at 1
@@ -179,10 +185,23 @@ public class Application {
                 // since each token can produce multiple terms, add all terms using the same documentID and position
                 for (String term : terms) {
                     index.addTerm(term, document.getId(), currentPosition);
+
+                    // build up Ld for the current document
+                    if (!tftds.containsKey(term)) {
+                        tftds.put(term, 1);
+                    } else {
+                        int oldTftd = tftds.get(term);
+                        tftds.replace(term, oldTftd + 1);
+                    }
                 }
                 // after each token addition, update the position count
                 ++currentPosition;
             }
+
+            // after processing all tokens into terms, write the calculated Ld to the `docWeights.bin` file
+            double ld = DocumentWeightScorer.calculateLd(tftds);
+            DiskIndexWriter.writeLdToBinFile(document.getId(), ld);
+            System.out.println(ld);
         }
 
         long endTime = System.nanoTime();

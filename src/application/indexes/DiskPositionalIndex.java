@@ -11,14 +11,12 @@ public class DiskPositionalIndex implements Index<String, Posting>, Closeable {
 
     private BTree<String, Integer> bTree;
     private final String pathToBTreeBin;    // the String path to the B+ Tree mappings of terms -> byte positions
-    private final String pathToKGramsBin;    // the String path to the k-gram index
     private RandomAccessFile randomAccessPosting;   // keep the Posting file open for getPosting() calls
 
-    public DiskPositionalIndex(String newPathToPostingsBin, String newPathToBTreeBin, String newPathToKGramsBin) {
-        // tree will be set after reading from the disk
+    public DiskPositionalIndex(String newPathToPostingsBin, String newPathToBTreeBin) {
+        // tree will be set after reading from disk
         bTree = null;
         pathToBTreeBin = newPathToBTreeBin;
-        pathToKGramsBin = newPathToKGramsBin;
 
         try {
             // be able to read from the postings file and extract the index data

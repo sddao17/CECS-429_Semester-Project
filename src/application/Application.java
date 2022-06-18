@@ -204,7 +204,7 @@ public class Application {
             // after processing all tokens into terms, write the calculated Ld to the `docWeights.bin` file
             double ld = DocumentWeightScorer.calculateLd(tftds);
             DiskIndexWriter.writeLdToBinFile(document.getId(), ld);
-            System.out.println("Document " + document.getId() + " L(d): " + ld);
+            System.out.println("Document " + (document.getId() + 1) + " L(d): " + ld);
         }
 
         long endTime = System.nanoTime();

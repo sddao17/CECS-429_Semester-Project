@@ -8,16 +8,24 @@ import java.util.Set;
 
 public class DiskIndexWriter {
 
-    public static RandomAccessFile randomAccessor;
+    public static RandomAccessFile docWeightAccessor;
 
-    public static void setNewRandomAccessor(String pathToFile) {
+    public static void setNewDocWeightAccessor(String pathToFile) {
         // create a new file
         File newFile = new File(pathToFile);
         newFile.delete();
         try {
-            DiskIndexWriter.randomAccessor = new RandomAccessFile(newFile, "rw");
+            DiskIndexWriter.docWeightAccessor = new RandomAccessFile(newFile, "rw");
 
         } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void closeRandomAccessor() {
+        try {
+            docWeightAccessor.close();
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
@@ -176,8 +184,8 @@ public class DiskIndexWriter {
 
     public static void writeLdToBinFile(int docId, double ld) {
         try {
-            randomAccessor.seek((long) docId * Double.SIZE);
-            randomAccessor.writeDouble(ld);
+            docWeightAccessor.seek((long) docId * Double.SIZE);
+            docWeightAccessor.writeDouble(ld);
 
         } catch (IOException e) {
             e.printStackTrace();

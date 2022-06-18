@@ -7,9 +7,6 @@ import application.indexes.*;
 import application.queries.*;
 import application.text.*;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.RandomAccessFile;
 import java.nio.file.Path;
 import java.util.*;
 
@@ -28,6 +25,8 @@ public class Application {
     private static final String KGRAMS_FILE_SUFFIX = "/kGrams.bin";
     private static final String DOC_WEIGHTS_FILE_SUFFIX = "/docWeights.bin";
     private static final int VOCABULARY_PRINT_SIZE = 1_000; // number of vocabulary terms to print
+    private static final int MAX_DISPLAYED_RANKED_ENTRIES = 10;  // the maximum number of ranked entries to display
+
     private static DirectoryCorpus corpus;  // we need only one of each corpus and index active at a time,
     private static Index<String, Posting> corpusIndex;  // and multiple methods need access to them
     private static KGramIndex kGramIndex;
@@ -50,24 +49,13 @@ public class Application {
         Scanner in = new Scanner(System.in);
 
         buildOrQueryIndexMenu(in);
-
-        System.out.printf("""
-                %nSpecial Commands:
-                :index `directory-name`  --  Index the folder at the specified path.
-                          :stem `token`  --  Stem, then print the token string.
-                                 :vocab  --  Print the first %s terms in the vocabulary of the corpus,
-                                             then print the total number of vocabulary terms.
-                                :kgrams  --  Print the first %s k-gram mappings of vocabulary types to
-                                             k-gram tokens, then print the total number of vocabulary types.
-                                     :q  --  Exit the program.
-                """, VOCABULARY_PRINT_SIZE, VOCABULARY_PRINT_SIZE);
-
-        startQueryLoop(in);
+        booleanOrRankedMenu(in);
 
         // if the index was on-disk, close open file resources
         if (corpusIndex instanceof DiskPositionalIndex) {
             ((DiskPositionalIndex) corpusIndex).close();
         }
+        DiskIndexWriter.closeRandomAccessor();
     }
 
     private static void buildOrQueryIndexMenu(Scanner in) {
@@ -77,19 +65,7 @@ public class Application {
                 2. Query an on-disk index
                 %n >>\040""");
 
-        String input;
-        boolean isValidInput = false;
-
-        // simple input check
-        do {
-            input = in.nextLine();
-
-            if (input.equals("1") || input.equals("2")) {
-                isValidInput = true;
-            } else {
-                System.out.print("Invalid input; please try again: ");
-            }
-        } while (!isValidInput);
+        String input = checkMenuInput(in);
 
         /* 1. At startup, ask the user for the name of a directory that they would like to index,
           and construct a DirectoryCorpus from that directory. */
@@ -166,7 +142,7 @@ public class Application {
         PositionalInvertedIndex index = new PositionalInvertedIndex();
         VocabularyTokenProcessor vocabProcessor = new VocabularyTokenProcessor();
         WildcardTokenProcessor wildcardProcessor = new WildcardTokenProcessor();
-        DiskIndexWriter.setNewRandomAccessor(pathToDocWeightsBin);
+        DiskIndexWriter.setNewDocWeightAccessor(pathToDocWeightsBin);
 
         // scan all documents and process each token into terms of our vocabulary
         for (Document document : corpus.getDocuments()) {
@@ -221,12 +197,29 @@ public class Application {
         return index;
     }
 
-    private static void startQueryLoop(Scanner in) {
+    private static void booleanOrRankedMenu(Scanner in) {
+        System.out.printf("""
+                %nSelect a query method:
+                1. Boolean queries
+                2. Ranked Retrieval queries
+                %n >>\040""");
+
+        String input = checkMenuInput(in);
+        String queryMode = switch (input) {
+            case "1" -> "boolean";
+            case "2" -> "ranked";
+            default -> throw new RuntimeException();
+        };
+
+        startQueryLoop(in, queryMode);
+    }
+
+    private static void startQueryLoop(Scanner in, String queryMode) {
         String query;
 
         do {
             // 3a. Ask for a search query.
-            System.out.print("\nEnter the query:\n >> ");
+            System.out.print("\nEnter the query (`:?` for special commands):\n >> ");
             query = in.nextLine();
             String[] splitQuery = query.split(" ");
 
@@ -270,22 +263,54 @@ public class Application {
                         }
                         System.out.println("Found " + vocabulary.size() + " types.");
                     }
+                    case ":?" ->
+                        System.out.printf("""
+                                %nSpecial Commands:
+                                :index `directory-name`  --  Index the folder at the specified path.
+                                          :stem `token`  --  Stem, then print the token string.
+                                                 :vocab  --  Print the first %s terms in the vocabulary of the corpus,
+                                                             then print the total number of vocabulary terms.
+                                                :kgrams  --  Print the first %s k-gram mappings of vocabulary types to
+                                                             k-gram tokens, then print the total number of vocabulary types.
+                                                     :q  --  Exit the program.
+                                """, VOCABULARY_PRINT_SIZE, VOCABULARY_PRINT_SIZE);
                     case ":q", "" -> {}
                     default -> {
-                        // 3(a, ii). If it isn't a special query, then parse the query and retrieve its postings.
-                        BooleanQueryParser parser = new BooleanQueryParser();
-                        QueryComponent parsedQuery = parser.parseQuery(query);
-                        TokenProcessor processor = new VocabularyTokenProcessor();
-
-                        List<Posting> resultPostings = parsedQuery.getPostings(corpusIndex, processor);
-                        // in case the query contains wildcards, only display each unique posting once
-                        resultPostings = getDistinctPostings(resultPostings);
-
-                        displayPostings(resultPostings, in);
+                        switch (queryMode) {
+                            case "boolean" -> displayBooleanResults(in, query);
+                            case "ranked" -> displayRankedResults(query);
+                        }
                     }
                 }
             }
         } while (!query.equals(":q"));
+    }
+
+    private static void displayBooleanResults(Scanner in, String query) {
+        // 3(a, ii). If it isn't a special query, then parse the query and retrieve its postings.
+        BooleanQueryParser parser = new BooleanQueryParser();
+        QueryComponent parsedQuery = parser.parseQuery(query);
+        TokenProcessor processor = new VocabularyTokenProcessor();
+
+        List<Posting> resultPostings = parsedQuery.getPostings(corpusIndex, processor);
+        // in case the query contains wildcards, only display each unique posting once
+        resultPostings = getDistinctPostings(resultPostings);
+
+        displayPostings(resultPostings, in);
+    }
+
+    private static void displayRankedResults(String query) {
+        DocumentWeightScorer documentScorer = new DocumentWeightScorer(DiskIndexWriter.docWeightAccessor);
+        documentScorer.storeTermAtATimeDocuments(corpusIndex, query);
+        List<Map.Entry<Integer, Double>> rankedEntries = documentScorer.getRankedEntries(MAX_DISPLAYED_RANKED_ENTRIES);
+
+        for (Map.Entry<Integer, Double> entry : rankedEntries) {
+            int currentDocumentId = entry.getKey();
+            double score = entry.getValue();
+
+            System.out.println("- " + corpus.getDocument(currentDocumentId).getTitle() +
+                    " (ID: " + currentDocumentId + ") - " + score);
+        }
     }
 
     private static List<Posting> getDistinctPostings(List<Posting> postings) {
@@ -332,6 +357,24 @@ public class Application {
                 System.out.println();
             } catch (Exception ignored) {}
         }
+    }
+
+    public static String checkMenuInput(Scanner in) {
+        String input;
+        boolean isValidInput = false;
+
+        // simple input check
+        do {
+            input = in.nextLine();
+
+            if (input.equals("1") || input.equals("2")) {
+                isValidInput = true;
+            } else {
+                System.out.print("Invalid input; please try again: ");
+            }
+        } while (!isValidInput);
+
+        return input;
     }
 
     public static DirectoryCorpus getCorpus() {

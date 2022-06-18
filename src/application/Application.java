@@ -19,15 +19,15 @@ import java.util.*;
  */
 public class Application {
 
+    private static final String INDEX_DIRECTORY_SUFFIX = "/index";  // suffixes for index files when indexing a corpus
+    private static final String POSTINGS_FILE_SUFFIX = "/postings.bin";
+    private static final String BTREE_FILE_SUFFIX = "/bTree.bin";
+    private static final String KGRAMS_FILE_SUFFIX = "/kGrams.bin";
     private static final int VOCABULARY_PRINT_SIZE = 1_000; // number of vocabulary terms to print
     private static DirectoryCorpus corpus;  // we need only one of each corpus and index active at a time,
     private static Index<String, Posting> corpusIndex;  // and multiple methods need access to them
     private static KGramIndex kGramIndex;
     private static CorpusSelection cSelect;
-    private static String INDEX_DIRECTORY_SUFFIX = "/index";
-    private static String POSTINGS_FILE_SUFFIX = "/postings.bin";
-    private static String BTREE_FILE_SUFFIX = "/bTree.bin";
-    private static String KGRAMS_FILE_SUFFIX = "/kGrams.bin";
 
     public static void main(String[] args) {
         System.out.printf("""
@@ -70,7 +70,7 @@ public class Application {
         System.out.printf("""
                 %nSelect an option:
                 1. Build a new index
-                2. Query a pre-built index
+                2. Query an on-disk index
                 %n >>\040""");
 
         String input;
@@ -132,7 +132,8 @@ public class Application {
         String pathToBTreeBin = pathToIndexDirectory + BTREE_FILE_SUFFIX;
         String pathToKGramsBin = pathToIndexDirectory + KGRAMS_FILE_SUFFIX;
 
-        System.out.println("\nReading from the on-disk index...");
+        System.out.println("\nReading from the on-disk index" +
+                "...");
 
         // initialize the B+ tree and k-grams using pre-constructed indexes on disk
         DiskPositionalIndex diskIndex = new DiskPositionalIndex(pathToPostingsBin, pathToBTreeBin, pathToKGramsBin);
@@ -308,6 +309,10 @@ public class Application {
                 System.out.println();
             } catch (Exception ignored) {}
         }
+    }
+
+    public static DirectoryCorpus getCorpus() {
+        return corpus;
     }
 
     public static Index<String, String> getKGramIndex() {

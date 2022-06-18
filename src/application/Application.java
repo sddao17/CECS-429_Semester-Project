@@ -107,14 +107,17 @@ public class Application {
 
     private static void initializeComponents(String directoryString) {
         String pathToIndexDirectory = directoryString + INDEX_DIRECTORY_SUFFIX;
+        String pathToDocWeightsBin = pathToIndexDirectory + DOC_WEIGHTS_FILE_SUFFIX;
         String pathToPostingsBin = pathToIndexDirectory + POSTINGS_FILE_SUFFIX;
         String pathToBTreeBin = pathToIndexDirectory + BTREE_FILE_SUFFIX;
         String pathToKGramsBin = pathToIndexDirectory + KGRAMS_FILE_SUFFIX;
-        String pathToDocWeightsBin = pathToIndexDirectory + DOC_WEIGHTS_FILE_SUFFIX;
 
         corpusIndex = indexCorpus(corpus, pathToDocWeightsBin);
 
         System.out.println("\nWriting files to index directory...");
+        // document weights have already been written to disk in `indexCorpus()`
+        System.out.println("Document weights written to `" + pathToDocWeightsBin + "` successfully.");
+
         // write the `posting.bin` using the corpus index to disk
         List<Integer> bytePositions = DiskIndexWriter.writeIndex(pathToPostingsBin, corpusIndex);
         System.out.println("Postings written to `" + pathToPostingsBin + "` successfully.");
@@ -139,7 +142,7 @@ public class Application {
 
         System.out.println("\nReading from the on-disk index...");
 
-        // initialize the B+ tree and k-grams using pre-constructed indexes on disk
+        // initialize the DiskPositionalIndex and k-grams using pre-constructed indexes on disk
         DiskPositionalIndex diskIndex = new DiskPositionalIndex(pathToPostingsBin, pathToBTreeBin);
         diskIndex.setBTree(DiskIndexReader.readBTree(pathToBTreeBin));
         corpusIndex = diskIndex;
@@ -201,7 +204,7 @@ public class Application {
             // after processing all tokens into terms, write the calculated Ld to the `docWeights.bin` file
             double ld = DocumentWeightScorer.calculateLd(tftds);
             DiskIndexWriter.writeLdToBinFile(document.getId(), ld);
-            System.out.println(ld);
+            System.out.println("Document " + document.getId() + " L(d): " + ld);
         }
 
         long endTime = System.nanoTime();

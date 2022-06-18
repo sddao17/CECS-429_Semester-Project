@@ -24,6 +24,10 @@ public class Application {
     private static Index<String, Posting> corpusIndex;  // and multiple methods need access to them
     private static KGramIndex kGramIndex;
     private static CorpusSelection cSelect;
+    private static String INDEX_DIRECTORY_SUFFIX = "/index";
+    private static String POSTINGS_FILE_SUFFIX = "/postings.bin";
+    private static String BTREE_FILE_SUFFIX = "/bTree.bin";
+    private static String KGRAMS_FILE_SUFFIX = "/kGrams.bin";
 
     public static void main(String[] args) {
         System.out.printf("""
@@ -49,8 +53,10 @@ public class Application {
                           :stem `token`  --  Stem, then print the token string.
                                  :vocab  --  Print the first %s terms in the vocabulary of the corpus,
                                              then print the total number of vocabulary terms.
+                                :kgrams  --  Print the first %s k-gram mappings of vocabulary types to
+                                             k-gram tokens, then print the total number of vocabulary types.
                                      :q  --  Exit the program.
-                """, VOCABULARY_PRINT_SIZE);
+                """, VOCABULARY_PRINT_SIZE, VOCABULARY_PRINT_SIZE);
 
         startQueryLoop(in);
 
@@ -85,47 +91,60 @@ public class Application {
           and construct a DirectoryCorpus from that directory. */
         System.out.print("\nEnter the path of the directory corpus:\n >> ");
         String directoryString = in.nextLine();
-        Path directoryPath = Path.of(directoryString);
-        corpus = DirectoryCorpus.loadDirectory(directoryPath);
+
+        corpus = DirectoryCorpus.loadDirectory(Path.of(directoryString));
 
         // depending on the user's input, either build the index from scratch or read from an on-disk index
         switch (input) {
-            case "1" -> initializeComponents(directoryPath);
-            case "2" -> readFromComponents(directoryPath);
+            case "1" -> initializeComponents(directoryString);
+            case "2" -> readFromComponents(directoryString);
         }
     }
 
-    private static void initializeComponents(Path directoryPath) {
+    private static void initializeComponents(String directoryString) {
+        String pathToIndexDirectory = directoryString + INDEX_DIRECTORY_SUFFIX;
+        String pathToPostingsBin = pathToIndexDirectory + POSTINGS_FILE_SUFFIX;
+        String pathToBTreeBin = pathToIndexDirectory + BTREE_FILE_SUFFIX;
+        String pathToKGramsBin = pathToIndexDirectory + KGRAMS_FILE_SUFFIX;
+
         corpusIndex = indexCorpus(corpus);
 
         System.out.println("\nWriting files to index directory...");
         // write the `posting.bin` using the corpus index to disk
-        String pathToIndexDirectory = directoryPath + "/index";
-        List<Integer> bytePositions = DiskIndexWriter.writeIndex(corpusIndex, pathToIndexDirectory);
-        System.out.println("Postings written to `" + pathToIndexDirectory + "` successfully.");
+        List<Integer> bytePositions = DiskIndexWriter.writeIndex(pathToPostingsBin, corpusIndex);
+        System.out.println("Postings written to `" + pathToPostingsBin + "` successfully.");
 
         // write the B+ tree mappings of term -> byte positions to disk
-        String pathToBTreeBin = pathToIndexDirectory + "/bTree.bin";
         DiskIndexWriter.writeBTree(pathToBTreeBin, corpusIndex.getVocabulary(), bytePositions);
-        System.out.println("B+ Tree written to `" + pathToIndexDirectory + "` successfully.");
+        System.out.println("B+ Tree written to `" + pathToBTreeBin + "` successfully.");
+
+        // write the k-grams to disk
+        DiskIndexWriter.writeKGrams(pathToKGramsBin, kGramIndex);
+        System.out.println("K-Grams written to `" + pathToKGramsBin + "` successfully.");
 
         // after writing the components to disk, we can terminate the program
         System.exit(0);
     }
 
-    private static void readFromComponents(Path directoryPath) {
+    private static void readFromComponents(String directoryString) {
+        String pathToIndexDirectory = directoryString + INDEX_DIRECTORY_SUFFIX;
+        String pathToPostingsBin = pathToIndexDirectory + POSTINGS_FILE_SUFFIX;
+        String pathToBTreeBin = pathToIndexDirectory + BTREE_FILE_SUFFIX;
+        String pathToKGramsBin = pathToIndexDirectory + KGRAMS_FILE_SUFFIX;
+
         System.out.println("\nReading from the on-disk index...");
 
-        String pathToIndexDirectory = directoryPath + "/index";
-        // initialize the B+ tree using a pre-constructed index on disk
-        corpusIndex = new DiskPositionalIndex(pathToIndexDirectory);
-        ((DiskPositionalIndex) corpusIndex).readBTreeFromDisk();
+        // initialize the B+ tree and k-grams using pre-constructed indexes on disk
+        DiskPositionalIndex diskIndex = new DiskPositionalIndex(pathToPostingsBin, pathToBTreeBin, pathToKGramsBin);
+        diskIndex.setBTree(DiskIndexReader.readBTree(pathToBTreeBin));
+        kGramIndex = DiskIndexReader.readKGramsFromDisk(pathToKGramsBin);
+        corpusIndex = diskIndex;
 
         System.out.printf("""
                 Reading complete.
                 %nFound %s documents.
                 Distinct k-grams: %s
-                """, corpus.getCorpusSize(), kGramIndex);
+                """, corpus.getCorpusSize(), kGramIndex.getDistinctKGrams().size());
     }
 
     public static Index<String, Posting> indexCorpus(DocumentCorpus corpus) {
@@ -173,7 +192,7 @@ public class Application {
                 
                 Found %s documents.
                 Distinct k-grams: %s
-                """, timeElapsedInSeconds, corpus.getCorpusSize(), kGramIndex);
+                """, timeElapsedInSeconds, corpus.getCorpusSize(), kGramIndex.getDistinctKGrams().size());
 
         return index;
     }
@@ -197,7 +216,7 @@ public class Application {
 
                 // 3(a, i). If it is a special query, perform that action.
                 switch (potentialCommand) {
-                    case ":index" -> initializeComponents(Path.of(parameter));
+                    case ":index" -> initializeComponents(parameter);
                     case ":stem" -> {
                         TokenStemmer stemmer = new TokenStemmer();
                         System.out.println(parameter + " -> " + stemmer.processToken(parameter).get(0));
@@ -213,6 +232,19 @@ public class Application {
                             System.out.println("...");
                         }
                         System.out.println("Found " + vocabulary.size() + " terms.");
+                    }
+                    case ":kgrams" -> {
+                        List<String> vocabulary = kGramIndex.getVocabulary();
+                        int vocabularyPrintSize = Math.min(vocabulary.size(), VOCABULARY_PRINT_SIZE);
+
+                        for (int i = 0; i < vocabularyPrintSize; ++i) {
+                            String currentType = vocabulary.get(i);
+                            System.out.println(currentType + " -> " + kGramIndex.getPostings(currentType));
+                        }
+                        if (vocabulary.size() > VOCABULARY_PRINT_SIZE) {
+                            System.out.println("...");
+                        }
+                        System.out.println("Found " + vocabulary.size() + " types.");
                     }
                     case ":q", "" -> {}
                     default -> {

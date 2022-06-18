@@ -9,53 +9,28 @@ import java.util.List;
 
 public class DiskPositionalIndex implements Index<String, Posting>, Closeable {
 
-    private final DB database;
     private BTree<String, Integer> bTree;
-    private final String pathToBTreeBin;    // the path to the B+ Tree mappings of terms -> byte positions
+    private final String pathToBTreeBin;    // the String path to the B+ Tree mappings of terms -> byte positions
+    private final String pathToKGramsBin;    // the String path to the k-gram index
     private RandomAccessFile randomAccessPosting;   // keep the Posting file open for getPosting() calls
 
-    public DiskPositionalIndex(String newDirectoryPath) {
-        database = DBMaker.openFile(newDirectoryPath + "/db").closeOnExit().make();
-        pathToBTreeBin = newDirectoryPath + "/bTree.bin";
-        // the path to the `postings.bin` files
-        String pathToPostingsBin = newDirectoryPath + "/postings.bin";
+    public DiskPositionalIndex(String newPathToPostingsBin, String newPathToBTreeBin, String newPathToKGramsBin) {
+        // tree will be set after reading from the disk
+        bTree = null;
+        pathToBTreeBin = newPathToBTreeBin;
+        pathToKGramsBin = newPathToKGramsBin;
 
         try {
-            bTree = BTree.createInstance((DBAbstract) database);
             // be able to read from the postings file and extract the index data
-            randomAccessPosting = new RandomAccessFile(pathToPostingsBin, "r");
+            randomAccessPosting = new RandomAccessFile(newPathToPostingsBin, "r");
         } catch(IOException e) {
             e.printStackTrace();
         }
     }
 
-    public void readBTreeFromDisk() {
+    public void setBTree(BTree<String, Integer> newBTree) {
         // load the persisted index into the B+ Tree
-        try (FileInputStream fileStream = new FileInputStream(pathToBTreeBin);
-             BufferedInputStream bufferStream = new BufferedInputStream(fileStream);
-             DataInputStream dataStream = new DataInputStream(bufferStream)) {
-            // write the total size of the vocabulary
-            int vocabularySize = dataStream.readInt();
-
-            // traverse through the vocabulary terms
-            for (int i = 0; i < vocabularySize; ++i) {
-                // read each String byte length normally
-                int currentBytesLength = dataStream.readInt();
-                StringBuilder term = new StringBuilder();
-
-                // convert each byte to a character and build to our original term
-                for (int j = 0; j < currentBytesLength; ++j) {
-                    term.append((char) dataStream.read());
-                }
-
-                // insert the byte position associated with the term
-                int currentBytePosition = dataStream.readInt();
-                bTree.insert(term.toString(), currentBytePosition, false);
-            }
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        bTree = newBTree;
     }
 
     /**

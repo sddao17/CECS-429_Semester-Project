@@ -92,6 +92,14 @@ public class KGramIndex implements Index<String, String> {
         }
     }
 
+    public void addKeyValue(String key, List<String> value) {
+        kGramIndex.put(key, value);
+    }
+
+    public void addDistinctKGram(String kGram) {
+        distinctKGrams.add(kGram);
+    }
+
     private List<String> createKGrams(String token, int k) {
         List<String> kGrams = new ArrayList<>();
 
@@ -112,25 +120,19 @@ public class KGramIndex implements Index<String, String> {
         return kGrams;
     }
 
-    // testing purposes only
-    public static void main(String[] args) {
-        ArrayList<String> vocabulary = new ArrayList<>(){{
-            //add("national");
-            //add("nation*");
-            //add("*nal");
-            //add("*al");
-            //add("na*");
-            //add("na*al");
-            add("park");
-            //add("n*");
-            //add("*n");
-            //add("*finan*cial*");
-        }};
-        KGramIndex kGramIndex = new KGramIndex();
-        kGramIndex.buildKGramIndex(vocabulary, 3);
-        List<String> testVocabulary = kGramIndex.getVocabulary();
-        for (String token : testVocabulary) {
-            System.out.println(token + ": " + kGramIndex.getPostings(token));
+    public String toString() {
+        StringBuilder description = new StringBuilder();
+        List<String> keys = kGramIndex.keySet().stream().sorted().toList();
+
+        for (int i = 0; i < keys.size(); ++i) {
+            String currentKey = keys.get(i);
+
+            description.append(currentKey).append(" -> ").append(kGramIndex.get(currentKey));
+            if (i < kGramIndex.size() - 1) {
+                description.append("\n");
+            }
         }
+
+        return description.toString();
     }
 }

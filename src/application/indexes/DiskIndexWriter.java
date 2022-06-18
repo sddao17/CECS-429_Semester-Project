@@ -4,6 +4,7 @@ package application.indexes;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class DiskIndexWriter {
 
@@ -11,13 +12,14 @@ public class DiskIndexWriter {
      * 2. Create a class DiskIndexWriter with a method writeIndex. You should pass your index
      * variable, as well as the absolute path to save the postings file.
      */
-    public static List<Integer> writeIndex(Index<String, Posting> index, String pathToPostingBin) {
+    public static List<Integer> writeIndex(String pathToPostingBin, Index<String, Posting> index) {
+        int indexOfLastDirectory = pathToPostingBin.lastIndexOf("/");
+        String directoryPath = pathToPostingBin.substring(0, indexOfLastDirectory);
+        String postingFileName = pathToPostingBin.substring(indexOfLastDirectory + 1);
         // create the directory for the index if it does not yet exist
-        File fileToWrite = new File(pathToPostingBin);
+        File fileToWrite = new File(directoryPath);
         fileToWrite.mkdir();
-        // 2a. Open a new file called "postings.bin" in binary write mode.
-        String postingFileName = "postings.bin";
-        fileToWrite = new File(pathToPostingBin, postingFileName);
+        fileToWrite = new File(postingFileName);
         try {
             fileToWrite.createNewFile();
         } catch (IOException e) {
@@ -28,7 +30,8 @@ public class DiskIndexWriter {
           for the corresponding term from the vocabulary begin in postings.bin. */
         List<Integer> bytePositions = new ArrayList<>();
 
-        try (FileOutputStream fileStream = new FileOutputStream(fileToWrite);
+        // 2a. Open a new file called "postings.bin" in binary write mode.
+        try (FileOutputStream fileStream = new FileOutputStream(pathToPostingBin);
              BufferedOutputStream bufferStream = new BufferedOutputStream(fileStream);
              DataOutputStream dataStream = new DataOutputStream(bufferStream)) {
             // 2b. Retrieve the sorted vocabulary list from the index.
@@ -96,6 +99,60 @@ public class DiskIndexWriter {
                 dataStream.writeInt(currentBytesLength);
                 dataStream.write(bytes);
                 dataStream.writeInt(currentBytePosition);
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void writeKGrams(String pathToKGramsBin, KGramIndex kGramIndex) {
+        // overwrite any existing files
+        try (FileOutputStream fileStream = new FileOutputStream(pathToKGramsBin, false);
+             BufferedOutputStream bufferStream = new BufferedOutputStream(fileStream);
+             DataOutputStream dataStream = new DataOutputStream(bufferStream)) {
+            // order does not matter when writing map elements that will be read as map elements
+            List<String> keys = kGramIndex.getVocabulary();
+            // write the main k-grams first, starting with the size of the keys
+            dataStream.writeInt(keys.size());
+
+            // iterate through the keys
+            for (String key : keys) {
+                byte[] keyBytes = key.getBytes();
+                int currentKeyBytesLength = keyBytes.length;
+
+                // write how many bytes are in the key itself, then the bytes of the key
+                dataStream.writeInt(currentKeyBytesLength);
+                dataStream.write(keyBytes);
+
+                List<String> values = kGramIndex.getPostings(key);
+
+                // write the size of the k-grams posting list
+                dataStream.writeInt(values.size());
+
+                // iterate through the k-gram values
+                for (String value :values) {
+                    byte[] valueBytes = value.getBytes();
+                    int currentBytesLength = valueBytes.length;
+
+                    // for each individual k-gram, write the length of the k-gram followed by its bytes
+                    dataStream.writeInt(currentBytesLength);
+                    dataStream.write(valueBytes);
+                }
+            }
+
+            // now write the distinct k-grams to the end of the file, starting with the size of the set
+            Set<String> distinctKGrams = kGramIndex.getDistinctKGrams();
+            dataStream.writeInt(distinctKGrams.size());
+
+            // iterate through the set of distinct k-grams
+            for (String kGram : distinctKGrams) {
+                byte[] bytes = kGram.getBytes();
+                int currentBytesLength = bytes.length;
+
+                // for each individual k-gram, write the length of the k-gram followed by its bytes
+                dataStream.writeInt(currentBytesLength);
+                dataStream.write(bytes);
             }
 
         } catch (IOException e) {

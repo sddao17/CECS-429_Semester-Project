@@ -150,7 +150,8 @@ public class Application {
 
         System.out.printf("""
                 Reading complete.
-                %nFound %s documents.
+                
+                Found %s documents.
                 Distinct k-grams: %s
                 """, corpus.getCorpusSize(), kGramIndex.getDistinctKGrams().size());
     }

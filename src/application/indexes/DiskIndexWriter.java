@@ -8,26 +8,9 @@ import java.util.Set;
 
 public class DiskIndexWriter {
 
-    public static RandomAccessFile docWeightAccessor;
-
-    public static void setNewDocWeightAccessor(String pathToFile) {
-        // create a new file
-        File newFile = new File(pathToFile);
-        newFile.delete();
-        try {
-            DiskIndexWriter.docWeightAccessor = new RandomAccessFile(newFile, "rw");
-
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public static void closeRandomAccessor() {
-        try {
-            docWeightAccessor.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    public static void createIndexDirectory(String pathToIndexDirectory) {
+        File indexDirectory = new File(pathToIndexDirectory);
+        indexDirectory.mkdir();
     }
 
     /**
@@ -35,18 +18,6 @@ public class DiskIndexWriter {
      * variable, as well as the absolute path to save the postings file.
      */
     public static List<Integer> writeIndex(String pathToPostingBin, Index<String, Posting> index) {
-        int indexOfLastDirectory = pathToPostingBin.lastIndexOf("/");
-        String directoryPath = pathToPostingBin.substring(0, indexOfLastDirectory);
-        String postingFileName = pathToPostingBin.substring(indexOfLastDirectory + 1);
-        // create the directory for the index if it does not yet exist
-        File fileToWrite = new File(directoryPath);
-        fileToWrite.mkdir();
-        fileToWrite = new File(postingFileName);
-        try {
-            fileToWrite.createNewFile();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
         /* 3. writeIndex should return a list of (8-byte) integer values, one value for each of the terms
           in the index vocabulary. Each integer value should equal the byte position of where the postings
           for the corresponding term from the vocabulary begin in postings.bin. */
@@ -181,11 +152,14 @@ public class DiskIndexWriter {
             e.printStackTrace();
         }
     }
-
-    public static void writeLdToBinFile(int docId, double ld) {
-        try {
-            docWeightAccessor.seek((long) docId * Double.SIZE);
-            docWeightAccessor.writeDouble(ld);
+    public static void writeLds(String pathToDocWeightsBin, List<Double> lds) {
+        // overwrite any existing files
+        try (FileOutputStream fileStream = new FileOutputStream(pathToDocWeightsBin, false);
+             BufferedOutputStream bufferStream = new BufferedOutputStream(fileStream);
+             DataOutputStream dataStream = new DataOutputStream(bufferStream)) {
+            for (Double ld : lds) {
+                dataStream.writeDouble(ld);
+            }
 
         } catch (IOException e) {
             e.printStackTrace();

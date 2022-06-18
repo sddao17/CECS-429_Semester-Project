@@ -17,31 +17,28 @@ public class JsonFileDocument implements FileDocument, Comparable<Document> {
     private final int mDocumentId;
     private final Path mFilePath;
     private String documentTitle;
-    private StringReader content;
 
     public JsonFileDocument(int id, Path absoluteFilePath) {
         mDocumentId = id;
         mFilePath = absoluteFilePath;
-
-        readFile();
+        documentTitle = (String) getJsonObject().get("title");
     }
 
-    private void readFile() {
+    private JSONObject getJsonObject() {
         // store a dedicated parser object that can read JSON files
         JSONParser parser = new JSONParser();
+        JSONObject jsonObject;
 
         try {
             // use the parser to extract the JSON file at the given path and store it as an object
             Object obj = parser.parse(Files.newBufferedReader(mFilePath));
-            JSONObject jsonObject = (JSONObject) obj;
-
-            // using its accessor method, convert the JSON object's fields to a String/StringReader
-            documentTitle = (String) jsonObject.get("title");
-            content = new StringReader((String) jsonObject.get("body"));
+            jsonObject = (JSONObject) obj;
 
         } catch (IOException | ParseException e) {
             throw new RuntimeException(e);
         }
+
+        return jsonObject;
     }
 
     @Override
@@ -56,7 +53,7 @@ public class JsonFileDocument implements FileDocument, Comparable<Document> {
 
     @Override
     public Reader getContent() {
-        return content;
+        return new StringReader((String) getJsonObject().get("body"));
     }
 
     @Override

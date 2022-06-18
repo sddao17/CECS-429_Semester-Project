@@ -119,16 +119,16 @@ public class DiskIndexReader {
 
     public static double readLdFromBinFile(RandomAccessFile randomAccessor, int documentId) {
         int bytePosition = documentId * Double.BYTES;
-        double documentWeight = 0;
+        double ld = 0;
 
         try {
             randomAccessor.seek(bytePosition);
-            documentWeight = randomAccessor.readDouble();
+            ld = randomAccessor.readDouble();
 
         } catch (IOException e) {
             e.printStackTrace();
         }
 
-        return documentWeight;
+        return ld;
     }
 }

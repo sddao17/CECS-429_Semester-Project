@@ -21,8 +21,9 @@ public class DiskPositionalIndex implements Index<String, Posting>, Closeable {
         try {
             // be able to read from the postings file and extract the index data
             randomAccessPosting = new RandomAccessFile(newPathToPostingsBin, "r");
-        } catch(IOException e) {
-            e.printStackTrace();
+        } catch (FileNotFoundException e) {
+            System.err.println("Index files were not found; please restart the program and build an index.");
+            System.exit(0);
         }
     }
 

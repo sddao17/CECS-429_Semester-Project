@@ -7,6 +7,8 @@ import application.indexes.Index;
 import application.indexes.Posting;
 import application.text.VocabularyTokenProcessor;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.*;
 
@@ -15,16 +17,28 @@ import java.util.*;
  */
 public class DocumentWeightScorer {
 
-    private RandomAccessFile randomAccessor;
-    public final Map<Integer, Double> finalAccumulators;
+    public static RandomAccessFile randomAccessor;
+    private final Map<Integer, Double> finalAccumulators;
 
-    public DocumentWeightScorer(RandomAccessFile newRandomAccessor) {
-        randomAccessor = newRandomAccessor;
+    public DocumentWeightScorer(String filePath) {
+        try {
+            randomAccessor = new RandomAccessFile(filePath, "rw");
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+
         finalAccumulators = new HashMap<>();
     }
 
-    public void setRandomAccessFile(RandomAccessFile newRandomAccessor) {
+    public static void setRandomAccessor(RandomAccessFile newRandomAccessor) {
         randomAccessor = newRandomAccessor;
+    }
+
+    public static void closeRandomAccessor() {
+        try {
+            randomAccessor.close();
+
+        } catch (IOException | NullPointerException ignored) {}
     }
 
     public void storeTermAtATimeDocuments(Index<String, Posting> index, String query) {
@@ -54,18 +68,17 @@ public class DocumentWeightScorer {
                    1 (b, iii). Increase A(d) by w(d,t) × w(q,t). */
                 accumulate(finalAccumulators, acquireAccumulators(index, term, wdt, wqt));
             }
-        }
-
-        List<Integer> accumulatorKeys = finalAccumulators.keySet().stream().toList();
+        };
 
         // iterate through all document IDs
-        for (Integer documentId : accumulatorKeys) {
-            double currentAd = finalAccumulators.get(documentId);
+        for (Map.Entry<Integer, Double> entry : finalAccumulators.entrySet()) {
+            int currentDocumentId = entry.getKey();
+            double currentAd = entry.getValue();
 
             // 2. For each non-zero A(d), divide A(d) by L(d), where L(d) is read from the `docWeights.bin` file.
             if (currentAd > 0) {
-                double ld = DiskIndexReader.readLdFromBinFile(randomAccessor, documentId);
-                finalAccumulators.replace(documentId, currentAd / ld);
+                double ld = DiskIndexReader.readLdFromBinFile(randomAccessor, currentDocumentId);
+                finalAccumulators.replace(currentDocumentId, currentAd / ld);
             }
         }
     }
@@ -99,8 +112,7 @@ public class DocumentWeightScorer {
 
         for (Posting posting : postings) {
             int currentDocumentId = posting.getDocumentId();
-            int currentWdt = posting.getPositions().size();
-            double newWeight = currentWdt + (wdt * wqt);
+            double newWeight = (wdt * wqt);
 
             // if the map doesn't contain the key, add the new key / value pair
             if (!accumulators.containsKey(currentDocumentId)) {

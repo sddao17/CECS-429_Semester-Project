@@ -107,8 +107,8 @@ public class Application {
         System.out.println("\nReading from the on-disk index...");
 
         // initialize the DiskPositionalIndex and k-grams using pre-constructed indexes on disk
-        DiskPositionalIndex diskIndex = new DiskPositionalIndex(
-                indexPaths.get("postingsBin"), indexPaths.get("bTreeBin"));
+        DiskPositionalIndex diskIndex = new DiskPositionalIndex(indexPaths.get("postingsBin"),
+                indexPaths.get("bTreeBin"));
         diskIndex.setBTree(DiskIndexReader.readBTree(indexPaths.get("bTreeBin")));
         corpusIndex = diskIndex;
         kGramIndex = DiskIndexReader.readKGrams(indexPaths.get("kGramsBin"));
@@ -159,7 +159,7 @@ public class Application {
                 for (String term : terms) {
                     index.addTerm(term, document.getId(), currentPosition);
 
-                    // build up Ld for the current document
+                    // build up L(d) for the current document
                     if (tftds.get(term) == null) {
                         tftds.put(term, 1);
                     } else {
@@ -171,7 +171,7 @@ public class Application {
                 ++currentPosition;
             }
 
-            // after processing all tokens into terms, write the calculated Ld to the `docWeights.bin` file
+            // after processing all tokens into terms, calculate L(d) for the document and add it to our list
             lds.add(DocumentWeightScorer.calculateLd(tftds));
 
             try {

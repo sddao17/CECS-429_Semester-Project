@@ -54,23 +54,22 @@ public class Application {
     private static void startApplication() {
         Scanner in = new Scanner(System.in);
 
-        buildOrQueryIndexMenu(in);
-        booleanOrRankedMenu(in);
+        showBuildOrQueryIndexMenu(in);
+        showBooleanOrRankedMenu(in);
 
         // close all open file resources
         if (corpusIndex instanceof DiskPositionalIndex) {
             ((DiskPositionalIndex) corpusIndex).close();
         }
-
         in.close();
     }
 
-    private static void buildOrQueryIndexMenu(Scanner in) {
+    private static void showBuildOrQueryIndexMenu(Scanner in) {
         System.out.printf("""
                 %nSelect an option:
                 1. Build a new index
                 2. Query an on-disk index
-                %n >>\040""");
+                 >>\040""");
 
         String input = checkMenuInput(in);
 
@@ -79,65 +78,65 @@ public class Application {
         System.out.print("\nEnter the path of the directory corpus:\n >> ");
         String directoryString = in.nextLine();
 
-        Map<String, String> pathsMap = createPathsMap(directoryString);
+        Map<String, String> indexPaths = createIndexPathsMap(directoryString);
         corpus = DirectoryCorpus.loadDirectory(Path.of(directoryString));
 
         // depending on the user's input, either build the index from scratch or read from an on-disk index
         switch (input) {
-            case "1" -> initializeComponents(pathsMap);
-            case "2" -> readFromComponents(pathsMap);
+            case "1" -> initializeComponents(indexPaths);
+            case "2" -> readFromComponents(indexPaths);
         }
     }
 
-    private static Map<String, String> createPathsMap(String directoryString) {
+    private static Map<String, String> createIndexPathsMap(String directoryString) {
         String pathToIndexDirectory = directoryString + INDEX_DIRECTORY_SUFFIX;
 
         return new HashMap<>() {{
-                put("pathToIndexDirectory", pathToIndexDirectory);
-                put("pathToDocWeightsBin", pathToIndexDirectory + DOC_WEIGHTS_FILE_SUFFIX);
-                put("pathToPostingsBin", pathToIndexDirectory + POSTINGS_FILE_SUFFIX);
-                put("pathToBTreeBin", pathToIndexDirectory + BTREE_FILE_SUFFIX);
-                put("pathToKGramsBin", pathToIndexDirectory + KGRAMS_FILE_SUFFIX);
+                put("indexDirectory", pathToIndexDirectory);
+                put("docWeightsBin", pathToIndexDirectory + DOC_WEIGHTS_FILE_SUFFIX);
+                put("postingsBin", pathToIndexDirectory + POSTINGS_FILE_SUFFIX);
+                put("bTreeBin", pathToIndexDirectory + BTREE_FILE_SUFFIX);
+                put("kGramsBin", pathToIndexDirectory + KGRAMS_FILE_SUFFIX);
             }};
     }
 
-    private static void initializeComponents(Map<String, String> pathsMap) {
-        DiskIndexWriter.createIndexDirectory(pathsMap.get("pathToIndexDirectory"));
-
+    private static void initializeComponents(Map<String, String> indexPaths) {
         corpusIndex = indexCorpus(corpus);
 
+        DiskIndexWriter.createIndexDirectory(indexPaths.get("indexDirectory"));
         System.out.println("\nWriting files to index directory...");
+
         // write the documents weights to disk
-        DiskIndexWriter.writeLds(pathsMap.get("pathToDocWeightsBin"), lds);
-        System.out.println("Document weights written to `" + pathsMap.get("pathToDocWeightsBin") + "` successfully.");
+        DiskIndexWriter.writeLds(indexPaths.get("docWeightsBin"), lds);
+        System.out.println("Document weights written to `" + indexPaths.get("docWeightsBin") + "` successfully.");
 
         // write the postings using the corpus index to disk
-        List<Integer> bytePositions = DiskIndexWriter.writeIndex(pathsMap.get("pathToPostingsBin"), corpusIndex);
-        System.out.println("Postings written to `" + pathsMap.get("pathToPostingsBin") + "` successfully.");
+        List<Integer> bytePositions = DiskIndexWriter.writeIndex(indexPaths.get("postingsBin"), corpusIndex);
+        System.out.println("Postings written to `" + indexPaths.get("postingsBin") + "` successfully.");
 
         // write the B+ tree mappings of term -> byte positions to disk
-        DiskIndexWriter.writeBTree(pathsMap.get("pathToBTreeBin"), corpusIndex.getVocabulary(), bytePositions);
-        System.out.println("B+ Tree written to `" + pathsMap.get("pathToBTreeBin") + "` successfully.");
+        DiskIndexWriter.writeBTree(indexPaths.get("bTreeBin"), corpusIndex.getVocabulary(), bytePositions);
+        System.out.println("B+ Tree written to `" + indexPaths.get("bTreeBin") + "` successfully.");
 
         // write the k-grams to disk
-        DiskIndexWriter.writeKGrams(pathsMap.get("pathToKGramsBin"), kGramIndex);
-        System.out.println("K-Grams written to `" + pathsMap.get("pathToKGramsBin") + "` successfully.");
+        DiskIndexWriter.writeKGrams(indexPaths.get("kGramsBin"), kGramIndex);
+        System.out.println("K-Grams written to `" + indexPaths.get("kGramsBin") + "` successfully.");
 
         // after writing the components to disk, we can terminate the program
         System.exit(0);
     }
 
-    private static void readFromComponents(Map<String, String> pathsMap) {
+    private static void readFromComponents(Map<String, String> indexPaths) {
         System.out.println("\nReading from the on-disk index...");
 
         // initialize the DiskPositionalIndex and k-grams using pre-constructed indexes on disk
         DiskPositionalIndex diskIndex = new DiskPositionalIndex(
-                pathsMap.get("pathToPostingsBin"), pathsMap.get("pathToBTreeBin"));
-        diskIndex.setBTree(DiskIndexReader.readBTree(pathsMap.get("pathToBTreeBin")));
+                indexPaths.get("postingsBin"), indexPaths.get("bTreeBin"));
+        diskIndex.setBTree(DiskIndexReader.readBTree(indexPaths.get("bTreeBin")));
         corpusIndex = diskIndex;
-        kGramIndex = DiskIndexReader.readKGrams(pathsMap.get("pathToKGramsBin"));
+        kGramIndex = DiskIndexReader.readKGrams(indexPaths.get("kGramsBin"));
         try {
-            randomAccessor = new RandomAccessFile(pathsMap.get("pathToDocWeightsBin"), "rw");
+            randomAccessor = new RandomAccessFile(indexPaths.get("docWeightsBin"), "rw");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -184,7 +183,7 @@ public class Application {
                     index.addTerm(term, document.getId(), currentPosition);
 
                     // build up Ld for the current document
-                    if (!tftds.containsKey(term)) {
+                    if (tftds.get(term) == null) {
                         tftds.put(term, 1);
                     } else {
                         int oldTftd = tftds.get(term);
@@ -218,18 +217,18 @@ public class Application {
         return index;
     }
 
-    private static void booleanOrRankedMenu(Scanner in) {
+    private static void showBooleanOrRankedMenu(Scanner in) {
         System.out.printf("""
                 %nSelect a query method:
                 1. Boolean queries
                 2. Ranked Retrieval queries
-                %n >>\040""");
+                 >>\040""");
 
         String input = checkMenuInput(in);
         String queryMode = switch (input) {
             case "1" -> "boolean";
             case "2" -> "ranked";
-            default -> throw new RuntimeException();
+            default -> throw new RuntimeException("Unexpected input: " + input);
         };
 
         startQueryLoop(in, queryMode);
@@ -251,10 +250,17 @@ public class Application {
                 if (splitQuery.length > 1) {
                     parameter = splitQuery[1];
                 }
+                // check if the user enabled printing logs to console
+                boolean enabledLogs = false;
+
+                if (splitQuery[splitQuery.length - 1].equals("--log")) {
+                    enabledLogs = true;
+                    query = query.substring(0, query.lastIndexOf(" --log"));
+                }
 
                 // 3(a, i). If it is a special query, perform that action.
                 switch (potentialCommand) {
-                    case ":index" -> initializeComponents(createPathsMap(parameter));
+                    case ":index" -> initializeComponents(createIndexPathsMap(parameter));
                     case ":stem" -> {
                         TokenStemmer stemmer = new TokenStemmer();
                         System.out.println(parameter + " -> " + stemmer.processToken(parameter).get(0));
@@ -286,21 +292,23 @@ public class Application {
                     }
                     case ":?" ->
                         System.out.printf("""
-                                %nSpecial Commands:
-                                :index `directory-name`  --  Index the folder at the specified path.
-                                          :stem `token`  --  Stem, then print the token string.
-                                                 :vocab  --  Print the first %s terms in the vocabulary of the corpus,
-                                                             then print the total number of vocabulary terms.
-                                                :kgrams  --  Print the first %s k-gram mappings of vocabulary types to
-                                                             k-gram tokens, then print the total number of vocabulary types.
-                                                     :q  --  Exit the program.
-                                """, VOCABULARY_PRINT_SIZE, VOCABULARY_PRINT_SIZE);
+                            %nSpecial Commands:
+                            :index `directory-name`  --  Index the folder at the specified path.
+                                      :stem `token`  --  Stem, then print the token string.
+                                             :vocab  --  Print the first %s terms in the vocabulary of the corpus,
+                                                         then print the total number of vocabulary terms.
+                                            :kgrams  --  Print the first %s k-gram mappings of vocabulary types to
+                                                         k-gram tokens, then print the total number of vocabulary types.
+                                      `query` --log  --  Enable printing an optional log to the console before printing
+                                                         the query results.
+                                                 :q  --  Exit the program.
+                            """, VOCABULARY_PRINT_SIZE, VOCABULARY_PRINT_SIZE);
                     case ":q", "" -> {}
                     default -> {
                         int numOfResults;
                         switch (queryMode) {
-                            case "boolean" -> numOfResults = displayBooleanResults(query);
-                            case "ranked" -> numOfResults = displayRankedResults(query);
+                            case "boolean" -> numOfResults = displayBooleanResults(query, enabledLogs);
+                            case "ranked" -> numOfResults = displayRankedResults(query, enabledLogs);
                             default -> numOfResults = 0;
                         }
 
@@ -313,7 +321,7 @@ public class Application {
         } while (!query.equals(":q"));
     }
 
-    private static int displayBooleanResults(String query) {
+    private static int displayBooleanResults(String query, boolean enabledLogs) {
         // 3(a, ii). If it isn't a special query, then parse the query and retrieve its postings.
         BooleanQueryParser parser = new BooleanQueryParser();
         QueryComponent parsedQuery = parser.parseQuery(query);
@@ -327,17 +335,17 @@ public class Application {
         return resultPostings.size();
     }
 
-    private static int displayRankedResults(String query) {
+    private static int displayRankedResults(String query, boolean enabledLogs) {
         DocumentWeightScorer documentScorer = new DocumentWeightScorer();
 
-        documentScorer.storeTermAtATimeDocuments(randomAccessor, corpusIndex, query);
+        documentScorer.storeTermAtATimeDocuments(randomAccessor, corpusIndex, query, enabledLogs);
         List<Map.Entry<Integer, Double>> rankedEntries = documentScorer.getRankedEntries(MAX_DISPLAYED_RANKED_ENTRIES);
 
         for (Map.Entry<Integer, Double> entry : rankedEntries) {
             int currentDocumentId = entry.getKey();
             double score = entry.getValue();
 
-            DecimalFormat decimalFormat = new DecimalFormat(".######");
+            DecimalFormat decimalFormat = new DecimalFormat("###.######");
             System.out.printf("- " + corpus.getDocument(currentDocumentId).getTitle() +
                     " (ID: " + currentDocumentId + ") -- " + decimalFormat.format(score) + "\n");
         }

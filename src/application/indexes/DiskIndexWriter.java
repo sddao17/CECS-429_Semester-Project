@@ -44,6 +44,7 @@ public class DiskIndexWriter {
                 for (Posting currentPosting : postings) {
                     // store values for readability
                     List<Integer> currentPositions = currentPosting.getPositions();
+
                     /* (2, iii, A). Write the posting's document ID as a 4-byte gap. (The first document in a list
                       is written as-is. All the rest are gaps from the previous value.) */
                     int currentDocumentId = currentPosting.getDocumentId() - latestDocumentId;
@@ -162,7 +163,9 @@ public class DiskIndexWriter {
             }
 
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Invalid path; please restart the program and build an index" +
+                    " with a valid directory path.");
+            System.exit(0);
         }
     }
 }

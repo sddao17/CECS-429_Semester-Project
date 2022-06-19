@@ -79,6 +79,7 @@ public abstract class TokenProcessor {
           and proceed with all split tokens. */
 		String[] splitTerms = token.split("-");
 		Collections.addAll(tokens, splitTerms);
+		tokens.remove(token);
 
 		return tokens;
 	}

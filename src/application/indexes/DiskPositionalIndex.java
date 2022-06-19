@@ -99,12 +99,20 @@ public class DiskPositionalIndex implements Index<String, Posting>, Closeable {
 
             // iterate through all postings for the term
             for (int i = 0; i < postingsSize; ++i) {
+                ArrayList<Integer> positions = new ArrayList<>();
                 // first document ID is as-is; the rest are gaps
                 int currentDocumentId = randomAccessPosting.readInt() + latestDocumentId;
                 latestDocumentId = currentDocumentId - latestDocumentId;
+                int positionsSize = randomAccessPosting.readInt();
+                // skip the other position bytes
+                randomAccessPosting.skipBytes(positionsSize * Integer.BYTES);
 
-                // ignore reading the positions and only add the document ID
-                Posting newPosting = new Posting(currentDocumentId, new ArrayList<>());
+                // add empty positions
+                for (int j = 0; j < positionsSize; ++j) {
+                    positions.add(0);
+                }
+
+                Posting newPosting = new Posting(currentDocumentId, positions);
                 resultPostings.add(newPosting);
             }
 

@@ -27,9 +27,14 @@ public class DocumentWeightScorer {
         String[] splitQuery = query.split(" ");
         List<String> queryTerms = new ArrayList<>();
 
-        for (String token : splitQuery) {
-            queryTerms.add(processor.processToken(token).get(0));
-        }
+            for (String token : splitQuery) {
+                List<String> splitTerms = processor.processToken(token);
+
+                // error handling - handle empty / fully non-alphanumeric tokens
+                if (splitTerms.size() > 0) {
+                    queryTerms.add(splitTerms.get(0));
+                }
+            }
 
         // implement the "term at a time" algorithm from lecture;
         // 1. For each term t in the query:

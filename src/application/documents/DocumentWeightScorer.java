@@ -57,6 +57,7 @@ public class DocumentWeightScorer {
                 acquireAccumulator(currentPosting, wqt, enabledLogs);
             }
 
+            // debugging log
             if (enabledLogs) {
                 System.out.println("--------------------------------------------------------------------------------");
             }

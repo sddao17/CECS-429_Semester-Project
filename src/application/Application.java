@@ -6,6 +6,8 @@ import application.documents.*;
 import application.indexes.*;
 import application.queries.*;
 import application.text.*;
+import application.utilities.Menu;
+import application.utilities.PostingUtility;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -23,11 +25,6 @@ import java.util.*;
  */
 public class Application {
 
-    private static final String INDEX_DIRECTORY_SUFFIX = "/index";  // suffixes for index files when indexing a corpus
-    private static final String POSTINGS_FILE_SUFFIX = "/postings.bin";
-    private static final String BTREE_FILE_SUFFIX = "/bTree.bin";
-    private static final String KGRAMS_FILE_SUFFIX = "/kGrams.bin";
-    private static final String DOC_WEIGHTS_FILE_SUFFIX = "/docWeights.bin";
     private static final int VOCABULARY_PRINT_SIZE = 1_000; // number of vocabulary terms to print
     private static final int MAX_DISPLAYED_RANKED_ENTRIES = 10;  // the maximum number of ranked entries to display
 
@@ -53,51 +50,31 @@ public class Application {
 
     private static void startApplication() {
         Scanner in = new Scanner(System.in);
-
-        showBuildOrQueryIndexMenu(in);
-        showBooleanOrRankedMenu(in);
-
-        // close all open file resources
-        if (corpusIndex instanceof DiskPositionalIndex) {
-            ((DiskPositionalIndex) corpusIndex).close();
-        }
-        in.close();
-    }
-
-    private static void showBuildOrQueryIndexMenu(Scanner in) {
-        System.out.printf("""
-                %nSelect an option:
-                1. Build a new index
-                2. Query an on-disk index
-                 >>\040""");
-
-        String input = checkMenuInput(in);
+        String input = Menu.showBuildOrQueryIndexMenu(in);
 
         /* 1. At startup, ask the user for the name of a directory that they would like to index,
           and construct a DirectoryCorpus from that directory. */
         System.out.print("\nEnter the path of the directory corpus:\n >> ");
         String directoryString = in.nextLine();
-
-        Map<String, String> indexPaths = createIndexPathsMap(directoryString);
         corpus = DirectoryCorpus.loadDirectory(Path.of(directoryString));
+        Map<String, String> indexPaths = PostingUtility.createIndexPathsMap(directoryString);
 
         // depending on the user's input, either build the index from scratch or read from an on-disk index
         switch (input) {
             case "1" -> initializeComponents(indexPaths);
             case "2" -> readFromComponents(indexPaths);
         }
-    }
 
-    private static Map<String, String> createIndexPathsMap(String directoryString) {
-        String pathToIndexDirectory = directoryString + INDEX_DIRECTORY_SUFFIX;
+        input = Menu.showBooleanOrRankedMenu(in);
 
-        return new HashMap<>() {{
-                put("indexDirectory", pathToIndexDirectory);
-                put("docWeightsBin", pathToIndexDirectory + DOC_WEIGHTS_FILE_SUFFIX);
-                put("postingsBin", pathToIndexDirectory + POSTINGS_FILE_SUFFIX);
-                put("bTreeBin", pathToIndexDirectory + BTREE_FILE_SUFFIX);
-                put("kGramsBin", pathToIndexDirectory + KGRAMS_FILE_SUFFIX);
-            }};
+        String queryMode = switch (input) {
+            case "1" -> "boolean";
+            case "2" -> "ranked";
+            default -> throw new RuntimeException("Unexpected input: " + input);
+        };
+
+        startQueryLoop(in, queryMode);
+        closeOpenFiles(in);
     }
 
     private static void initializeComponents(Map<String, String> indexPaths) {
@@ -217,23 +194,6 @@ public class Application {
         return index;
     }
 
-    private static void showBooleanOrRankedMenu(Scanner in) {
-        System.out.printf("""
-                %nSelect a query method:
-                1. Boolean queries
-                2. Ranked Retrieval queries
-                 >>\040""");
-
-        String input = checkMenuInput(in);
-        String queryMode = switch (input) {
-            case "1" -> "boolean";
-            case "2" -> "ranked";
-            default -> throw new RuntimeException("Unexpected input: " + input);
-        };
-
-        startQueryLoop(in, queryMode);
-    }
-
     private static void startQueryLoop(Scanner in, String queryMode) {
         String query;
 
@@ -260,7 +220,7 @@ public class Application {
 
                 // 3(a, i). If it is a special query, perform that action.
                 switch (potentialCommand) {
-                    case ":index" -> initializeComponents(createIndexPathsMap(parameter));
+                    case ":index" -> initializeComponents(PostingUtility.createIndexPathsMap(parameter));
                     case ":stem" -> {
                         TokenStemmer stemmer = new TokenStemmer();
                         System.out.println(parameter + " -> " + stemmer.processToken(parameter).get(0));
@@ -313,7 +273,7 @@ public class Application {
                         }
 
                         if (numOfResults > 0) {
-                            promptForDocumentContent(in);
+                            PostingUtility.promptForDocumentContent(in, corpus);
                         }
                     }
                 }
@@ -329,8 +289,8 @@ public class Application {
 
         List<Posting> resultPostings = parsedQuery.getPostings(corpusIndex, processor);
         // in case the query contains wildcards, only display each unique posting once
-        resultPostings = getDistinctPostings(resultPostings);
-        displayPostings(resultPostings);
+        resultPostings = PostingUtility.getDistinctPostings(resultPostings);
+        PostingUtility.displayPostings(corpus, resultPostings);
 
         return resultPostings.size();
     }
@@ -353,68 +313,12 @@ public class Application {
         return rankedEntries.size();
     }
 
-    private static List<Posting> getDistinctPostings(List<Posting> postings) {
-        List<Posting> distinctPostings = new ArrayList<>();
-        List<Integer> distinctDocumentIds = new ArrayList<>();
-
-        for (Posting currentPosting : postings) {
-            int currentDocumentId = currentPosting.getDocumentId();
-
-            if (!distinctDocumentIds.contains(currentDocumentId)) {
-                distinctPostings.add(currentPosting);
-                distinctDocumentIds.add(currentDocumentId);
-            }
+    private static void closeOpenFiles(Scanner in) {
+        // close all open file resources
+        if (corpusIndex instanceof DiskPositionalIndex) {
+            ((DiskPositionalIndex) corpusIndex).close();
         }
-
-        return distinctPostings;
-    }
-
-    private static void displayPostings(List<Posting> resultPostings) {
-        // 3(a, ii, A). Output the names of the documents returned from the query, one per line.
-        for (Posting posting : resultPostings) {
-            int currentDocumentId = posting.getDocumentId();
-
-            System.out.println("- " + corpus.getDocument(currentDocumentId).getTitle() +
-                    " (ID: " + currentDocumentId + ")");
-        }
-
-        // 3(a, ii, B). Output the number of documents returned from the query, after the document names.
-        System.out.println("Found " + resultPostings.size() + " documents.");
-    }
-
-    private static void promptForDocumentContent(Scanner in) {
-        System.out.print("Enter the document ID to view its contents (any other input to exit):\n >> ");
-        String query = in.nextLine();
-
-        // since error handling is not a priority requirement, use a try/catch for now
-        try {
-            Document document = corpus.getDocument(Integer.parseInt(query));
-            Reader documentContent = document.getContent();
-            EnglishTokenStream stream = new EnglishTokenStream(documentContent);
-
-            // print the tokens to the console without processing them
-            stream.getTokens().forEach(token -> System.out.print(token + " "));
-            System.out.println();
-            documentContent.close();
-        } catch (Exception ignored) {}
-    }
-
-    private static String checkMenuInput(Scanner in) {
-        String input;
-        boolean isValidInput = false;
-
-        // simple input check
-        do {
-            input = in.nextLine();
-
-            if (input.equals("1") || input.equals("2")) {
-                isValidInput = true;
-            } else {
-                System.out.print("Invalid input; please try again: ");
-            }
-        } while (!isValidInput);
-
-        return input;
+        in.close();
     }
 
     public static DirectoryCorpus getCorpus() {

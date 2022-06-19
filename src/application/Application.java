@@ -301,13 +301,17 @@ public class Application {
         documentScorer.storeTermAtATimeDocuments(randomAccessor, corpusIndex, query, enabledLogs);
         List<Map.Entry<Integer, Double>> rankedEntries = documentScorer.getRankedEntries(MAX_DISPLAYED_RANKED_ENTRIES);
 
-        for (Map.Entry<Integer, Double> entry : rankedEntries) {
-            int currentDocumentId = entry.getKey();
-            double score = entry.getValue();
+        if (rankedEntries.size() > 0) {
+            for (Map.Entry<Integer, Double> entry : rankedEntries) {
+                int currentDocumentId = entry.getKey();
+                double score = entry.getValue();
 
-            DecimalFormat decimalFormat = new DecimalFormat("###.######");
-            System.out.printf("- " + corpus.getDocument(currentDocumentId).getTitle() +
-                    " (ID: " + currentDocumentId + ") -- " + decimalFormat.format(score) + "\n");
+                DecimalFormat decimalFormat = new DecimalFormat("###.######");
+                System.out.printf("- " + corpus.getDocument(currentDocumentId).getTitle() +
+                        " (ID: " + currentDocumentId + ") -- " + decimalFormat.format(score) + "\n");
+            }
+        } else {
+            System.out.println("Found 0 documents that matched the query.");
         }
 
         return rankedEntries.size();

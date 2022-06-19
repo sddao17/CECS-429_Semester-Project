@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 
 import application.indexes.Index;
 import application.indexes.Posting;
+import application.text.TokenProcessor;
 
 /**
  * An AndQuery composes other QueryComponents and merges their postings in an intersection-like operation.
@@ -19,17 +20,17 @@ public class AndQuery implements QueryComponent {
 	}
 	
 	@Override
-	public List<Posting> getPostings(Index<String, Posting> index) {
+	public List<Posting> getPostings(Index<String, Posting> index, TokenProcessor processor) {
 		/* Program the merge for an AndQuery, by gathering the postings of the composed QueryComponents and
 		  unionizing the results. */
 		// initialize the intersections to be the postings of the first term
-		List<Posting> intersections = mComponents.get(0).getPostings(index);
+		List<Posting> intersections = mComponents.get(0).getPostings(index, processor);
 
 		// start intersecting with the postings of the second term
 		for (int i = 1; i < mComponents.size(); ++i) {
 			QueryComponent currentComponent = mComponents.get(i);
 			// store current posting for readability
-			List<Posting> currentPostings = currentComponent.getPostings(index);
+			List<Posting> currentPostings = currentComponent.getPostings(index, processor);
 
 			// intersect the current intersections with the new postings
 			intersections = intersectPostings(intersections, currentPostings);

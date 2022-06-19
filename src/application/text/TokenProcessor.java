@@ -2,6 +2,7 @@
 package application.text;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -23,11 +24,30 @@ public abstract class TokenProcessor {
 		/* To normalize a token into a term, perform these steps in order:
           1. Remove all non-alphanumeric characters from the beginning and end of the token, but not the middle.
           (a) Example: Hello. becomes Hello ; 192.168.1.1 remains unchanged. */
+		if (token.length() <= 0) {
+			return "";
+		}
 
-		//token = token.replace("$","");
-		//token = token.replace("#","");
-		token = token.replaceAll("^[^a-zA-Z-]+|[^a-zA-Z]+$", "");
-		return token;
+		int startIndex = 0;
+		int endIndex = token.length() - 1;
+
+		while (isNotAlphanumeric(token.charAt(startIndex)) && startIndex < token.length() - 1) {
+			++startIndex;
+		}
+
+		while (isNotAlphanumeric(token.charAt(endIndex)) && endIndex > 0) {
+			--endIndex;
+		}
+
+		if (startIndex >= endIndex) {
+			return "";
+		}
+
+		return token.substring(startIndex, endIndex + 1);
+	}
+
+	private boolean isNotAlphanumeric(char character) {
+		return !(Character.isLetterOrDigit(character));
 	}
 
 	/**
@@ -50,23 +70,15 @@ public abstract class TokenProcessor {
 	 */
 	public List<String> splitOnHyphens(String token) {
 		ArrayList<String> tokens = new ArrayList<>();
+
 		/* 3. For hyphens in words, do both:
           (a) Remove the hyphens from the token and then proceed with the modified token. */
-		String[] splitTerms = token.split("-");
+		tokens.add(token.replaceAll("-", ""));
 
         /* (b) Split the original hyphenated token into multiple tokens without a hyphen,
           and proceed with all split tokens. */
-		StringBuilder combinedTerms = new StringBuilder();
-
-		for (String currentTerm : splitTerms) {
-			tokens.add(currentTerm);
-			combinedTerms.append(currentTerm);
-		}
-
-		// add all terms in a single string if any hyphen exists
-		if (splitTerms.length > 1) {
-			tokens.add(combinedTerms.toString());
-		}
+		String[] splitTerms = token.split("-");
+		Collections.addAll(tokens, splitTerms);
 
 		return tokens;
 	}

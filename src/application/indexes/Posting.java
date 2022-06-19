@@ -8,7 +8,7 @@ import java.util.ArrayList;
  * Adjust this class so that Postings also store an ArrayList indicating the positions for each document
  * that the term occurs in.
  */
-public class Posting {
+public class Posting implements Comparable<Posting> {
 
 	private final int mDocumentId;
 	private final ArrayList<Integer> mPositions;
@@ -36,5 +36,19 @@ public class Posting {
 	 */
 	public void addPosition(int newPosition) {
 		mPositions.add(newPosition);
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (obj instanceof Posting otherPosting) {
+			return mDocumentId == otherPosting.mDocumentId;
+		}
+
+		return false;
+	}
+
+	@Override
+	public int compareTo(Posting otherPosting) {
+		return Integer.compare(this.mDocumentId, otherPosting.mDocumentId);
 	}
 }

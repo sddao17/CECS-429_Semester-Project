@@ -5,6 +5,10 @@ import application.indexes.Index;
 import application.indexes.Posting;
 import application.queries.BooleanQueryParser;
 import application.queries.QueryComponent;
+import application.queries.WildcardLiteral;
+import application.text.QueryTokenProcessor;
+import application.text.TokenProcessor;
+import application.text.WildcardTokenProcessor;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
@@ -58,7 +62,16 @@ public class QueryResult {
         //will retrieve the documents that correlate to the search
         BooleanQueryParser parser = new BooleanQueryParser();
         QueryComponent parsedQuery = parser.parseQuery(query);
-        List<Posting> resultPostings = parsedQuery.getPostings(indexList);
+        TokenProcessor processor;
+
+        // Decide on which query processor to use based on the user's input
+        if (parsedQuery instanceof WildcardLiteral) {
+            processor = new WildcardTokenProcessor();
+        } else {
+            processor = new QueryTokenProcessor();
+        }
+
+        List<Posting> resultPostings = parsedQuery.getPostings(indexList, processor);
 
         JLabel totalDocs = new JLabel("Found " + resultPostings.size() + " documents.");
         //adds the documents found to the panel

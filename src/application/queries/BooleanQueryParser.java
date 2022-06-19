@@ -1,3 +1,4 @@
+
 package application.queries;
 
 import java.util.ArrayList;
@@ -157,12 +158,12 @@ public class BooleanQueryParser {
 			// Locate the next quotation to find the end of this literal.
 			int nextQuotationMark = subquery.indexOf('\"', startIndex + 1);
 			lengthOut = nextQuotationMark - startIndex + 1;
-			// the PhraseLiteral is between the two next quotations marks
+			// the PhraseLiteral is between the next two quotations marks
 			String literal = subquery.substring(startIndex + 1, nextQuotationMark);
 			String[] splitLiterals = literal.split(" ");
 			List<QueryComponent> components = new ArrayList<>();
 
-			// crate a separate component for each individual literal found in the phrase
+			// create a separate component for each individual literal found in the phrase
 			for (String currentLiteral : splitLiterals) {
 				// if it has an asterisk, it's a wildcard literal
 				if (currentLiteral.contains("*")) {

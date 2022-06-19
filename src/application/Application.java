@@ -35,7 +35,7 @@ public class Application {
     private static DirectoryCorpus corpus;  // we need only one of each corpus and index active at a time,
     private static Index<String, Posting> corpusIndex;  // and multiple methods need access to them
     private static KGramIndex kGramIndex = new KGramIndex();
-    private static List<Double> lds = new ArrayList<>();    // the values representing document weights
+    private static final List<Double> lds = new ArrayList<>();    // the values representing document weights
     private static CorpusSelection cSelect;
 
     public static void main(String[] args) {
@@ -54,8 +54,8 @@ public class Application {
     private static void startApplication() {
         Scanner in = new Scanner(System.in);
 
-        String directoryPath = buildOrQueryIndexMenu(in);
-        booleanOrRankedMenu(in, directoryPath);
+        buildOrQueryIndexMenu(in);
+        booleanOrRankedMenu(in);
 
         // close all open file resources
         if (corpusIndex instanceof DiskPositionalIndex) {
@@ -63,10 +63,9 @@ public class Application {
         }
 
         in.close();
-        DocumentWeightScorer.closeRandomAccessor();
     }
 
-    private static String buildOrQueryIndexMenu(Scanner in) {
+    private static void buildOrQueryIndexMenu(Scanner in) {
         System.out.printf("""
                 %nSelect an option:
                 1. Build a new index
@@ -80,61 +79,68 @@ public class Application {
         System.out.print("\nEnter the path of the directory corpus:\n >> ");
         String directoryString = in.nextLine();
 
+        Map<String, String> pathsMap = createPathsMap(directoryString);
         corpus = DirectoryCorpus.loadDirectory(Path.of(directoryString));
 
         // depending on the user's input, either build the index from scratch or read from an on-disk index
         switch (input) {
-            case "1" -> initializeComponents(directoryString);
-            case "2" -> readFromComponents(directoryString);
+            case "1" -> initializeComponents(pathsMap);
+            case "2" -> readFromComponents(pathsMap);
         }
-
-        return directoryString;
     }
 
-    private static void initializeComponents(String directoryString) {
+    private static Map<String, String> createPathsMap(String directoryString) {
         String pathToIndexDirectory = directoryString + INDEX_DIRECTORY_SUFFIX;
-        String pathToDocWeightsBin = pathToIndexDirectory + DOC_WEIGHTS_FILE_SUFFIX;
-        String pathToPostingsBin = pathToIndexDirectory + POSTINGS_FILE_SUFFIX;
-        String pathToBTreeBin = pathToIndexDirectory + BTREE_FILE_SUFFIX;
-        String pathToKGramsBin = pathToIndexDirectory + KGRAMS_FILE_SUFFIX;
-        DiskIndexWriter.createIndexDirectory(pathToIndexDirectory);
 
-        corpusIndex = indexCorpus(corpus, pathToDocWeightsBin);
+        return new HashMap<>() {{
+                put("pathToIndexDirectory", pathToIndexDirectory);
+                put("pathToDocWeightsBin", pathToIndexDirectory + DOC_WEIGHTS_FILE_SUFFIX);
+                put("pathToPostingsBin", pathToIndexDirectory + POSTINGS_FILE_SUFFIX);
+                put("pathToBTreeBin", pathToIndexDirectory + BTREE_FILE_SUFFIX);
+                put("pathToKGramsBin", pathToIndexDirectory + KGRAMS_FILE_SUFFIX);
+            }};
+    }
+
+    private static void initializeComponents(Map<String, String> pathsMap) {
+        DiskIndexWriter.createIndexDirectory(pathsMap.get("pathToIndexDirectory"));
+
+        corpusIndex = indexCorpus(corpus);
 
         System.out.println("\nWriting files to index directory...");
         // write the documents weights to disk
-        DiskIndexWriter.writeLds(pathToDocWeightsBin, lds);
-        System.out.println("Document weights written to `" + pathToDocWeightsBin + "` successfully.");
+        DiskIndexWriter.writeLds(pathsMap.get("pathToDocWeightsBin"), lds);
+        System.out.println("Document weights written to `" + pathsMap.get("pathToDocWeightsBin") + "` successfully.");
 
         // write the postings using the corpus index to disk
-        List<Integer> bytePositions = DiskIndexWriter.writeIndex(pathToPostingsBin, corpusIndex);
-        System.out.println("Postings written to `" + pathToPostingsBin + "` successfully.");
+        List<Integer> bytePositions = DiskIndexWriter.writeIndex(pathsMap.get("pathToPostingsBin"), corpusIndex);
+        System.out.println("Postings written to `" + pathsMap.get("pathToPostingsBin") + "` successfully.");
 
         // write the B+ tree mappings of term -> byte positions to disk
-        DiskIndexWriter.writeBTree(pathToBTreeBin, corpusIndex.getVocabulary(), bytePositions);
-        System.out.println("B+ Tree written to `" + pathToBTreeBin + "` successfully.");
+        DiskIndexWriter.writeBTree(pathsMap.get("pathToBTreeBin"), corpusIndex.getVocabulary(), bytePositions);
+        System.out.println("B+ Tree written to `" + pathsMap.get("pathToBTreeBin") + "` successfully.");
 
         // write the k-grams to disk
-        DiskIndexWriter.writeKGrams(pathToKGramsBin, kGramIndex);
-        System.out.println("K-Grams written to `" + pathToKGramsBin + "` successfully.");
+        DiskIndexWriter.writeKGrams(pathsMap.get("pathToKGramsBin"), kGramIndex);
+        System.out.println("K-Grams written to `" + pathsMap.get("pathToKGramsBin") + "` successfully.");
 
         // after writing the components to disk, we can terminate the program
         System.exit(0);
     }
 
-    private static void readFromComponents(String directoryString) {
-        String pathToIndexDirectory = directoryString + INDEX_DIRECTORY_SUFFIX;
-        String pathToPostingsBin = pathToIndexDirectory + POSTINGS_FILE_SUFFIX;
-        String pathToBTreeBin = pathToIndexDirectory + BTREE_FILE_SUFFIX;
-        String pathToKGramsBin = pathToIndexDirectory + KGRAMS_FILE_SUFFIX;
-
+    private static void readFromComponents(Map<String, String> pathsMap) {
         System.out.println("\nReading from the on-disk index...");
 
         // initialize the DiskPositionalIndex and k-grams using pre-constructed indexes on disk
-        DiskPositionalIndex diskIndex = new DiskPositionalIndex(pathToPostingsBin, pathToBTreeBin);
-        diskIndex.setBTree(DiskIndexReader.readBTree(pathToBTreeBin));
+        DiskPositionalIndex diskIndex = new DiskPositionalIndex(
+                pathsMap.get("pathToPostingsBin"), pathsMap.get("pathToBTreeBin"));
+        diskIndex.setBTree(DiskIndexReader.readBTree(pathsMap.get("pathToBTreeBin")));
         corpusIndex = diskIndex;
-        kGramIndex = DiskIndexReader.readKGrams(pathToKGramsBin);
+        kGramIndex = DiskIndexReader.readKGrams(pathsMap.get("pathToKGramsBin"));
+        try {
+            randomAccessor = new RandomAccessFile(pathsMap.get("pathToDocWeightsBin"), "rw");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         System.out.printf("""
                 Reading complete.
@@ -144,7 +150,7 @@ public class Application {
                 """, corpus.getCorpusSize(), kGramIndex.getDistinctKGrams().size());
     }
 
-    public static Index<String, Posting> indexCorpus(DocumentCorpus corpus, String pathToDocWeightsBin) {
+    public static Index<String, Posting> indexCorpus(DocumentCorpus corpus) {
         /* 2. Index all documents in the corpus to build a positional inverted index.
           Print to the screen how long (in seconds) this process takes. */
         System.out.println("\nIndexing...");
@@ -153,12 +159,6 @@ public class Application {
         PositionalInvertedIndex index = new PositionalInvertedIndex();
         VocabularyTokenProcessor vocabProcessor = new VocabularyTokenProcessor();
         WildcardTokenProcessor wildcardProcessor = new WildcardTokenProcessor();
-
-        try {
-            randomAccessor = new RandomAccessFile(pathToDocWeightsBin, "rw");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
 
         // scan all documents and process each token into terms of our vocabulary
         for (Document document : corpus.getDocuments()) {
@@ -218,7 +218,7 @@ public class Application {
         return index;
     }
 
-    private static void booleanOrRankedMenu(Scanner in, String directoryPath) {
+    private static void booleanOrRankedMenu(Scanner in) {
         System.out.printf("""
                 %nSelect a query method:
                 1. Boolean queries
@@ -232,10 +232,10 @@ public class Application {
             default -> throw new RuntimeException();
         };
 
-        startQueryLoop(in, directoryPath, queryMode);
+        startQueryLoop(in, queryMode);
     }
 
-    private static void startQueryLoop(Scanner in, String directoryPath, String queryMode) {
+    private static void startQueryLoop(Scanner in, String queryMode) {
         String query;
 
         do {
@@ -254,7 +254,7 @@ public class Application {
 
                 // 3(a, i). If it is a special query, perform that action.
                 switch (potentialCommand) {
-                    case ":index" -> initializeComponents(parameter);
+                    case ":index" -> initializeComponents(createPathsMap(parameter));
                     case ":stem" -> {
                         TokenStemmer stemmer = new TokenStemmer();
                         System.out.println(parameter + " -> " + stemmer.processToken(parameter).get(0));
@@ -300,7 +300,7 @@ public class Application {
                         int numOfResults;
                         switch (queryMode) {
                             case "boolean" -> numOfResults = displayBooleanResults(query);
-                            case "ranked" -> numOfResults = displayRankedResults(directoryPath, query);
+                            case "ranked" -> numOfResults = displayRankedResults(query);
                             default -> numOfResults = 0;
                         }
 
@@ -327,11 +327,10 @@ public class Application {
         return resultPostings.size();
     }
 
-    private static int displayRankedResults(String directoryPath, String query) {
-        String pathToDocWeightsBin = directoryPath + INDEX_DIRECTORY_SUFFIX + DOC_WEIGHTS_FILE_SUFFIX;
-        DocumentWeightScorer documentScorer = new DocumentWeightScorer(pathToDocWeightsBin);
+    private static int displayRankedResults(String query) {
+        DocumentWeightScorer documentScorer = new DocumentWeightScorer();
 
-        documentScorer.storeTermAtATimeDocuments(corpusIndex, query);
+        documentScorer.storeTermAtATimeDocuments(randomAccessor, corpusIndex, query);
         List<Map.Entry<Integer, Double>> rankedEntries = documentScorer.getRankedEntries(MAX_DISPLAYED_RANKED_ENTRIES);
 
         for (Map.Entry<Integer, Double> entry : rankedEntries) {

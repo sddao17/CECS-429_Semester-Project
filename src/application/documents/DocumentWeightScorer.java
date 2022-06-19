@@ -17,31 +17,13 @@ import java.util.*;
  */
 public class DocumentWeightScorer {
 
-    public static RandomAccessFile randomAccessor;
     private final Map<Integer, Double> finalAccumulators;
 
-    public DocumentWeightScorer(String filePath) {
-        try {
-            randomAccessor = new RandomAccessFile(filePath, "rw");
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
-
+    public DocumentWeightScorer() {
         finalAccumulators = new HashMap<>();
     }
 
-    public static void setRandomAccessor(RandomAccessFile newRandomAccessor) {
-        randomAccessor = newRandomAccessor;
-    }
-
-    public static void closeRandomAccessor() {
-        try {
-            randomAccessor.close();
-
-        } catch (IOException | NullPointerException ignored) {}
-    }
-
-    public void storeTermAtATimeDocuments(Index<String, Posting> index, String query) {
+    public void storeTermAtATimeDocuments(RandomAccessFile randomAccessor, Index<String, Posting> index, String query) {
         VocabularyTokenProcessor processor = new VocabularyTokenProcessor();
         String[] splitTokens = query.split(" ");
         List<String> queryTerms = new ArrayList<>();

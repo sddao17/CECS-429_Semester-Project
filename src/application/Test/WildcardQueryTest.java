@@ -22,7 +22,7 @@ public class WildcardQueryTest {
 
     Path directoryPath = Path.of("./corpus/parks-test");
     DirectoryCorpus testCorpus = DirectoryCorpus.loadDirectory(directoryPath);
-    Index<String, Posting> index = Application.indexCorpus(testCorpus, directoryPath.toString() + "/index/docWeights.bin");
+    Index<String, Posting> index = Application.indexCorpus(testCorpus);
     TokenProcessor processor = new WildcardTokenProcessor();
     BooleanQueryParser parser = new BooleanQueryParser();
 

@@ -19,7 +19,7 @@ public class IndexTest {
     // run test corpus through our index
     Path directoryPath = Path.of("./corpus/kanye-test");
     DocumentCorpus testCorpus = DirectoryCorpus.loadDirectory(directoryPath);
-    Index<String, Posting> index = indexCorpus(testCorpus, directoryPath.toString() + "/index/docWeights.bin");
+    Index<String, Posting> index = indexCorpus(testCorpus);
     //inverted index by hand
     HashMap<String, List<Posting>> indexMap = new HashMap<>() {
         {

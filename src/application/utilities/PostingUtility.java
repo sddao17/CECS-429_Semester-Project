@@ -30,7 +30,7 @@ public class PostingUtility {
         for (Posting currentPosting : postings) {
             int currentDocumentId = currentPosting.getDocumentId();
 
-            if (!distinctDocumentIds.contains(currentDocumentId)) {
+            if (Collections.binarySearch(distinctDocumentIds, currentDocumentId) < 0) {
                 distinctPostings.add(currentPosting);
                 distinctDocumentIds.add(currentDocumentId);
             }

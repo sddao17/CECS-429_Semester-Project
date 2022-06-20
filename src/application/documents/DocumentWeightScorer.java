@@ -7,22 +7,24 @@ import application.indexes.Index;
 import application.indexes.Posting;
 import application.text.VocabularyTokenProcessor;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.*;
 
 /**
  * Calculates document weights and their relative scores for ranked retrieval queries.
  */
-public class DocumentWeightScorer {
+public class DocumentWeightScorer implements Closeable {
 
+    private static RandomAccessFile randomAccessor;
     private final Map<Integer, Double> finalAccumulators;
 
     public DocumentWeightScorer() {
         finalAccumulators = new HashMap<>();
     }
 
-    public void storeTermAtATimeDocuments(RandomAccessFile randomAccessor, Index<String, Posting> index, String query,
-                                          boolean enabledLogs) {
+    public void storeTermAtATimeDocuments(Index<String, Posting> index, String query) {
         VocabularyTokenProcessor processor = new VocabularyTokenProcessor();
         String[] splitQuery = query.split(" ");
         List<String> queryTerms = new ArrayList<>();
@@ -49,7 +51,7 @@ public class DocumentWeightScorer {
             double wqt = calculateWqt(n, dft);
 
             // debugging log
-            if (enabledLogs) {
+            if (Application.enabledLogs) {
                 System.out.println("--------------------------------------------------------------------------------" +
                         "\n`" + term + "`" +
                         "\n---> df(t) -- " + dft +
@@ -59,11 +61,11 @@ public class DocumentWeightScorer {
             // 1b. For each document d in t's postings list:
             for (Posting currentPosting : postings) {
                 // 1 (b, i). Acquire an accumulator value A(d) (the design of this system is up to you).
-                acquireAccumulator(currentPosting, wqt, enabledLogs);
+                acquireAccumulator(currentPosting, wqt);
             }
 
             // debugging log
-            if (enabledLogs) {
+            if (Application.enabledLogs) {
                 System.out.println("--------------------------------------------------------------------------------");
             }
         }
@@ -81,7 +83,7 @@ public class DocumentWeightScorer {
         }
     }
 
-    public void acquireAccumulator(Posting posting, double wqt, boolean enabledLogs) {
+    public void acquireAccumulator(Posting posting, double wqt) {
         int documentId = posting.getDocumentId();
         int tftd = posting.getPositions().size();
 
@@ -89,12 +91,12 @@ public class DocumentWeightScorer {
         double wdt = calculateWdt(tftd);
 
         // debugging log
-        if (enabledLogs) {
+        if (Application.enabledLogs) {
             System.out.println(
                     Application.getCorpus().getDocument(posting.getDocumentId()).getTitle() + " (ID: " + documentId + ")" +
                             "\n---> Tf(t, d) -- " + tftd +
                             "\n---> w(d, t) -- " + wdt +
-                            "\n---> L(d) -- " + DiskIndexReader.readLdFromBinFile(Application.randomAccessor, documentId));
+                            "\n---> L(d) -- " + DiskIndexReader.readLdFromBinFile(randomAccessor, documentId));
         }
 
         // 1 (b, iii). Increase A(d) by wd,t × wq,t.
@@ -148,5 +150,23 @@ public class DocumentWeightScorer {
         }
 
         return Math.sqrt(sum);
+    }
+
+    public static void setRandomAccessor(String pathToDocWeightsBin) {
+        try {
+            randomAccessor = new RandomAccessFile(pathToDocWeightsBin, "rw");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void close() {
+        try {
+            randomAccessor.close();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

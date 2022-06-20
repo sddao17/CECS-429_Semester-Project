@@ -9,8 +9,8 @@ import application.text.*;
 import application.utilities.Menu;
 import application.utilities.PostingUtility;
 
+import java.io.Closeable;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.io.Reader;
 import java.nio.file.Path;
 import java.text.DecimalFormat;
@@ -28,12 +28,14 @@ public class Application {
     private static final int VOCABULARY_PRINT_SIZE = 1_000; // number of vocabulary terms to print
     private static final int MAX_DISPLAYED_RANKED_ENTRIES = 10;  // the maximum number of ranked entries to display
 
-    public static RandomAccessFile randomAccessor;
+    private static CorpusSelection cSelect;
     private static DirectoryCorpus corpus;  // we need only one of each corpus and index active at a time,
     private static Index<String, Posting> corpusIndex;  // and multiple methods need access to them
     private static KGramIndex kGramIndex = new KGramIndex();
     private static final List<Double> lds = new ArrayList<>();    // the values representing document weights
-    private static CorpusSelection cSelect;
+
+    public static boolean enabledLogs = false;
+    public static final List<Closeable> closeables = new ArrayList<>(); // considers all cases of indexing
 
     public static void main(String[] args) {
         System.out.printf("""
@@ -50,13 +52,13 @@ public class Application {
 
     private static void startApplication() {
         Scanner in = new Scanner(System.in);
+        closeables.add(in);
+
         String input = Menu.showBuildOrQueryIndexMenu(in);
 
         /* 1. At startup, ask the user for the name of a directory that they would like to index,
           and construct a DirectoryCorpus from that directory. */
-        System.out.print("\nEnter the path of the directory corpus:\n >> ");
-        String directoryString = in.nextLine();
-        corpus = DirectoryCorpus.loadDirectory(Path.of(directoryString));
+        String directoryString = promptCorpusDirectory(in);
         Map<String, String> indexPaths = PostingUtility.createIndexPathsMap(directoryString);
 
         // depending on the user's input, either build the index from scratch or read from an on-disk index
@@ -74,7 +76,15 @@ public class Application {
         };
 
         startQueryLoop(in, queryMode);
-        closeOpenFiles(in);
+        closeOpenFiles();
+    }
+
+    private static String promptCorpusDirectory(Scanner in) {
+        System.out.print("\nEnter the path of the directory corpus:\n >> ");
+        String directoryString = in.nextLine();
+        corpus = DirectoryCorpus.loadDirectory(Path.of(directoryString));
+
+        return directoryString;
     }
 
     private static void initializeComponents(Map<String, String> indexPaths) {
@@ -107,16 +117,12 @@ public class Application {
         System.out.println("\nReading from the on-disk index...");
 
         // initialize the DiskPositionalIndex and k-grams using pre-constructed indexes on disk
-        DiskPositionalIndex diskIndex = new DiskPositionalIndex(indexPaths.get("postingsBin"),
-                indexPaths.get("bTreeBin"));
-        diskIndex.setBTree(DiskIndexReader.readBTree(indexPaths.get("bTreeBin")));
-        corpusIndex = diskIndex;
+        corpusIndex = new DiskPositionalIndex(indexPaths.get("bTreeBin"), indexPaths.get("postingsBin"));
         kGramIndex = DiskIndexReader.readKGrams(indexPaths.get("kGramsBin"));
-        try {
-            randomAccessor = new RandomAccessFile(indexPaths.get("docWeightsBin"), "rw");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        DocumentWeightScorer.setRandomAccessor(indexPaths.get("docWeightsBin"));
+
+        // if we're reading from disk using DiskPositionalIndex, then we know it is Closeable
+        closeables.add((Closeable) corpusIndex);
 
         System.out.printf("""
                 Reading complete.
@@ -138,47 +144,46 @@ public class Application {
 
         // scan all documents and process each token into terms of our vocabulary
         for (Document document : corpus.getDocuments()) {
-            Map<String, Integer> tftds = new HashMap<>();
-            Reader documentContent = document.getContent();
-            EnglishTokenStream stream = new EnglishTokenStream(documentContent);
-            Iterable<String> tokens = stream.getTokens();
             // at the beginning of each document reading, the position always starts at 1
             int currentPosition = 1;
+            Map<String, Integer> tftds = new HashMap<>();
 
-            for (String token : tokens) {
-                // before we normalize the token, add it to a minimally processed vocabulary for wildcards
-                List<String> wildcardTokens = wildcardProcessor.processToken(token);
+            try (Reader documentContent = document.getContent();
+                 EnglishTokenStream stream = new EnglishTokenStream(documentContent)) {
+                Iterable<String> tokens = stream.getTokens();
 
-                // add each unprocessed token to our k-gram index as we traverse through the documents
-                kGramIndex.buildKGramIndex(wildcardTokens, 3);
+                for (String token : tokens) {
+                    // before we normalize the token, add it to a minimally processed vocabulary for wildcards
+                    List<String> wildcardTokens = wildcardProcessor.processToken(token);
 
-                // process the vocabulary token before evaluating whether it exists within our index
-                List<String> terms = vocabProcessor.processToken(token);
+                    // add each unprocessed token to our k-gram index as we traverse through the documents
+                    kGramIndex.buildKGramIndex(wildcardTokens, 3);
 
-                // since each token can produce multiple terms, add all terms using the same documentID and position
-                for (String term : terms) {
-                    index.addTerm(term, document.getId(), currentPosition);
+                    // process the vocabulary token before evaluating whether it exists within our index
+                    List<String> terms = vocabProcessor.processToken(token);
 
-                    // build up L(d) for the current document
-                    if (tftds.get(term) == null) {
-                        tftds.put(term, 1);
-                    } else {
-                        int oldTftd = tftds.get(term);
-                        tftds.replace(term, oldTftd + 1);
+                    // since each token can produce multiple terms, add all terms using the same documentID and position
+                    for (String term : terms) {
+                        index.addTerm(term, document.getId(), currentPosition);
+
+                        // build up L(d) for the current document
+                        if (tftds.get(term) == null) {
+                            tftds.put(term, 1);
+                        } else {
+                            int oldTftd = tftds.get(term);
+                            tftds.replace(term, oldTftd + 1);
+                        }
                     }
+                    // after each token addition, update the position count
+                    ++currentPosition;
                 }
-                // after each token addition, update the position count
-                ++currentPosition;
+
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
 
             // after processing all tokens into terms, calculate L(d) for the document and add it to our list
             lds.add(DocumentWeightScorer.calculateLd(tftds));
-
-            try {
-                documentContent.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
         }
 
         long endTime = System.nanoTime();
@@ -211,8 +216,6 @@ public class Application {
                     parameter = splitQuery[1];
                 }
                 // check if the user enabled printing logs to console
-                boolean enabledLogs = false;
-
                 if (splitQuery[splitQuery.length - 1].equals("--log")) {
                     enabledLogs = true;
                     query = query.substring(0, query.lastIndexOf(" --log"));
@@ -259,7 +262,7 @@ public class Application {
                                                          then print the total number of vocabulary terms.
                                             :kgrams  --  Print the first %s k-gram mappings of vocabulary types to
                                                          k-gram tokens, then print the total number of vocabulary types.
-                                      `query` --log  --  Enable printing an optional log to the console before printing
+                                      `query` --log  --  Enable printing a debugging log to the console before printing
                                                          the query results.
                                                  :q  --  Exit the program.
                             """, VOCABULARY_PRINT_SIZE, VOCABULARY_PRINT_SIZE);
@@ -267,8 +270,8 @@ public class Application {
                     default -> {
                         int numOfResults;
                         switch (queryMode) {
-                            case "boolean" -> numOfResults = displayBooleanResults(query, enabledLogs);
-                            case "ranked" -> numOfResults = displayRankedResults(query, enabledLogs);
+                            case "boolean" -> numOfResults = displayBooleanResults(query);
+                            case "ranked" -> numOfResults = displayRankedResults(query);
                             default -> numOfResults = 0;
                         }
 
@@ -278,10 +281,11 @@ public class Application {
                     }
                 }
             }
+            enabledLogs = false;
         } while (!query.equals(":q"));
     }
 
-    private static int displayBooleanResults(String query, boolean enabledLogs) {
+    private static int displayBooleanResults(String query) {
         // 3(a, ii). If it isn't a special query, then parse the query and retrieve its postings.
         BooleanQueryParser parser = new BooleanQueryParser();
         QueryComponent parsedQuery = parser.parseQuery(query);
@@ -289,16 +293,18 @@ public class Application {
 
         List<Posting> resultPostings = parsedQuery.getPostings(corpusIndex, processor);
         // in case the query contains wildcards, only display each unique posting once
-        resultPostings = PostingUtility.getDistinctPostings(resultPostings);
+        if (parsedQuery instanceof WildcardLiteral) {
+            resultPostings = PostingUtility.getDistinctPostings(resultPostings);
+        }
         PostingUtility.displayPostings(corpus, resultPostings);
 
         return resultPostings.size();
     }
 
-    private static int displayRankedResults(String query, boolean enabledLogs) {
+    private static int displayRankedResults(String query) {
         DocumentWeightScorer documentScorer = new DocumentWeightScorer();
 
-        documentScorer.storeTermAtATimeDocuments(randomAccessor, corpusIndex, query, enabledLogs);
+        documentScorer.storeTermAtATimeDocuments(corpusIndex, query);
         List<Map.Entry<Integer, Double>> rankedEntries = documentScorer.getRankedEntries(MAX_DISPLAYED_RANKED_ENTRIES);
 
         if (rankedEntries.size() > 0) {
@@ -313,16 +319,21 @@ public class Application {
         } else {
             System.out.println("Found 0 documents that matched the query.");
         }
+        documentScorer.close();
 
         return rankedEntries.size();
     }
 
-    private static void closeOpenFiles(Scanner in) {
-        // close all open file resources
-        if (corpusIndex instanceof DiskPositionalIndex) {
-            ((DiskPositionalIndex) corpusIndex).close();
+    private static void closeOpenFiles() {
+        // close all open file resources case-by-case
+        for (Closeable stream : closeables) {
+            try {
+                stream.close();
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
-        in.close();
     }
 
     public static DirectoryCorpus getCorpus() {

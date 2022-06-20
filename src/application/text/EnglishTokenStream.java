@@ -8,12 +8,12 @@ import java.util.*;
 /**
  * An EnglishTokenStream creates tokens by splitting on whitespace.
  */
-public class EnglishTokenStream implements TokenStream {
+public class EnglishTokenStream implements TokenStream, AutoCloseable {
 
-	private Reader mReader;
+	private final Reader mReader;
 	
 	private class EnglishTokenIterator implements Iterator<String> {
-		private Scanner mScanner;
+		private final Scanner mScanner;
 		
 		private EnglishTokenIterator() {
 			// A Scanner automatically tokenizes text by splitting on whitespace. By composing a Scanner we don't have to
@@ -42,7 +42,7 @@ public class EnglishTokenStream implements TokenStream {
 	@Override
 	public Iterable<String> getTokens() {
 		// Fancy trick to convert an Iterator to an Iterable.
-		return () -> new EnglishTokenIterator();
+		return EnglishTokenIterator::new;
 	}
 	
 	@Override

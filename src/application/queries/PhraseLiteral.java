@@ -4,6 +4,7 @@ package application.queries;
 import java.util.ArrayList;
 import java.util.List;
 
+import application.Application;
 import application.indexes.Index;
 import application.indexes.Posting;
 import application.text.TokenProcessor;
@@ -45,25 +46,34 @@ public class PhraseLiteral implements QueryComponent {
 		List<int[]> positionalIntersects = new ArrayList<>();
 		int firstTermIntersects = 0;
 		int numOfIntersections = 0;
+		List<Posting> leftPostings = mComponents.get(0).getPostings(index, processor);
 
 		// start positional intersecting with postings two at a time
-		for (int i = 0; i < mComponents.size() - 1; ++i) {
+		for (int i = 1; i < mComponents.size(); ++i) {
 			// store the current postings for readability
-			List<Posting> leftPostings = mComponents.get(i).getPostings(index, processor);
-			List<Posting> rightPostings = mComponents.get(i + 1).getPostings(index, processor);
+			List<Posting> rightPostings = mComponents.get(i).getPostings(index, processor);
 
 			// positional intersect our current intersections list with the next postings list
 			positionalIntersects.addAll(positionalIntersect(leftPostings, rightPostings));
 
 			// mark the position of where the first terms' positional intersections end
-			if (i == 0) {
+			if (i == 1) {
 				firstTermIntersects = positionalIntersects.size();
 			}
 
 			++numOfIntersections;
+			leftPostings = rightPostings;
 		}
 
-		return findFinalIntersects(positionalIntersects, firstTermIntersects, numOfIntersections);
+		List<Posting> resultPostings = findFinalIntersects(positionalIntersects, firstTermIntersects, numOfIntersections);
+
+		if (Application.enabledLogs) {
+			System.out.println("--------------------------------------------------------------------------------" +
+					"\nPhrase literals: " + mComponents + " -- " + resultPostings.size() + " posting(s)" +
+					"\n--------------------------------------------------------------------------------");
+		}
+
+		return resultPostings;
 	}
 
 	private ArrayList<int[]> positionalIntersect(List<Posting> leftList, List<Posting> rightList) {

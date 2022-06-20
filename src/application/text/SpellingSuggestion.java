@@ -1,20 +1,139 @@
 
 package application.text;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import application.indexes.Index;
+import application.indexes.KGramIndex;
+import application.indexes.Posting;
 
+import java.util.*;
+
+/**
+ * Suggests a suitable correction to a given token given the k-grams of existing vocabulary type
+ * using Jaccard coefficients and the Levenshtein edit distance algorithm.
+ */
 public class SpellingSuggestion {
 
-    List<String> vocabulary;
+    public static final double THRESHOLD = 0.425;
+    private final Index<String, Posting> corpusIndex;
+    private final Index<String, String> kGramIndex;
 
-    public SpellingSuggestion(List<String> inputVocabulary) {
-        vocabulary = inputVocabulary;
+    public SpellingSuggestion(Index<String, Posting> inputCorpusIndex, Index<String, String> inputKGramIndex) {
+        corpusIndex = inputCorpusIndex;
+        kGramIndex = inputKGramIndex;
+    }
+
+    public String suggestCorrection(String token) {
+        List<String> candidates = getCandidates(token);
+
+        // if there are no candidates, let the calling method know no suitable replacements were found
+        if (candidates.size() == 0) {
+            throw new RuntimeException();
+        }
+
+        Map<String, Integer> candidateEdits = getCandidateEdits(candidates, token);
+        List<String> finalCandidates = getFinalCandidates(candidateEdits);
+
+        return getFinalReplacement(corpusIndex, finalCandidates, token);
+    }
+
+    public List<String> getCandidates(String token) {
+        List<String> indexVocabulary = kGramIndex.getVocabulary();
+        List<String> candidates = new ArrayList<>();
+
+        KGramIndex tokenKGramIndex = new KGramIndex();
+        tokenKGramIndex.addToken(token, 3);
+        List<String> tokenKGrams = tokenKGramIndex.getPostings(token);
+        // remember to sort the k-grams before we compare them
+        Collections.sort(tokenKGrams);
+
+        for (String vocabularyType : indexVocabulary) {
+            List<String> vocabularyTokenKGrams = kGramIndex.getPostings(vocabularyType);
+            Collections.sort(vocabularyTokenKGrams);
+
+            /* 1. Select all vocabulary types that have k-grams in common with the misspelled term,
+              as described in lecture. */
+            if (shareCommonKGrams(tokenKGrams, vocabularyTokenKGrams)) {
+                // 2. Calculate the Jaccard coefficient for each type in the selection.
+                double jaccardCoeff = calculateJaccardCoeff(tokenKGrams, vocabularyTokenKGrams);
+
+                // 3a. For each type whose coefficient exceeds some threshold (your decision)...
+                if (jaccardCoeff >= THRESHOLD) {
+                    candidates.add(vocabularyType);
+                }
+            }
+        }
+
+        return candidates;
+    }
+
+    public static Map<String, Integer> getCandidateEdits(List<String> candidates, String token) {
+        Map<String, Integer> candidateEdits = new HashMap<>();
+        for (String candidate : candidates) {
+            // 3b. ...calculate the edit distance from that type to the misspelled term.
+            int editDistance = calculateLevenshteinDistance(token, candidate);
+
+            candidateEdits.put(candidate, editDistance);
+        }
+
+        return candidateEdits;
+    }
+
+    public static List<String> getFinalCandidates(Map<String, Integer> candidateEdits) {
+        Queue<Map.Entry<String, Integer>> priorityQueue = new PriorityQueue<>(Map.Entry.comparingByValue());
+        priorityQueue.addAll(candidateEdits.entrySet());
+
+        List<String> finalCandidates = new ArrayList<>();
+        int max = Integer.MAX_VALUE;
+
+        while (priorityQueue.peek() != null && priorityQueue.peek().getValue() <= max) {
+            Map.Entry<String, Integer> entry = priorityQueue.poll();
+            finalCandidates.add(entry.getKey());
+            max = entry.getValue();
+        }
+
+        return finalCandidates;
+    }
+
+    public static String getFinalReplacement(Index<String, Posting> corpusIndex, List<String> finalCandidates,
+                                             String token) {
+        // 4a. Select the type with the lowest edit distance.
+        if (finalCandidates.size() == 1) {
+            return finalCandidates.get(0);
+        }
+
+        // 4b. If multiple types tie, select the type with the highest df(t) (when stemmed).
+        TokenStemmer stemmer = new TokenStemmer();
+        String finalReplacement = token;
+        int max = -1;
+
+        for (String currentCandidate : finalCandidates) {
+            String candidateStemmed = stemmer.stem(currentCandidate);
+            int dft = corpusIndex.getPositionlessPostings(candidateStemmed).size();
+
+            if (dft > max) {
+                finalReplacement = currentCandidate;
+                max = dft;
+            }
+        }
+
+        return finalReplacement;
+    }
+
+    public static boolean shareCommonKGrams(List<String> leftList, List<String> rightList) {
+        // return true as soon as we've found a common k-gram
+        for (String kGram : leftList) {
+            if (Collections.binarySearch(rightList, kGram) == 1) {
+                return true;
+            }
+        }
+
+        // if we've reached this point, no common k-grams from the left list have been found in the right list
+        return false;
+
     }
 
     public static double calculateJaccardCoeff(List<String> leftList, List<String> rightList) {
-        // remember - O(n) intersections / unions involved sorted lists
+        // O(n) intersections / unions need sorted lists
         Collections.sort(leftList);
         Collections.sort(rightList);
 
@@ -105,8 +224,7 @@ public class SpellingSuggestion {
            i  | 3  2  1  1  2
            e  | 4  3  2  2  2
            s  | 5  4  3  3  3 < levenshtein edit distance = 3
-                          ^
-          */
+                            ^ */
         // index pointers to the last character of the left /right token
         int i = leftToken.length() - 1;
         int j = rightToken.length() - 1;

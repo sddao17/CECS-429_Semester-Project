@@ -19,6 +19,7 @@ public class DiskIndexReader {
 
         try {
             bTree = BTree.createInstance((DBStore) database);
+
         } catch (IOException e) {
             e.printStackTrace();
         }

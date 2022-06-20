@@ -27,6 +27,7 @@ public class Application {
 
     private static final int VOCABULARY_PRINT_SIZE = 1_000; // number of vocabulary terms to print
     private static final int MAX_DISPLAYED_RANKED_ENTRIES = 10;  // the maximum number of ranked entries to display
+    private static final int SPELLING_CORRECTION_THRESHOLD = 10; // the trigger to suggest spelling corrections
 
     private static CorpusSelection cSelect;
     private static DirectoryCorpus corpus;  // we need only one of each corpus and index active at a time,
@@ -276,7 +277,16 @@ public class Application {
                         }
 
                         if (numOfResults > 0) {
-                            PostingUtility.promptForDocumentContent(in, corpus);
+                            promptForDocumentContent(in);
+                        }
+
+                        if (numOfResults < SPELLING_CORRECTION_THRESHOLD) {
+                            try {
+                                suggestSpellingCorrection(in, query, queryMode);
+
+                            } catch (RuntimeException e) {
+                                System.out.println("Could not find a suitable spelling correction.");
+                            }
                         }
                     }
                 }
@@ -296,7 +306,7 @@ public class Application {
         if (parsedQuery instanceof WildcardLiteral) {
             resultPostings = PostingUtility.getDistinctPostings(resultPostings);
         }
-        PostingUtility.displayPostings(corpus, resultPostings);
+        displayPostings(resultPostings);
 
         return resultPostings.size();
     }
@@ -322,6 +332,71 @@ public class Application {
         }
 
         return rankedEntries.size();
+    }
+
+    public static void displayPostings(List<Posting> resultPostings) {
+        // 3(a, ii, A). Output the names of the documents returned from the query, one per line.
+        for (Posting posting : resultPostings) {
+            int currentDocumentId = posting.getDocumentId();
+
+            System.out.println("- " + corpus.getDocument(currentDocumentId).getTitle() +
+                    " (ID: " + currentDocumentId + ")");
+        }
+
+        // 3(a, ii, B). Output the number of documents returned from the query, after the document names.
+        System.out.println("Found " + resultPostings.size() + " documents.");
+    }
+
+    public static void promptForDocumentContent(Scanner in) {
+        System.out.print("Enter the document ID to view its contents (any other input to exit):\n >> ");
+        String query = in.nextLine();
+
+        // since error handling is not a priority requirement, use a try/catch for now
+        try {
+            Document document = corpus.getDocument(Integer.parseInt(query));
+            Reader documentContent = document.getContent();
+            EnglishTokenStream stream = new EnglishTokenStream(documentContent);
+
+            // print the tokens to the console without processing them
+            stream.getTokens().forEach(token -> System.out.print(token + " "));
+            System.out.println();
+            documentContent.close();
+            stream.close();
+        } catch (Exception ignored) {}
+    }
+
+    public static void suggestSpellingCorrection(Scanner in, String query, String queryMode) {
+        SpellingSuggestion spellCheck = new SpellingSuggestion(corpusIndex, kGramIndex);
+        String[] splitQuery = query.split(" ");
+        StringBuilder newQuery = new StringBuilder();
+
+        for (int i = 0; i < splitQuery.length; ++i) {
+            String currentToken = splitQuery[i];
+            String replacementType = spellCheck.suggestCorrection(currentToken);
+
+            newQuery.append(replacementType);
+            if (i < splitQuery.length - 1) {
+                newQuery.append(" ");
+            }
+        }
+
+        System.out.print("Did you mean `" + newQuery + "`? (`y` to proceed)\n >> ");
+        query = in.nextLine();
+
+        if (query.equals("y")) {
+            System.out.println("Showing results for `" + newQuery + "`:");
+            int numOfResults;
+
+            switch (queryMode) {
+                case "boolean" -> numOfResults = displayBooleanResults(newQuery.toString());
+                case "ranked" -> numOfResults = displayRankedResults(newQuery.toString());
+                default -> numOfResults = 0;
+            }
+
+            if (numOfResults > 0) {
+                promptForDocumentContent(in);
+            }
+        }
     }
 
     private static void closeOpenFiles() {

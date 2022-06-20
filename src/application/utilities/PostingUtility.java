@@ -12,14 +12,14 @@ import java.util.*;
 public class PostingUtility {
 
     public static Map<String, String> createIndexPathsMap(String directoryString) {
-        String pathToIndexDirectory = directoryString + PathSuffix.INDEX_DIRECTORY.getLabel();
+        String pathToIndexDirectory = directoryString + "/index";
 
         return new HashMap<>() {{
             put("indexDirectory", pathToIndexDirectory);
-            put("docWeightsBin", pathToIndexDirectory + PathSuffix.DOC_WEIGHTS_FILE.getLabel());
-            put("postingsBin", pathToIndexDirectory + PathSuffix.POSTINGS_FILE.getLabel());
-            put("bTreeBin", pathToIndexDirectory + PathSuffix.BTREE_FILE.getLabel());
-            put("kGramsBin", pathToIndexDirectory + PathSuffix.KGRAMS_FILE.getLabel());
+            put("docWeightsBin", pathToIndexDirectory + "/postings.bin");
+            put("postingsBin", pathToIndexDirectory + "/bTree.bin");
+            put("bTreeBin", pathToIndexDirectory + "/kGrams.bin");
+            put("kGramsBin", pathToIndexDirectory + "/docWeights.bin");
         }};
     }
 

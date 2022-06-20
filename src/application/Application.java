@@ -1,3 +1,28 @@
+package application;
+
+import application.UI.CorpusSelection;
+import application.documents.*;
+import application.indexes.*;
+import application.queries.*;
+import application.text.*;
+import application.utilities.Menu;
+import application.utilities.PostingUtility;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.Reader;
+import java.nio.file.Path;
+import java.text.DecimalFormat;
+import java.util.*;
+
+/**
+ * Search engine term project for CECS-429.
+ * Date: May 24, 2022
+ * @author Caitlin Martinez
+ * @author Miguel Zavala
+ * @author Steven Dao
+ */
+public class Application {
 
     private static final int VOCABULARY_PRINT_SIZE = 1_000; // number of vocabulary terms to print
     private static final int MAX_DISPLAYED_RANKED_ENTRIES = 10;  // the maximum number of ranked entries to display

@@ -86,7 +86,7 @@
 
         //write the biword index to disk
         DiskIndexWriter.writeBiword(indexPaths.get("biwordBin"), biwordIndex);
-        System.out.println("Biword index written to `" + indexPaths.get("BiwordBin") + "` successfully.");
+        System.out.println("Biword index written to `" + indexPaths.get("biwordBin") + "` successfully.");
 
         //write a biword b-tre
         // after writing the components to disk, we can terminate the program

@@ -254,7 +254,7 @@ public class Application {
                         }
                         System.out.println("Found " + vocabulary.size() + " types.");
                     }
-                    case ":?" -> Menu.showSpecialCommandMenu(VOCABULARY_PRINT_SIZE);
+                    case ":?" -> Menu.showCommandMenu(VOCABULARY_PRINT_SIZE);
                     case ":q", "" -> {}
                     default -> {
                         int numOfResults;

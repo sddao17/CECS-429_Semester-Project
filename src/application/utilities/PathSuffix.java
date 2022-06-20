@@ -8,7 +8,7 @@ public enum PathSuffix {
     KGRAMS_FILE("/kGrams.bin"),
     DOC_WEIGHTS_FILE("/docWeights.bin");
 
-    public String label;
+    private String label;
 
     PathSuffix(String inputLabel) {
         label = inputLabel;

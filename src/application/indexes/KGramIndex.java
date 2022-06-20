@@ -80,7 +80,7 @@ public class KGramIndex implements Index<String, String> {
         return kGrams;
     }
 
-    public void addKeyValue(String key, List<String> value) {
+    public void addEntry(String key, List<String> value) {
         kGramIndex.put(key, value);
     }
 

@@ -14,8 +14,8 @@ import java.util.*;
  */
 public class SpellingSuggestion {
 
-    private static final double K_GRAM_OVERLAP_THRESHOLD = 0.4;
-    private static final double JACCARD_COEFF_THRESHOLD = 0.4;
+    private static final double K_GRAM_OVERLAP_THRESHOLD = 0.3;
+    private static final double JACCARD_COEFF_THRESHOLD = 0.3;
     private final Index<String, Posting> corpusIndex;
     private final Index<String, String> kGramIndex;
 

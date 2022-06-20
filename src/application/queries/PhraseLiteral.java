@@ -38,6 +38,10 @@ public class PhraseLiteral implements QueryComponent {
 		if (mComponents.size() == 1) {
 			return mComponents.get(0).getPostings(index, processor);
 		}
+		else if(mComponents.size() == 2 ) {
+			BiwordIndex biwordIndex = new BiwordIndex();
+			return mComponents.get(0).getPostings(biwordIndex, processor);
+		}
 
 		/* store posting-position1-position2 tuples where all the terms are sequentially in +1 positional order,
 		  beginning with the postings of the first term */

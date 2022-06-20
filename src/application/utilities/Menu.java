@@ -25,9 +25,9 @@ public class Menu {
         return CheckInput.checkMenuInput(in);
     }
 
-    public static void showSpecialCommandMenu(int vocabPrintSize) {
+    public static void showCommandMenu(int vocabPrintSize) {
         System.out.printf("""
-                %nSpecial Commands:
+                %nCommands:
                 :index `directory-name`  --  Index the folder at the specified path.
                           :stem `token`  --  Stem, then print the token string.
                                  :vocab  --  Print the first %s terms in the vocabulary of the corpus,

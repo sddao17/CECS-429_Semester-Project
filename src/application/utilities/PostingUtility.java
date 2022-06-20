@@ -16,12 +16,10 @@ public class PostingUtility {
 
         return new HashMap<>() {{
             put("indexDirectory", pathToIndexDirectory);
-            put("docWeightsBin", pathToIndexDirectory + "/postings.bin");
-            put("postingsBin", pathToIndexDirectory + "/bTree.bin");
-            put("bTreeBin", pathToIndexDirectory + "/kGrams.bin");
-            put("kGramsBin", pathToIndexDirectory + "/docWeights.bin");
-            put("biwordBin", pathToIndexDirectory + "/biword.bin");
-            put("biWordBTreeBin", pathToIndexDirectory + "/biwordbtree.bin");
+            put("postingsBin", pathToIndexDirectory + "/postings.bin");
+            put("docWeightsBin", pathToIndexDirectory + "/docWeights.bin");
+            put("bTreeBin", pathToIndexDirectory + "/bTree.bin");
+            put("kGramsBin", pathToIndexDirectory + "/kGrams.bin");
         }};
     }
 

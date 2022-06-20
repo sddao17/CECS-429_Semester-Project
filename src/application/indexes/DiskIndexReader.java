@@ -91,7 +91,7 @@ public class DiskIndexReader {
                     kGrams.add(kGram.toString());
                 }
 
-                kgramIndex.addKeyValue(key.toString(), kGrams);
+                kgramIndex.addEntry(key.toString(), kGrams);
             }
 
             // now read the distinct k-grams at the end of the file, starting with the size of the set
@@ -128,6 +128,11 @@ public class DiskIndexReader {
             int keysSize = dataStream.readInt();
 
             return biwordIndex;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return null;
     }
 
 

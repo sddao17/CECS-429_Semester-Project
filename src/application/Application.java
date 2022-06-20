@@ -254,19 +254,7 @@ public class Application {
                         }
                         System.out.println("Found " + vocabulary.size() + " types.");
                     }
-                    case ":?" ->
-                        System.out.printf("""
-                            %nSpecial Commands:
-                            :index `directory-name`  --  Index the folder at the specified path.
-                                      :stem `token`  --  Stem, then print the token string.
-                                             :vocab  --  Print the first %s terms in the vocabulary of the corpus,
-                                                         then print the total number of vocabulary terms.
-                                            :kgrams  --  Print the first %s k-gram mappings of vocabulary types to
-                                                         k-gram tokens, then print the total number of vocabulary types.
-                                      `query` --log  --  Enable printing a debugging log to the console before printing
-                                                         the query results.
-                                                 :q  --  Exit the program.
-                            """, VOCABULARY_PRINT_SIZE, VOCABULARY_PRINT_SIZE);
+                    case ":?" -> Menu.showSpecialCommandMenu(VOCABULARY_PRINT_SIZE);
                     case ":q", "" -> {}
                     default -> {
                         int numOfResults;
@@ -276,17 +264,12 @@ public class Application {
                             default -> numOfResults = 0;
                         }
 
-                        if (numOfResults > 0) {
+                        /* if a term does not meet the posting size threshold,
+                          suggest a modified query including a spelling suggestion */
+                        boolean corrected = trySpellingSuggestion(in, query, queryMode);
+
+                        if (numOfResults > 0 || corrected) {
                             promptForDocumentContent(in);
-                        }
-
-                        if (numOfResults < SPELLING_CORRECTION_THRESHOLD) {
-                            try {
-                                suggestSpellingCorrection(in, query, queryMode);
-
-                            } catch (RuntimeException e) {
-                                System.out.println("Could not find a suitable spelling correction.");
-                            }
                         }
                     }
                 }
@@ -365,14 +348,23 @@ public class Application {
         } catch (Exception ignored) {}
     }
 
-    public static void suggestSpellingCorrection(Scanner in, String query, String queryMode) {
+    public static boolean trySpellingSuggestion(Scanner in, String query, String queryMode) {
         SpellingSuggestion spellCheck = new SpellingSuggestion(corpusIndex, kGramIndex);
         String[] splitQuery = query.split(" ");
         StringBuilder newQuery = new StringBuilder();
 
         for (int i = 0; i < splitQuery.length; ++i) {
             String currentToken = splitQuery[i];
-            String replacementType = spellCheck.suggestCorrection(currentToken);
+            int dft = corpusIndex.getPositionlessPostings(currentToken).size();
+            String replacementType;
+
+            /* verify that each term meets the threshold requirement for postings sizes; if it does, use the original
+              query type, or if it doesn't, suggest a correction */
+            if (dft > SPELLING_CORRECTION_THRESHOLD) {
+                replacementType = currentToken;
+            } else {
+                replacementType = spellCheck.suggestCorrection(currentToken);
+            }
 
             newQuery.append(replacementType);
             if (i < splitQuery.length - 1) {
@@ -380,23 +372,26 @@ public class Application {
             }
         }
 
-        System.out.print("Did you mean `" + newQuery + "`? (`y` to proceed)\n >> ");
-        query = in.nextLine();
+        // only proceed if the original query did not need modifications
+        if (!newQuery.toString().equals(query)) {
+            System.out.print("Did you mean `" + newQuery + "`? (`y` to proceed)\n >> ");
+            query = in.nextLine();
 
-        if (query.equals("y")) {
-            System.out.println("Showing results for `" + newQuery + "`:");
-            int numOfResults;
+            if (query.equals("y")) {
+                System.out.println("Showing results for `" + newQuery + "`:");
 
-            switch (queryMode) {
-                case "boolean" -> numOfResults = displayBooleanResults(newQuery.toString());
-                case "ranked" -> numOfResults = displayRankedResults(newQuery.toString());
-                default -> numOfResults = 0;
-            }
+                switch (queryMode) {
+                    case "boolean" -> displayBooleanResults(newQuery.toString());
+                    case "ranked" -> displayRankedResults(newQuery.toString());
+                    default -> throw new RuntimeException("Unexpected input: " + query);
+                }
 
-            if (numOfResults > 0) {
-                promptForDocumentContent(in);
+                return true;
+            } else {
+                return false;
             }
         }
+        return false;
     }
 
     private static void closeOpenFiles() {

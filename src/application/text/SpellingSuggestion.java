@@ -13,9 +13,11 @@ import java.util.*;
  */
 public class SpellingSuggestion {
 
-    public static final double THRESHOLD = 0.425;
+    public static final double K_GRAM_OVERLAP_THRESHOLD = 0.5;
+    public static final double JACCARD_COEFF_THRESHOLD = 0.425;
     private final Index<String, Posting> corpusIndex;
     private final Index<String, String> kGramIndex;
+    private List<String> currentIntersections;
 
     public SpellingSuggestion(Index<String, Posting> inputCorpusIndex, Index<String, String> inputKGramIndex) {
         corpusIndex = inputCorpusIndex;
@@ -25,9 +27,9 @@ public class SpellingSuggestion {
     public String suggestCorrection(String token) {
         List<String> candidates = getCandidates(token);
 
-        // if there are no candidates, let the calling method know no suitable replacements were found
+        // if there are no candidates, simply return the original token
         if (candidates.size() == 0) {
-            throw new RuntimeException();
+            return token;
         }
 
         Map<String, Integer> candidateEdits = getCandidateEdits(candidates, token);
@@ -41,7 +43,7 @@ public class SpellingSuggestion {
         List<String> candidates = new ArrayList<>();
 
         KGramIndex tokenKGramIndex = new KGramIndex();
-        tokenKGramIndex.addToken(token, 3);
+        tokenKGramIndex.addToken(token, 2);
         List<String> tokenKGrams = tokenKGramIndex.getPostings(token);
         // remember to sort the k-grams before we compare them
         Collections.sort(tokenKGrams);
@@ -52,12 +54,12 @@ public class SpellingSuggestion {
 
             /* 1. Select all vocabulary types that have k-grams in common with the misspelled term,
               as described in lecture. */
-            if (shareCommonKGrams(tokenKGrams, vocabularyTokenKGrams)) {
+            if (meetsOverlapThreshold(tokenKGrams, vocabularyTokenKGrams)) {
                 // 2. Calculate the Jaccard coefficient for each type in the selection.
                 double jaccardCoeff = calculateJaccardCoeff(tokenKGrams, vocabularyTokenKGrams);
 
                 // 3a. For each type whose coefficient exceeds some threshold (your decision)...
-                if (jaccardCoeff >= THRESHOLD) {
+                if (jaccardCoeff >= JACCARD_COEFF_THRESHOLD) {
                     candidates.add(vocabularyType);
                 }
             }
@@ -66,7 +68,7 @@ public class SpellingSuggestion {
         return candidates;
     }
 
-    public static Map<String, Integer> getCandidateEdits(List<String> candidates, String token) {
+    public Map<String, Integer> getCandidateEdits(List<String> candidates, String token) {
         Map<String, Integer> candidateEdits = new HashMap<>();
         for (String candidate : candidates) {
             // 3b. ...calculate the edit distance from that type to the misspelled term.
@@ -78,7 +80,7 @@ public class SpellingSuggestion {
         return candidateEdits;
     }
 
-    public static List<String> getFinalCandidates(Map<String, Integer> candidateEdits) {
+    public List<String> getFinalCandidates(Map<String, Integer> candidateEdits) {
         Queue<Map.Entry<String, Integer>> priorityQueue = new PriorityQueue<>(Map.Entry.comparingByValue());
         priorityQueue.addAll(candidateEdits.entrySet());
 
@@ -95,8 +97,7 @@ public class SpellingSuggestion {
         return finalCandidates;
     }
 
-    public static String getFinalReplacement(Index<String, Posting> corpusIndex, List<String> finalCandidates,
-                                             String token) {
+    public String getFinalReplacement(Index<String, Posting> corpusIndex, List<String> finalCandidates, String token) {
         if (finalCandidates.size() == 1) {
             return finalCandidates.get(0);
         }
@@ -119,25 +120,21 @@ public class SpellingSuggestion {
         return finalReplacement;
     }
 
-    public static boolean shareCommonKGrams(List<String> leftList, List<String> rightList) {
-        // return true as soon as we've found a common k-gram
-        for (String kGram : leftList) {
-            if (Collections.binarySearch(rightList, kGram) == 1) {
-                return true;
-            }
-        }
+    public boolean meetsOverlapThreshold(List<String> originalKGrams, List<String> candidateKGrams) {
+        // add the intersection k-grams
+        currentIntersections = intersectKGrams(originalKGrams, candidateKGrams);
 
-        // if we've reached this point, no common k-grams from the left list have been found in the right list
-        return false;
+        // check if the k-gram overlap meets the threshold
+        double kGramOverlap = (double) currentIntersections.size() / originalKGrams.size();
 
+        return kGramOverlap >= K_GRAM_OVERLAP_THRESHOLD;
     }
 
-    public static double calculateJaccardCoeff(List<String> leftList, List<String> rightList) {
-        List<String> intersections = intersectKGrams(leftList, rightList);
+    public double calculateJaccardCoeff(List<String> leftList, List<String> rightList) {
         List<String> unions = unionizeKGrams(leftList,rightList);
 
         // JC = |A ∩ B| / |A ∪ B|
-        return (double) intersections.size() / unions.size();
+        return (double) currentIntersections.size() / unions.size();
     }
 
     public static List<String> intersectKGrams(List<String> leftList, List<String> rightList) {
@@ -259,6 +256,7 @@ public class SpellingSuggestion {
         return Math.min(Math.min(topEdit, leftEdit), diagonalEdit);
     }
 
+    /*
     // testing purposes only
     public static void main(String[] args) {
         // testing jaccard coefficients
@@ -326,4 +324,5 @@ public class SpellingSuggestion {
                     calculateLevenshteinDistance(leftToken, rightToken));
         }
     }
+     */
 }

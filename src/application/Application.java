@@ -303,6 +303,7 @@ public class Application {
 
     private static int displayRankedResults(String query) {
         DocumentWeightScorer documentScorer = new DocumentWeightScorer();
+        closeables.add(documentScorer);
 
         documentScorer.storeTermAtATimeDocuments(corpusIndex, query);
         List<Map.Entry<Integer, Double>> rankedEntries = documentScorer.getRankedEntries(MAX_DISPLAYED_RANKED_ENTRIES);
@@ -319,7 +320,6 @@ public class Application {
         } else {
             System.out.println("Found 0 documents that matched the query.");
         }
-        documentScorer.close();
 
         return rankedEntries.size();
     }

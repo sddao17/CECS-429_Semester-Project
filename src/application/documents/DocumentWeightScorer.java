@@ -137,7 +137,7 @@ public class DocumentWeightScorer implements Closeable {
 
     public static double calculateWqt(int n, int dft) {
         // w(q, t) = ln(1 + (N / df(t)))
-        return (Math.log(1 + ((double) n / (double) dft)));
+        return (Math.log(1 + ((double) n / dft)));
     }
 
     public static double calculateLd(Map<String, Integer> tftds) {

@@ -323,8 +323,9 @@ public class Application {
         StringBuilder newQuery = new StringBuilder();
 
         for (int i = 0; i < splitQuery.length; ++i) {
+            VocabularyTokenProcessor processor = new VocabularyTokenProcessor();
             String currentToken = splitQuery[i];
-            int dft = corpusIndex.getPositionlessPostings(currentToken).size();
+            int dft = corpusIndex.getPositionlessPostings(processor.processToken(currentToken).get(0)).size();
             String replacementType;
 
             /* verify that each term meets the threshold requirement for postings sizes;

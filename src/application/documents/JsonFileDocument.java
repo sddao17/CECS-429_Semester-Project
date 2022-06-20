@@ -1,13 +1,12 @@
 
 package application.documents;
 
-import java.io.IOException;
-import java.io.Reader;
+import java.io.*;
+
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
-import java.io.StringReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -16,7 +15,7 @@ public class JsonFileDocument implements FileDocument, Comparable<Document> {
 
     private final int mDocumentId;
     private final Path mFilePath;
-    private String documentTitle;
+    private final String documentTitle;
 
     public JsonFileDocument(int id, Path absoluteFilePath) {
         mDocumentId = id;
@@ -29,9 +28,9 @@ public class JsonFileDocument implements FileDocument, Comparable<Document> {
         JSONParser parser = new JSONParser();
         JSONObject jsonObject;
 
-        try {
+        try (BufferedReader reader = Files.newBufferedReader(mFilePath)) {
             // use the parser to extract the JSON file at the given path and store it as an object
-            Object obj = parser.parse(Files.newBufferedReader(mFilePath));
+            Object obj = parser.parse(reader);
             jsonObject = (JSONObject) obj;
 
         } catch (IOException | ParseException e) {

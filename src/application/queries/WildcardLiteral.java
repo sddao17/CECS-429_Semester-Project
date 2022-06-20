@@ -40,10 +40,8 @@ public class WildcardLiteral implements QueryComponent {
         kGramIndex.addToken(processedTerm, 3);
 
         List<String> candidateTokens = findCandidates(corpusKGramIndex, kGramIndex);
-        //System.out.println("Candidate types: " + candidateTokens);
 
         List<String> finalTokens = postFilter(candidateTokens, processedTerm);
-        System.out.println("Final types: " + finalTokens);
 
         List<String> finalTerms = new ArrayList<>();
         for (String finalToken : finalTokens) {
@@ -55,7 +53,6 @@ public class WildcardLiteral implements QueryComponent {
                 }
             }
         }
-        //System.out.println("Final terms: " + finalTerms);
 
         // once we collect all of our final terms, we "OR" the postings to combine them and ignore duplicates
         List<Posting> resultPostings = new ArrayList<>();
@@ -67,6 +64,16 @@ public class WildcardLiteral implements QueryComponent {
             resultPostings.addAll(corpusIndex.getPostings(finalTerm));
         }
         Collections.sort(resultPostings);
+
+        if (Application.enabledLogs) {
+            System.out.println("--------------------------------------------------------------------------------" +
+                    "\nWildcard literal: `" + mTerm + "`" +
+                    "\n---> Candidate tokens for `" + mTerm + "`: " + candidateTokens +
+                    "\n---> Final tokens for `" + mTerm + "`: " + finalTokens +
+                    "\n---> Final terms for `" + mTerm + "`: " + finalTerms +
+                    "\n---> `" + mTerm + "` -- " + resultPostings.size() + " posting(s)" +
+                    "\n--------------------------------------------------------------------------------");
+        }
 
         return resultPostings;
     }

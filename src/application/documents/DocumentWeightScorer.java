@@ -7,7 +7,7 @@ import application.indexes.Index;
 import application.indexes.Posting;
 import application.text.VocabularyTokenProcessor;
 
-import java.io.FileNotFoundException;
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.*;
@@ -15,44 +15,62 @@ import java.util.*;
 /**
  * Calculates document weights and their relative scores for ranked retrieval queries.
  */
-public class DocumentWeightScorer {
+public class DocumentWeightScorer implements Closeable {
 
+    private static RandomAccessFile randomAccessor;
     private final Map<Integer, Double> finalAccumulators;
 
     public DocumentWeightScorer() {
         finalAccumulators = new HashMap<>();
     }
 
-    public void storeTermAtATimeDocuments(RandomAccessFile randomAccessor, Index<String, Posting> index, String query) {
+    public void storeTermAtATimeDocuments(Index<String, Posting> index, String query) {
         VocabularyTokenProcessor processor = new VocabularyTokenProcessor();
-        String[] splitTokens = query.split(" ");
+        String[] splitQuery = query.split(" ");
         List<String> queryTerms = new ArrayList<>();
 
-        for (String token : splitTokens) {
-            queryTerms.add(processor.processToken(token).get(0));
-        }
+            for (String token : splitQuery) {
+                List<String> splitTerms = processor.processToken(token);
+
+                // error handling - handle empty / fully non-alphanumeric tokens
+                if (splitTerms.size() > 0) {
+                    queryTerms.add(splitTerms.get(0));
+                }
+            }
 
         // implement the "term at a time" algorithm from lecture;
         // 1. For each term t in the query:
         for (String term : queryTerms) {
             // N = total number of documents in the corpus
             int n = Application.getCorpus().getCorpusSize();
-            List<Posting> postings = index.getPostings(term);
+            List<Posting> postings = index.getPositionlessPostings(term);
+            // df(t) = number of documents the term has appeared in
+            int dft = postings.size();
+
             // 1a. Calculate w(q,t) = ln(1 + N/df(t)).
-            double wqt = calculateWqt(n, postings.size());
+            double wqt = calculateWqt(n, dft);
+
+            // debugging log
+            if (Application.enabledLogs) {
+                System.out.println("--------------------------------------------------------------------------------" +
+                        "\n`" + term + "`" +
+                        "\n---> df(t) -- " + dft +
+                        "\n---> w(q, t) -- " + wqt + "\n");
+            }
 
             // 1b. For each document d in t's postings list:
             for (Posting currentPosting : postings) {
-                // 1 (b, ii). Calculate w(d,t) = 1 + ln(tf(t,d)).
-                double wdt = calculateWdt(currentPosting.getPositions().size());
-
-                /* 1 (b, i). Acquire an accumulator value A(d) (the design of this system is up to you).
-                   1 (b, iii). Increase A(d) by w(d,t) × w(q,t). */
-                accumulate(finalAccumulators, acquireAccumulators(index, term, wdt, wqt));
+                // 1 (b, i). Acquire an accumulator value A(d) (the design of this system is up to you).
+                acquireAccumulator(currentPosting, wqt);
             }
-        };
 
-        // iterate through all document IDs
+            // debugging log
+            if (Application.enabledLogs) {
+                System.out.println("--------------------------------------------------------------------------------");
+            }
+        }
+
+        // iterate through all entries
         for (Map.Entry<Integer, Double> entry : finalAccumulators.entrySet()) {
             int currentDocumentId = entry.getKey();
             double currentAd = entry.getValue();
@@ -62,6 +80,33 @@ public class DocumentWeightScorer {
                 double ld = DiskIndexReader.readLdFromBinFile(randomAccessor, currentDocumentId);
                 finalAccumulators.replace(currentDocumentId, currentAd / ld);
             }
+        }
+    }
+
+    public void acquireAccumulator(Posting posting, double wqt) {
+        int documentId = posting.getDocumentId();
+        int tftd = posting.getPositions().size();
+
+        // 1 (b, ii). Calculate w(d,t) = 1 + ln(tf(t,d)).
+        double wdt = calculateWdt(tftd);
+
+        // debugging log
+        if (Application.enabledLogs) {
+            System.out.println(
+                    Application.getCorpus().getDocument(posting.getDocumentId()).getTitle() + " (ID: " + documentId + ")" +
+                            "\n---> Tf(t, d) -- " + tftd +
+                            "\n---> w(d, t) -- " + wdt +
+                            "\n---> L(d) -- " + DiskIndexReader.readLdFromBinFile(randomAccessor, documentId));
+        }
+
+        // 1 (b, iii). Increase A(d) by wd,t × wq,t.
+        double newWeight = wdt * wqt;
+
+        if (finalAccumulators.get(documentId) == null) {
+            finalAccumulators.put(documentId, newWeight);
+        } else {
+            double oldAccumulator = finalAccumulators.get(documentId);
+            finalAccumulators.replace(documentId, oldAccumulator + newWeight);
         }
     }
 
@@ -85,59 +130,18 @@ public class DocumentWeightScorer {
         return rankedEntries;
     }
 
-    public Map<Integer, Double> acquireAccumulators(Index<String, Posting> index, String term,
-                                                            double wdt, double wqt) {
-        Map<Integer, Double> accumulators = new HashMap<>();
-
-        // implement the accumulator algorithm from lecture
-        List<Posting> postings = index.getPostings(term);
-
-        for (Posting posting : postings) {
-            int currentDocumentId = posting.getDocumentId();
-            double newWeight = (wdt * wqt);
-
-            // if the map doesn't contain the key, add the new key / value pair
-            if (!accumulators.containsKey(currentDocumentId)) {
-                accumulators.put(currentDocumentId, newWeight);
-            } else {
-                // update the accumulator
-                double oldAccumulator = accumulators.get(currentDocumentId);
-                accumulators.replace(currentDocumentId, oldAccumulator + newWeight);
-            }
-        }
-
-        return accumulators;
-    }
-
-    public void accumulate(Map<Integer, Double> finalMap, Map<Integer, Double> newMap) {
-        List<Integer> newMapKeys = newMap.keySet().stream().toList();
-
-        for (Integer newMapKey : newMapKeys) {
-            double newMapValue = newMap.get(newMapKey);
-
-            // if the map doesn't contain the key, add the new key / value pair
-            if (!finalMap.containsKey(newMapKey)) {
-                finalMap.put(newMapKey, newMapValue);
-            } else {
-                // update the accumulator
-                double oldFinalMapValue = finalMap.get(newMapKey);
-                finalMap.replace(newMapKey, oldFinalMapValue + newMapValue);
-            }
-        }
-    }
-
     public static double calculateWdt(int tftd) {
         // w(d, t) = 1 + ln(tf(t, d))
         return (1 + Math.log(tftd));
     }
 
     public static double calculateWqt(int n, int dft) {
-        // w(q, t) = 1 + ln(N / df(t))
-        return (1 + Math.log((double) n / (double) dft));
+        // w(q, t) = ln(1 + (N / df(t)))
+        return (Math.log(1 + ((double) n / dft)));
     }
 
     public static double calculateLd(Map<String, Integer> tftds) {
-        int sum = 0;
+        double sum = 0;
 
         // L(d) = sqrt( sum of all(w(d, t)^2) )
         for (Integer tftd : tftds.values()) {
@@ -146,5 +150,23 @@ public class DocumentWeightScorer {
         }
 
         return Math.sqrt(sum);
+    }
+
+    public static void setRandomAccessor(String pathToDocWeightsBin) {
+        try {
+            randomAccessor = new RandomAccessFile(pathToDocWeightsBin, "rw");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void close() {
+        try {
+            randomAccessor.close();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

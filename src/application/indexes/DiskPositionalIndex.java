@@ -9,14 +9,13 @@ import java.util.List;
 
 public class DiskPositionalIndex implements Index<String, Posting>, Closeable {
 
-    private BTree<String, Integer> bTree;
     private final String pathToBTreeBin;    // the String path to the B+ Tree mappings of terms -> byte positions
+    private final BTree<String, Integer> bTree;
     private RandomAccessFile randomAccessPosting;   // keep the Posting file open for getPosting() calls
 
-    public DiskPositionalIndex(String newPathToPostingsBin, String newPathToBTreeBin) {
-        // tree will be set after reading from disk
-        bTree = null;
+    public DiskPositionalIndex(String newPathToBTreeBin, String newPathToPostingsBin) {
         pathToBTreeBin = newPathToBTreeBin;
+        bTree = DiskIndexReader.readBTree(newPathToBTreeBin);
 
         try {
             // be able to read from the postings file and extract the index data
@@ -25,11 +24,6 @@ public class DiskPositionalIndex implements Index<String, Posting>, Closeable {
             System.err.println("Index files were not found; please restart the program and build an index.");
             System.exit(0);
         }
-    }
-
-    public void setBTree(BTree<String, Integer> newBTree) {
-        // load the persisted index into the B+ Tree
-        bTree = newBTree;
     }
 
     /**
@@ -99,12 +93,20 @@ public class DiskPositionalIndex implements Index<String, Posting>, Closeable {
 
             // iterate through all postings for the term
             for (int i = 0; i < postingsSize; ++i) {
+                ArrayList<Integer> positions = new ArrayList<>();
                 // first document ID is as-is; the rest are gaps
                 int currentDocumentId = randomAccessPosting.readInt() + latestDocumentId;
                 latestDocumentId = currentDocumentId - latestDocumentId;
+                int positionsSize = randomAccessPosting.readInt();
+                // skip the other position bytes
+                randomAccessPosting.skipBytes(positionsSize * Integer.BYTES);
 
-                // ignore reading the positions and only add the document ID
-                Posting newPosting = new Posting(currentDocumentId, new ArrayList<>());
+                // add empty positions
+                for (int j = 0; j < positionsSize; ++j) {
+                    positions.add(0);
+                }
+
+                Posting newPosting = new Posting(currentDocumentId, positions);
                 resultPostings.add(newPosting);
             }
 
@@ -154,12 +156,7 @@ public class DiskPositionalIndex implements Index<String, Posting>, Closeable {
     }
 
     @Override
-    public void close() {
-        try {
-            randomAccessPosting.close();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    public void close() throws IOException {
+        randomAccessPosting.close();
     }
 }

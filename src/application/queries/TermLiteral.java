@@ -1,9 +1,9 @@
 
 package application.queries;
 
-import java.util.ArrayList;
 import java.util.List;
 
+import application.Application;
 import application.indexes.Index;
 import application.indexes.Posting;
 import application.text.TokenProcessor;
@@ -28,12 +28,16 @@ public class TermLiteral implements QueryComponent {
 		// Somehow incorporate a TokenProcessor into the getPostings call sequence.
 		List<String> processedTerms = processor.processToken(mTerm);
 
-		// return the first element if it exists
-		if (processedTerms.size() > 0) {
-			return new ArrayList<>(index.getPostings(processedTerms.get(0)));
-		} else {
-			return new ArrayList<>();
+		List<Posting> resultPostings = index.getPostings(processedTerms.get(0));
+
+		if (Application.enabledLogs) {
+			System.out.println("--------------------------------------------------------------------------------" +
+					"\nTerm literal: `" + processedTerms.get(0) + "` -- " + resultPostings.size() + " posting(s)" +
+					"\n--------------------------------------------------------------------------------");
 		}
+
+		return resultPostings;
+
 	}
 
 	@Override

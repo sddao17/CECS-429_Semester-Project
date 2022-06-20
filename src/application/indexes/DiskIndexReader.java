@@ -127,42 +127,7 @@ public class DiskIndexReader {
             // read the main k-grams first, starting with the size of the keys
             int keysSize = dataStream.readInt();
 
-            // iterate through the keys
-            for (int i = 0; i < keysSize; ++i) {
-                // read the length of the current key
-                int keyLength = dataStream.readInt();
-                StringBuilder key = new StringBuilder();
-
-                // add the following bytes to re-construct the key
-                for (int j = 0; j < keyLength; ++j) {
-                    key.append((char) dataStream.readByte());
-                }
-
-                // read the size of the key's list of values
-                int valuesSize = dataStream.readInt();
-                List<String> biwords = new ArrayList<>();
-
-                // iterate through the k-gram values
-                for (int j = 0; j < valuesSize; ++j) {
-                    // read each String byte length normally
-                    int currentBytesLength = dataStream.readInt();
-                    StringBuilder biword = new StringBuilder();
-
-                    // convert each byte to a character and build to our original k-gram
-                    for (int k = 0; k < currentBytesLength; ++k) {
-                        biword.append((char) dataStream.readByte());
-                    }
-                    biwords.add(biword.toString());
-                }
-
-                biwordIndex.addKeyValue(key.toString(), biwords);
-            }
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return biwordIndex;
+            return biwordIndex;
     }
 
 

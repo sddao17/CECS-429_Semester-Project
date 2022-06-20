@@ -85,6 +85,7 @@ public class SpellingSuggestion {
         List<String> finalCandidates = new ArrayList<>();
         int max = Integer.MAX_VALUE;
 
+        // 4a. Select the type with the lowest edit distance.
         while (priorityQueue.peek() != null && priorityQueue.peek().getValue() <= max) {
             Map.Entry<String, Integer> entry = priorityQueue.poll();
             finalCandidates.add(entry.getKey());
@@ -96,7 +97,6 @@ public class SpellingSuggestion {
 
     public static String getFinalReplacement(Index<String, Posting> corpusIndex, List<String> finalCandidates,
                                              String token) {
-        // 4a. Select the type with the lowest edit distance.
         if (finalCandidates.size() == 1) {
             return finalCandidates.get(0);
         }
@@ -133,10 +133,6 @@ public class SpellingSuggestion {
     }
 
     public static double calculateJaccardCoeff(List<String> leftList, List<String> rightList) {
-        // O(n) intersections / unions need sorted lists
-        Collections.sort(leftList);
-        Collections.sort(rightList);
-
         List<String> intersections = intersectKGrams(leftList, rightList);
         List<String> unions = unionizeKGrams(leftList,rightList);
 
@@ -223,8 +219,7 @@ public class SpellingSuggestion {
            r  | 2  1  0  1  2
            i  | 3  2  1  1  2
            e  | 4  3  2  2  2
-           s  | 5  4  3  3  3 < levenshtein edit distance = 3
-                            ^ */
+           s  | 5  4  3  3  3 < levenshtein edit distance = 3 */
         // index pointers to the last character of the left /right token
         int i = leftToken.length() - 1;
         int j = rightToken.length() - 1;

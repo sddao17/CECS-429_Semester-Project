@@ -1,4 +1,3 @@
-
 package application.indexes;
 
 import java.io.*;
@@ -153,6 +152,51 @@ public class DiskIndexWriter {
             e.printStackTrace();
         }
     }
+
+    public static List<Integer> writeBiword(String pathToBiwordBin, BiwordIndex biwordIndex){
+  /* 3. writeIndex should return a list of (8-byte) integer values, one value for each of the terms
+          in the index vocabulary. Each integer value should equal the byte position of where the postings
+          for the corresponding term from the vocabulary begin in postings.bin. */
+        List<Integer> bytePositions = new ArrayList<>();
+
+        // 2a. Open a new file called "postings.bin" in binary write mode.
+        try (FileOutputStream fileStream = new FileOutputStream(pathToBiwordBin);
+             BufferedOutputStream bufferStream = new BufferedOutputStream(fileStream);
+             DataOutputStream dataStream = new DataOutputStream(bufferStream)) {
+            // 2b. Retrieve the sorted vocabulary list from the index.
+            List<String> vocabulary = biwordIndex.getVocabulary();
+
+            // 2c. For each term in the vocabulary:
+            for (String term : vocabulary) {
+                // add the byte position of the current term to our returning list
+                bytePositions.add(dataStream.size());
+                // 2 (c, ii). Retrieve the index postings for the term.
+                List<Posting> postings = biwordIndex.getPostings(term);
+                // 2 (c, i). Write dft to the file as a 4-byte integer.
+                dataStream.writeInt(postings.size());
+                int latestDocumentId = 0;
+
+                // 2 (c, iii). For each posting:
+                for (Posting currentPosting : postings) {
+                    // store values for readability
+                    List<Integer> currentPositions = currentPosting.getPositions();
+
+                    /* (2, iii, A). Write the posting's document ID as a 4-byte gap. (The first document in a list
+                      is written as-is. All the rest are gaps from the previous value.) */
+                    int currentDocumentId = currentPosting.getDocumentId() - latestDocumentId;
+                    dataStream.writeInt(currentDocumentId);
+                    latestDocumentId = currentDocumentId;
+                }
+                // (2, iv). Repeat for each term in the vocabulary.
+            }
+
+        } catch(IOException e) {
+            e.printStackTrace();
+        }
+
+        return bytePositions;
+    }
+
     public static void writeLds(String pathToDocWeightsBin, List<Double> lds) {
         // overwrite any existing files
         try (FileOutputStream fileStream = new FileOutputStream(pathToDocWeightsBin, false);
@@ -168,4 +212,6 @@ public class DiskIndexWriter {
             System.exit(0);
         }
     }
+
+
 }

@@ -6,18 +6,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.*;
 
-public class BiwordIndex implements Index<String, Integer>{
+public class BiwordIndex implements Index<String, Posting> {
 
-    private final Map<String, List<Integer>> biwordIndex;
+    private final Map<String, List<Posting>> biwordIndex;
     private int lastDocID = 0;
     private String lastToken = null;
 
-    public BiwordIndex(){
+    public BiwordIndex() {
         biwordIndex = new HashMap<>();
-
     }
+
     @Override
-    public List<Integer> getPostings(String term) {
+    public List<Posting> getPostings(String term) {
         // return an empty list if the term doesn't exist in the map
         if (!biwordIndex.containsKey(term))
             return new ArrayList<>();
@@ -26,13 +26,17 @@ public class BiwordIndex implements Index<String, Integer>{
     }
 
     @Override
-    public List<Integer> getPositionlessPostings(String term) {
+    public List<Posting> getPositionlessPostings(String term) {
         // return an empty list if the term doesn't exist in the map
         if (!biwordIndex.containsKey(term))
             return new ArrayList<>();
 
-        // the biword index does not store positions
-        return biwordIndex.get(term);
+        // perform an extra iteration copy to avoid returning Postings without positions
+        List<Posting> positionlessPostings = new ArrayList<>();
+        biwordIndex.get(term).forEach(posting -> positionlessPostings.add(
+                new Posting(posting.getDocumentId(), new ArrayList<>())));
+
+        return positionlessPostings;
     }
 
     @Override
@@ -44,28 +48,37 @@ public class BiwordIndex implements Index<String, Integer>{
         return vocabulary;
     }
 
-    public void addTerm(String term, int docId){
 
-        if(docId != lastDocID){
+    public void addTerm(String term, int docId) {
+        //if the docID is not the previous doc's ID, then update
+        if (docId != lastDocID) {
             lastToken = term;
             lastDocID = docId;
         }
         else {
+            //format the term to be inputted into the index
             String finalTerm = String.format("%s %s", lastToken, term);
-            List<Integer> existingPostings = biwordIndex.get(finalTerm);
+            List<Posting> existingPostings = biwordIndex.get(finalTerm);
+            //term doesn't exist in the vocabulary yet, so will now need to add it.
+            if (existingPostings == null) {
+                    ArrayList<Posting> newPostings = new ArrayList<>(){
+                        {add(new Posting(docId, new ArrayList<>(){{}}));}};
+                    biwordIndex.put(finalTerm, newPostings);
 
-            if(existingPostings == null){
-                ArrayList<Integer> termDocs = new ArrayList<>();
-                termDocs.add(docId);
-                biwordIndex.put(finalTerm, termDocs);
-            }
-            else{
-                int lastDocId= existingPostings.get(existingPostings.size()-1);
-                if(lastDocId != docId){
-                    existingPostings.add(docId);
+            } else {
+                //get the last index of the existing postings
+                int latestIndex = existingPostings.size() - 1;
+                int latestDocumentId = existingPostings.get(latestIndex).getDocumentId();
+
+                //if the document ID is not in the index, then add the doc ID to the term
+                if (latestDocumentId != docId) {
+                    existingPostings.add(new Posting(docId, new ArrayList<>(){{}}));
                 }
+
             }
             lastToken = term;
         }
     }
+
+
 }

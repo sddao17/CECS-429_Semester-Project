@@ -13,16 +13,15 @@ import java.util.List;
 public class DiskIndexReader {
 
     public static BTree<String, Integer> readBTree(String pathToBTreeBin) {
+        // initialize the database and B+ Tree
+        DB database = DBMaker.openFile(pathToBTreeBin).deleteFilesAfterClose().closeOnExit().make();
         BTree<String, Integer> bTree = new BTree<>();
 
-        // initialize the database and B+ Tree
         try {
-            DB database = DBMaker.openFile(pathToBTreeBin).deleteFilesAfterClose().closeOnExit().make();
             bTree = BTree.createInstance((DBStore) database);
 
-        } catch (IOException | IOError e) {
-            System.err.println("Index files were not found; please restart the program and build an index.");
-            System.exit(0);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
 
         // load the persisted term -> byte positions map into the B+ Tree
@@ -49,8 +48,7 @@ public class DiskIndexReader {
             }
 
         } catch (IOException e) {
-            System.err.println("Index files were not found; please restart the program and build an index.");
-            System.exit(0);
+            e.printStackTrace();
         }
 
         return bTree;

@@ -1,4 +1,3 @@
-
 package application.indexes;
 
 import java.io.*;
@@ -44,6 +43,7 @@ public class DiskIndexWriter {
                 for (Posting currentPosting : postings) {
                     // store values for readability
                     List<Integer> currentPositions = currentPosting.getPositions();
+
                     /* (2, iii, A). Write the posting's document ID as a 4-byte gap. (The first document in a list
                       is written as-is. All the rest are gaps from the previous value.) */
                     int currentDocumentId = currentPosting.getDocumentId() - latestDocumentId;
@@ -152,6 +152,47 @@ public class DiskIndexWriter {
             e.printStackTrace();
         }
     }
+
+    public static void writeBiword(String pathToBiwordBin, BiwordIndex biwordIndex){
+        // overwrite any existing files
+        try (FileOutputStream fileStream = new FileOutputStream(pathToBiwordBin, false);
+             BufferedOutputStream bufferStream = new BufferedOutputStream(fileStream);
+             DataOutputStream dataStream = new DataOutputStream(bufferStream)) {
+            // order does not matter when writing map elements that will be read as map elements
+            List<String> keys = biwordIndex.getVocabulary();
+            // write the main k-grams first, starting with the size of the keys
+            dataStream.writeInt(keys.size());
+
+            // iterate through the keys
+            for (String key : keys) {
+                byte[] keyBytes = key.getBytes();
+                int currentKeyBytesLength = keyBytes.length;
+
+                // write how many bytes are in the key itself, then the bytes of the key
+                dataStream.writeInt(currentKeyBytesLength);
+                dataStream.write(keyBytes);
+
+                List<String> values = biwordIndex.getPostings(key);
+
+                // write the size of the k-grams posting list
+                dataStream.writeInt(values.size());
+
+                // iterate through the k-gram values
+                for (String value :values) {
+                    byte[] valueBytes = value.getBytes();
+                    int currentBytesLength = valueBytes.length;
+
+                    // for each individual k-gram, write the length of the k-gram followed by its bytes
+                    dataStream.writeInt(currentBytesLength);
+                    dataStream.write(valueBytes);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
     public static void writeLds(String pathToDocWeightsBin, List<Double> lds) {
         // overwrite any existing files
         try (FileOutputStream fileStream = new FileOutputStream(pathToDocWeightsBin, false);
@@ -162,7 +203,11 @@ public class DiskIndexWriter {
             }
 
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Invalid path; please restart the program and build an index" +
+                    " with a valid directory path.");
+            System.exit(0);
         }
     }
+
+
 }

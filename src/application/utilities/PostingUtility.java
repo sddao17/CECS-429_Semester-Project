@@ -20,6 +20,8 @@ public class PostingUtility {
             put("postingsBin", pathToIndexDirectory + "/bTree.bin");
             put("bTreeBin", pathToIndexDirectory + "/kGrams.bin");
             put("kGramsBin", pathToIndexDirectory + "/docWeights.bin");
+            put("biwordBin", pathToIndexDirectory + "/biword.bin");
+            put("biWordBTreeBin", pathToIndexDirectory + "/biwordbtree.bin");
         }};
     }
 

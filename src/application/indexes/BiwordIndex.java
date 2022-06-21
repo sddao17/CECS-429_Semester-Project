@@ -1,5 +1,7 @@
 package application.indexes;
 
+import org.apache.jdbm.*;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -9,11 +11,13 @@ import java.util.*;
 public class BiwordIndex implements Index<String, Posting> {
 
     private final Map<String, List<Posting>> biwordIndex;
+    private BTree<String, Integer> bTree;
     private int lastDocID = 0;
     private String lastToken = null;
 
     public BiwordIndex() {
         biwordIndex = new HashMap<>();
+        bTree = new BTree<>();
     }
 
     @Override
@@ -61,9 +65,9 @@ public class BiwordIndex implements Index<String, Posting> {
             List<Posting> existingPostings = biwordIndex.get(finalTerm);
             //term doesn't exist in the vocabulary yet, so will now need to add it.
             if (existingPostings == null) {
-                    ArrayList<Posting> newPostings = new ArrayList<>(){
-                        {add(new Posting(docId, new ArrayList<>(){{}}));}};
-                    biwordIndex.put(finalTerm, newPostings);
+                ArrayList<Posting> newPostings = new ArrayList<>(){
+                    {add(new Posting(docId, new ArrayList<>(){{}}));}};
+                biwordIndex.put(finalTerm, newPostings);
 
             } else {
                 //get the last index of the existing postings

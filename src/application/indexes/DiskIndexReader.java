@@ -120,23 +120,6 @@ public class DiskIndexReader {
         return kgramIndex;
     }
 
-    public static BiwordIndex readBiwords(String pathToBiwordBin) {
-        BiwordIndex biwordIndex = new BiwordIndex();
-        // overwrite any existing files
-        try (FileInputStream fileStream = new FileInputStream(pathToBiwordBin);
-             BufferedInputStream bufferStream = new BufferedInputStream(fileStream);
-             DataInputStream dataStream = new DataInputStream(bufferStream)) {
-            // read the main k-grams first, starting with the size of the keys
-            int keysSize = dataStream.readInt();
-
-            return biwordIndex;
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return null;
-    }
-
 
     public static double readLdFromBinFile(RandomAccessFile randomAccessor, int documentId) {
         int bytePosition = documentId * Double.BYTES;

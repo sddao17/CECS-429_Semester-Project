@@ -54,8 +54,7 @@ public class BiwordIndex implements Index<String, Posting> {
         if (docId != lastDocID) {
             lastToken = term;
             lastDocID = docId;
-        }
-        else {
+        } else {
             //format the term to be inputted into the index
             String finalTerm = String.format("%s %s", lastToken, term);
             List<Posting> existingPostings = biwordIndex.get(finalTerm);

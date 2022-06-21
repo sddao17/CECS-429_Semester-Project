@@ -1,3 +1,4 @@
+
 package application.indexes;
 
 import java.io.*;
@@ -67,7 +68,7 @@ public class DiskIndexWriter {
                 // (2, iv). Repeat for each term in the vocabulary.
             }
 
-        } catch(IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
 
@@ -124,7 +125,7 @@ public class DiskIndexWriter {
                 dataStream.writeInt(values.size());
 
                 // iterate through the k-gram values
-                for (String value :values) {
+                for (String value : values) {
                     byte[] valueBytes = value.getBytes();
                     int currentBytesLength = valueBytes.length;
 
@@ -153,8 +154,24 @@ public class DiskIndexWriter {
         }
     }
 
-    public static List<Integer> writeBiword(String pathToBiwordBin, BiwordIndex biwordIndex){
-  /* 3. writeIndex should return a list of (8-byte) integer values, one value for each of the terms
+    public static void writeLds(String pathToDocWeightsBin, List<Double> lds) {
+        // overwrite any existing files
+        try (FileOutputStream fileStream = new FileOutputStream(pathToDocWeightsBin, false);
+             BufferedOutputStream bufferStream = new BufferedOutputStream(fileStream);
+             DataOutputStream dataStream = new DataOutputStream(bufferStream)) {
+            for (Double ld : lds) {
+                dataStream.writeDouble(ld);
+            }
+
+        } catch (IOException e) {
+            System.err.println("Invalid path; please restart the program and build an index" +
+                    " with a valid directory path.");
+            System.exit(0);
+        }
+    }
+
+    public static List<Integer> writeBiword(String pathToBiwordBin, BiwordIndex biwordIndex) {
+        /* 3. writeIndex should return a list of (8-byte) integer values, one value for each of the terms
           in the index vocabulary. Each integer value should equal the byte position of where the postings
           for the corresponding term from the vocabulary begin in postings.bin. */
         List<Integer> bytePositions = new ArrayList<>();
@@ -186,32 +203,30 @@ public class DiskIndexWriter {
                     int currentDocumentId = currentPosting.getDocumentId() - latestDocumentId;
                     dataStream.writeInt(currentDocumentId);
                     latestDocumentId = currentDocumentId;
+
+                    /**
+                     *
+                     */
+                    // (2, iii, B). Write tf(t,d) as a 4-byte integer.
+                    //dataStream.writeInt(currentPositions.size());
+
+                    //int latestPosition = 0;
+
+                    //for (int currentPosition : currentPositions) {
+                        /* (2, iii, C). Write the list of positions, each a 4-byte gap. (The first position
+                          is written as-is. All the rest are gaps from the previous value.) */
+                    //currentPosition = currentPosition - latestPosition;
+                    //dataStream.writeInt(currentPosition);
+                    //latestPosition = currentPosition;
+                    //}
                 }
                 // (2, iv). Repeat for each term in the vocabulary.
             }
 
-        } catch(IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
 
         return bytePositions;
     }
-
-    public static void writeLds(String pathToDocWeightsBin, List<Double> lds) {
-        // overwrite any existing files
-        try (FileOutputStream fileStream = new FileOutputStream(pathToDocWeightsBin, false);
-             BufferedOutputStream bufferStream = new BufferedOutputStream(fileStream);
-             DataOutputStream dataStream = new DataOutputStream(bufferStream)) {
-            for (Double ld : lds) {
-                dataStream.writeDouble(ld);
-            }
-
-        } catch (IOException e) {
-            System.err.println("Invalid path; please restart the program and build an index" +
-                    " with a valid directory path.");
-            System.exit(0);
-        }
-    }
-
-
 }

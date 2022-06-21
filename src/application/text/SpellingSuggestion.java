@@ -15,7 +15,7 @@ import java.util.*;
 public class SpellingSuggestion {
 
     private static final double K_GRAM_OVERLAP_THRESHOLD = 0.3;
-    private static final double JACCARD_COEFF_THRESHOLD = 0.3;
+    private static final double JACCARD_COEFF_THRESHOLD = 0.4;
     private final Index<String, Posting> corpusIndex;
     private final Index<String, String> kGramIndex;
 
@@ -33,6 +33,13 @@ public class SpellingSuggestion {
             jaccardCoeffThreshold += (1.0 - JACCARD_COEFF_THRESHOLD) / (1 + Math.log(token.length()));
         }
 
+        if (Application.enabledLogs) {
+            System.out.println("--------------------------------------------------------------------------------" +
+                    "\n`" + token + "`" +
+                    "\nK-gram overlap ratio: " + kGramOverlapThreshold +
+                    "\nJaccard coefficient: " + jaccardCoeffThreshold);
+        }
+
         List<String> candidates = getCandidates(token, kGramOverlapThreshold, jaccardCoeffThreshold);
 
         // if there are no candidates, simply return the original token
@@ -45,14 +52,10 @@ public class SpellingSuggestion {
         String finalReplacement = getFinalReplacement(corpusIndex, finalCandidates, token);
 
         if (Application.enabledLogs) {
-            System.out.println("--------------------------------------------------------------------------------" +
-                    "\n`" + token + "`" +
-                    "\nK-gram overlap ratio: " + kGramOverlapThreshold +
-                    "\nJaccard coefficient: " + jaccardCoeffThreshold +
-                    "\n\nCandidate types: " + candidates + "\n");
+            System.out.println("Candidate types: " + candidates + "\n");
             candidateEdits.forEach(
                     (candidate, edit) ->
-                            System.out.println("(candidate, edit) ---> (" + candidate + ", " + edit + ")"));
+                            System.out.println("(candidate, edits) ---> (" + candidate + ", " + edit + ")"));
             System.out.println("\nFinal types: " + finalCandidates +
                     "\nFinal replacement: `" + finalReplacement + "`" +
                     "\n--------------------------------------------------------------------------------");
@@ -66,7 +69,7 @@ public class SpellingSuggestion {
         List<String> candidates = new ArrayList<>();
 
         KGramIndex tokenKGramIndex = new KGramIndex();
-        tokenKGramIndex.addToken(token, 4);
+        tokenKGramIndex.addToken(token, 3);
         List<String> tokenKGrams = tokenKGramIndex.getPostings(token);
         // remember to sort the k-grams before we compare them
         Collections.sort(tokenKGrams);
@@ -242,7 +245,7 @@ public class SpellingSuggestion {
            i  | 3  2  1  1  2
            e  | 4  3  2  2  2
            s  | 5  4  3  3  3 < levenshtein edit distance = 3 */
-        // index pointers to the last character of the left / right token
+        // index pointers to the last character of the left /right token
         int i = leftToken.length() - 1;
         int j = rightToken.length() - 1;
 
@@ -261,7 +264,7 @@ public class SpellingSuggestion {
         // top edit distance is just the value of the previous top value + 1, if it exists
         int topEdit = ( (i - 1 >= 0) ? calculateEdits(leftToken, rightToken, i - 1, j) + 1 : Integer.MAX_VALUE );
         // left edit distance is just the value of the previous left value + 1, if it exists
-        int leftEdit = ( (j - 1 >= 0) ? calculateEdits(leftToken, rightToken, i, j - 1) + 1 : Integer.MAX_VALUE );
+        int leftEdit = ( (j - 1 >= 0) ? calculateEdits(leftToken, rightToken, i, j - 1) + 1: Integer.MAX_VALUE );
         /* diagonal edit distance = 0 if both index pointers are at the start of their tokens, or it = the previous
           diagonal edit distance if it exists, or it is not considered if the diagonal would be out of bounds otherwise;
           we additionally add + 1 if the current characters don't match */

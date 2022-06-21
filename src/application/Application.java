@@ -32,10 +32,9 @@ public class Application {
     private static CorpusSelection cSelect;
     private static DirectoryCorpus corpus;  // we need only one of each corpus and index active at a time,
     private static Index<String, Posting> corpusIndex;  // and multiple methods need access to them
+    private static Index<String, Posting> biwordIndex = new BiwordIndex();
     private static KGramIndex kGramIndex = new KGramIndex();
-    private static BiwordIndex biwordIndex = new BiwordIndex();
 
-    private static Index<String, Posting> biWordTreeIndex;
     private static final List<Double> lds = new ArrayList<>();    // the values representing document weights
 
     public static boolean enabledLogs = false;
@@ -102,21 +101,21 @@ public class Application {
         System.out.println("Document weights written to `" + indexPaths.get("docWeightsBin") + "` successfully.");
 
         // write the postings using the corpus index to disk
-        List<Integer> bytePositions = DiskIndexWriter.writeIndex(indexPaths.get("postingsBin"), corpusIndex);
+        List<Integer> positionalBytePositions = DiskIndexWriter.writeIndex(indexPaths.get("postingsBin"), corpusIndex);
         System.out.println("Postings written to `" + indexPaths.get("postingsBin") + "` successfully.");
 
         // write the B+ tree mappings of term -> byte positions to disk
-        DiskIndexWriter.writeBTree(indexPaths.get("bTreeBin"), corpusIndex.getVocabulary(), bytePositions);
+        DiskIndexWriter.writeBTree(indexPaths.get("bTreeBin"), corpusIndex.getVocabulary(), positionalBytePositions);
         System.out.println("B+ Tree written to `" + indexPaths.get("bTreeBin") + "` successfully.");
 
         // write the k-grams to disk
         DiskIndexWriter.writeKGrams(indexPaths.get("kGramsBin"), kGramIndex);
         System.out.println("K-Grams written to `" + indexPaths.get("kGramsBin") + "` successfully.");
 
-        List<Integer> bytePositions1 = DiskIndexWriter.writeBiword(indexPaths.get("biwordBin"), biwordIndex);
-        System.out.println("biword index written to `" + indexPaths.get("biwordBin") + " successfully.");
+        List<Integer> biwordBytePositions = DiskIndexWriter.writeBiword(indexPaths.get("biwordBin"), biwordIndex);
+        System.out.println("Biword index written to `" + indexPaths.get("biwordBin") + " successfully.");
 
-        DiskIndexWriter.writeBTree(indexPaths.get("biwordBTreeBin"), biwordIndex.getVocabulary(), bytePositions1);
+        DiskIndexWriter.writeBTree(indexPaths.get("biwordBTreeBin"), biwordIndex.getVocabulary(), biwordBytePositions);
         System.out.println("Biword B tree written to `" + indexPaths.get("biwordBTreeBin") + "` successfully.");
 
         // after writing the components to disk, we can terminate the program
@@ -127,9 +126,10 @@ public class Application {
         System.out.println("\nReading from the on-disk index...");
 
         // initialize the DiskPositionalIndex and k-grams using pre-constructed indexes on disk
-        corpusIndex = new DiskPositionalIndex(indexPaths.get("bTreeBin"), indexPaths.get("postingsBin"));
-        biWordTreeIndex = new DiskPositionalIndex(indexPaths.get("biwordBTreeBin"), indexPaths.get("biwordBin"));
-        biwordIndex.initializeBTree(indexPaths.get("biwordBTreeBin"));
+        corpusIndex = new DiskPositionalIndex(DiskIndexReader.readBTree(indexPaths.get("bTreeBin")),
+                indexPaths.get("bTreeBin"), indexPaths.get("postingsBin"));
+        biwordIndex = new DiskBiwordIndex(DiskIndexReader.readBTree(indexPaths.get("biwordBTreeBin")),
+                indexPaths.get("biwordBTreeBin"), indexPaths.get("biwordBin"));
         kGramIndex = DiskIndexReader.readKGrams(indexPaths.get("kGramsBin"));
         DocumentWeightScorer.setRandomAccessor(indexPaths.get("docWeightsBin"));
 
@@ -177,7 +177,7 @@ public class Application {
                     // since each token can produce multiple terms, add all terms using the same documentID and position
                     for (String term : terms) {
                         index.addTerm(term, document.getId(), currentPosition);
-                        biwordIndex.addTerm(term, document.getId());
+                        ((BiwordIndex) biwordIndex).addTerm(term, document.getId());
                         // build up L(d) for the current document
                         if (tftds.get(term) == null) {
                             tftds.put(term, 1);
@@ -388,6 +388,10 @@ public class Application {
 
     public static DirectoryCorpus getCorpus() {
         return corpus;
+    }
+
+    public static Index<String, Posting> getBiwordIndex() {
+        return biwordIndex;
     }
 
     public static Index<String, String> getKGramIndex() {

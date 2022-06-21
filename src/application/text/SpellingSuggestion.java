@@ -14,7 +14,7 @@ import java.util.*;
  */
 public class SpellingSuggestion {
 
-    private static final double K_GRAM_OVERLAP_THRESHOLD = 0.4;
+    private static final double K_GRAM_OVERLAP_THRESHOLD = 0.3;
     private static final double JACCARD_COEFF_THRESHOLD = 0.4;
     private final Index<String, Posting> corpusIndex;
     private final Index<String, String> kGramIndex;
@@ -66,7 +66,7 @@ public class SpellingSuggestion {
         List<String> candidates = new ArrayList<>();
 
         KGramIndex tokenKGramIndex = new KGramIndex();
-        tokenKGramIndex.addToken(token, 4);
+        tokenKGramIndex.addToken(token, 3);
         List<String> tokenKGrams = tokenKGramIndex.getPostings(token);
         // remember to sort the k-grams before we compare them
         Collections.sort(tokenKGrams);

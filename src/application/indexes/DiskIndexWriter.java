@@ -170,7 +170,7 @@ public class DiskIndexWriter {
         }
     }
 
-    public static List<Integer> writeBiword(String pathToBiwordBin, BiwordIndex biwordIndex) {
+    public static List<Integer> writeBiword(String pathToBiwordBin, Index<String, Posting> biwordIndex) {
         /* 3. writeIndex should return a list of (8-byte) integer values, one value for each of the terms
           in the index vocabulary. Each integer value should equal the byte position of where the postings
           for the corresponding term from the vocabulary begin in postings.bin. */
@@ -203,22 +203,6 @@ public class DiskIndexWriter {
                     int currentDocumentId = currentPosting.getDocumentId() - latestDocumentId;
                     dataStream.writeInt(currentDocumentId);
                     latestDocumentId = currentDocumentId;
-
-                    /**
-                     *
-                     */
-                    // (2, iii, B). Write tf(t,d) as a 4-byte integer.
-                    //dataStream.writeInt(currentPositions.size());
-
-                    //int latestPosition = 0;
-
-                    //for (int currentPosition : currentPositions) {
-                        /* (2, iii, C). Write the list of positions, each a 4-byte gap. (The first position
-                          is written as-is. All the rest are gaps from the previous value.) */
-                    //currentPosition = currentPosition - latestPosition;
-                    //dataStream.writeInt(currentPosition);
-                    //latestPosition = currentPosition;
-                    //}
                 }
                 // (2, iv). Repeat for each term in the vocabulary.
             }

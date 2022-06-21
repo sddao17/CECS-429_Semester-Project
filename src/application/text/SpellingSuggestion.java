@@ -40,21 +40,28 @@ public class SpellingSuggestion {
             return token;
         }
 
-        Map<String, Integer> candidateEdits = getCandidateEdits(candidates, token);
-        List<String> finalCandidates = getFinalCandidates(candidateEdits);
-        String finalReplacement = getFinalReplacement(corpusIndex, finalCandidates, token);
-
         if (Application.enabledLogs) {
             System.out.println("--------------------------------------------------------------------------------" +
                     "\n`" + token + "`" +
                     "\nK-gram overlap ratio: " + kGramOverlapThreshold +
                     "\nJaccard coefficient: " + jaccardCoeffThreshold +
-                    "\n\nCandidate types: " + candidates + "\n");
+                    "\n\nCandidate types: " + candidates);
+        }
+
+        Map<String, Integer> candidateEdits = getCandidateEdits(candidates, token);
+        List<String> finalCandidates = getFinalCandidates(candidateEdits);
+
+        if (Application.enabledLogs) {
             candidateEdits.forEach(
                     (candidate, edit) ->
-                            System.out.println("(candidate, edits) ---> (" + candidate + ", " + edit + ")"));
-            System.out.println("\nFinal types: " + finalCandidates +
-                    "\nFinal replacement: `" + finalReplacement + "`" +
+                            System.out.println("---> (candidate, edits) ---> (" + candidate + ", " + edit + ")"));
+            System.out.println("\nFinal types: " + finalCandidates);
+        }
+
+        String finalReplacement = getFinalReplacement(corpusIndex, finalCandidates, token);
+
+        if (Application.enabledLogs) {
+            System.out.println("\nFinal replacement: `" + finalReplacement + "`" +
                     "\n--------------------------------------------------------------------------------");
         }
 
@@ -133,6 +140,10 @@ public class SpellingSuggestion {
         for (String currentCandidate : finalCandidates) {
             String candidateStemmed = stemmer.stem(currentCandidate);
             int dft = corpusIndex.getPositionlessPostings(candidateStemmed).size();
+
+            if (Application.enabledLogs) {
+                System.out.println("---> `" + currentCandidate + "` ---> df(t): " + dft);
+            }
 
             if (dft > max) {
                 finalReplacement = currentCandidate;

@@ -15,13 +15,6 @@ public class VocabularyTokenProcessor extends TokenProcessor {
     public List<String> processToken(String token) {
         List<String> terms = new ArrayList<>();
 
-        if (token.length() == 0) {
-            return terms;
-        } else if (token.length() == 1 && Character.isLetterOrDigit(token.charAt(0))) {
-            terms.add(token);
-            return terms;
-        }
-
         /* To normalize a token into a term, perform these steps in order:
           1. Remove all non-alphanumeric characters from the beginning and end of the token, but not the middle.
           (a) Example: Hello. becomes Hello ; 192.168.1.1 remains unchanged. */

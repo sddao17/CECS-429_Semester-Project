@@ -76,6 +76,4 @@ public class BiwordIndex implements Index<String, Posting> {
             lastToken = term;
         }
     }
-
-
 }

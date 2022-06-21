@@ -226,11 +226,12 @@ public class Application {
                 String parameter = "";
                 if (splitQuery.length > 1) {
                     parameter = splitQuery[1];
-                }
-                // check if the user enabled printing logs to console
-                if (splitQuery[splitQuery.length - 1].equals("--log")) {
-                    enabledLogs = true;
-                    query = query.substring(0, query.lastIndexOf(" --log"));
+
+                    // check if the user enabled printing logs to console
+                    if (splitQuery[splitQuery.length - 1].equals("--log")) {
+                        enabledLogs = true;
+                        query = query.substring(0, query.lastIndexOf(" --log"));
+                    }
                 }
 
                 // 3(a, i). If it is a special query, perform that action.
@@ -258,7 +259,7 @@ public class Application {
 
                         for (int i = 0; i < vocabularyPrintSize; ++i) {
                             String currentType = vocabulary.get(i);
-                            System.out.println(currentType + " -> " + kGramIndex.getPostings(currentType));
+                            System.out.println(currentType + " -> " + kGramIndex.getPositionlessPostings(currentType));
                         }
                         if (vocabulary.size() > VOCABULARY_PRINT_SIZE) {
                             System.out.println("...");
@@ -290,18 +291,26 @@ public class Application {
     }
 
     private static int displayBooleanResults(String query) {
+        List<Posting> resultPostings;
         // 3(a, ii). If it isn't a special query, then parse the query and retrieve its postings.
         BooleanQueryParser parser = new BooleanQueryParser();
         QueryComponent parsedQuery = parser.parseQuery(query);
-        TokenProcessor processor = new VocabularyTokenProcessor();
+        TokenProcessor processor;
 
-        List<Posting> resultPostings = parsedQuery.getPostings(corpusIndex, processor);
-        // in case the query contains wildcards, only display each unique posting once
-        if (parsedQuery instanceof WildcardLiteral) {
+        if (parsedQuery instanceof PhraseLiteral) {
+            processor = new QueryTokenProcessor();
+            resultPostings = parsedQuery.getPostings(corpusIndex, processor);
+        } else if (parsedQuery instanceof WildcardLiteral) {
+            processor = new WildcardTokenProcessor();
+            resultPostings = parsedQuery.getPositionlessPostings(corpusIndex, processor);
+            // in case the query contains wildcards, only display each unique posting once
             resultPostings = PostingUtility.getDistinctPostings(resultPostings);
+        } else {
+            processor = new VocabularyTokenProcessor();
+            resultPostings = parsedQuery.getPositionlessPostings(corpusIndex, processor);
         }
-        PostingUtility.displayPostings(corpus, resultPostings);
 
+        PostingUtility.displayPostings(corpus, resultPostings);
         return resultPostings.size();
     }
 
@@ -330,21 +339,29 @@ public class Application {
 
     public static boolean trySpellingSuggestion(Scanner in, String query, String queryMode) {
         SpellingSuggestion spellingCheck = new SpellingSuggestion(corpusIndex, kGramIndex);
-        String[] splitQuery = query.split(" ");
+        String[] splitQuery = query.replace(" + ", " ").split(" ");
         StringBuilder newQuery = new StringBuilder();
+        boolean meetsThreshold = false;
 
         for (int i = 0; i < splitQuery.length; ++i) {
             VocabularyTokenProcessor processor = new VocabularyTokenProcessor();
             String currentToken = splitQuery[i];
-            int dft = corpusIndex.getPositionlessPostings(processor.processToken(currentToken).get(0)).size();
+            List<String> terms = processor.processToken(currentToken);
+            int dft = 0;
+
+            if (terms.size() > 0) {
+                dft = corpusIndex.getPositionlessPostings(terms.get(0)).size();
+            }
+
             String replacementType;
 
             /* verify that each term meets the threshold requirement for postings sizes;
               if it does, use the original query type, or if it doesn't, suggest a correction */
-            if (dft > SPELLING_CORRECTION_THRESHOLD) {
+            if (dft > SPELLING_CORRECTION_THRESHOLD || currentToken.contains("*")) {
                 replacementType = currentToken;
             } else {
                 replacementType = spellingCheck.suggestCorrection(currentToken);
+                meetsThreshold = true;
             }
 
             newQuery.append(replacementType);
@@ -353,8 +370,8 @@ public class Application {
             }
         }
 
-        // only proceed if the original query did not need modifications
-        if (!newQuery.toString().equals(query)) {
+        // only proceed if we made a suggestion to the original query
+        if (meetsThreshold) {
             System.out.print("Did you mean `" + newQuery + "`? (`y` to proceed)\n >> ");
             query = in.nextLine();
 

@@ -37,7 +37,22 @@ public class TermLiteral implements QueryComponent {
 		}
 
 		return resultPostings;
+	}
 
+	@Override
+	public List<Posting> getPositionlessPostings(Index<String, Posting> index, TokenProcessor processor) {
+		// Somehow incorporate a TokenProcessor into the getPostings call sequence.
+		List<String> processedTerms = processor.processToken(mTerm);
+
+		List<Posting> resultPostings = index.getPositionlessPostings(processedTerms.get(0));
+
+		if (Application.enabledLogs) {
+			System.out.println("--------------------------------------------------------------------------------" +
+					"\nTerm literal: `" + processedTerms.get(0) + "` -- " + resultPostings.size() + " posting(s)" +
+					"\n--------------------------------------------------------------------------------");
+		}
+
+		return resultPostings;
 	}
 
 	@Override

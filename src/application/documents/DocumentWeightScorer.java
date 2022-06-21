@@ -5,6 +5,7 @@ import application.Application;
 import application.indexes.DiskIndexReader;
 import application.indexes.Index;
 import application.indexes.Posting;
+import application.queries.WildcardLiteral;
 import application.text.VocabularyTokenProcessor;
 
 import java.io.Closeable;
@@ -29,7 +30,11 @@ public class DocumentWeightScorer implements Closeable {
         String[] splitQuery = query.split(" ");
         List<String> queryTerms = new ArrayList<>();
 
-            for (String token : splitQuery) {
+        for (String token : splitQuery) {
+            // if the token is a wildcard, allow all vocabulary types that match the pattern to accumulate points
+            if (token.contains("*")) {
+                accumulateWildcards(index, token);
+            } else {
                 List<String> splitTerms = processor.processToken(token);
 
                 // error handling - handle empty / fully non-alphanumeric tokens
@@ -37,7 +42,26 @@ public class DocumentWeightScorer implements Closeable {
                     queryTerms.add(splitTerms.get(0));
                 }
             }
+        }
 
+        iterateTermAtATime(index, queryTerms);
+        normalizeAccumulators();
+    }
+
+    public void accumulateWildcards(Index<String, Posting> index, String wildcard) {
+        for (String type : Application.getKGramIndex().getVocabulary()) {
+            if (type.matches(WildcardLiteral.wildcardToRegex(wildcard))) {
+                VocabularyTokenProcessor processor = new VocabularyTokenProcessor();
+                List<String> terms = processor.processToken(type);
+
+                if (terms.size() > 0) {
+                    iterateTermAtATime(index, new ArrayList<>(){{add(terms.get(0));}});
+                }
+            }
+        }
+    }
+
+    public void iterateTermAtATime(Index<String, Posting> index, List<String> queryTerms) {
         // implement the "term at a time" algorithm from lecture;
         // 1. For each term t in the query:
         for (String term : queryTerms) {
@@ -69,18 +93,6 @@ public class DocumentWeightScorer implements Closeable {
                 System.out.println("--------------------------------------------------------------------------------");
             }
         }
-
-        // iterate through all entries
-        for (Map.Entry<Integer, Double> entry : finalAccumulators.entrySet()) {
-            int currentDocumentId = entry.getKey();
-            double currentAd = entry.getValue();
-
-            // 2. For each non-zero A(d), divide A(d) by L(d), where L(d) is read from the `docWeights.bin` file.
-            if (currentAd > 0) {
-                double ld = DiskIndexReader.readLdFromBinFile(randomAccessor, currentDocumentId);
-                finalAccumulators.replace(currentDocumentId, currentAd / ld);
-            }
-        }
     }
 
     public void acquireAccumulator(Posting posting, double wqt) {
@@ -107,6 +119,20 @@ public class DocumentWeightScorer implements Closeable {
         } else {
             double oldAccumulator = finalAccumulators.get(documentId);
             finalAccumulators.replace(documentId, oldAccumulator + newWeight);
+        }
+    }
+
+    public void normalizeAccumulators() {
+        // iterate through all entries
+        for (Map.Entry<Integer, Double> entry : finalAccumulators.entrySet()) {
+            int currentDocumentId = entry.getKey();
+            double currentAd = entry.getValue();
+
+            // 2. For each non-zero A(d), divide A(d) by L(d), where L(d) is read from the `docWeights.bin` file.
+            if (currentAd > 0) {
+                double ld = DiskIndexReader.readLdFromBinFile(randomAccessor, currentDocumentId);
+                finalAccumulators.replace(currentDocumentId, currentAd / ld);
+            }
         }
     }
 

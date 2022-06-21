@@ -68,10 +68,59 @@ public class WildcardLiteral implements QueryComponent {
         if (Application.enabledLogs) {
             System.out.println("--------------------------------------------------------------------------------" +
                     "\nWildcard literal: `" + mTerm + "`" +
-                    "\n---> Candidate tokens for `" + mTerm + "`: " + candidateTokens +
-                    "\n---> Final tokens for `" + mTerm + "`: " + finalTokens +
-                    "\n---> Final terms for `" + mTerm + "`: " + finalTerms +
-                    "\n---> `" + mTerm + "` -- " + resultPostings.size() + " posting(s)" +
+                    "\n\nCandidate tokens for `" + mTerm + "`: " + candidateTokens +
+                    "\n\nFinal tokens for `" + mTerm + "`: " + finalTokens +
+                    "\n\nFinal terms for `" + mTerm + "`: " + finalTerms +
+                    "\n\n---> `" + mTerm + "` -- " + resultPostings.size() + " posting(s)" +
+                    "\n--------------------------------------------------------------------------------");
+        }
+
+        return resultPostings;
+    }
+
+    @Override
+    public List<Posting> getPositionlessPostings(Index<String, Posting> corpusIndex, TokenProcessor processor) {
+        Index<String, String> corpusKGramIndex = Application.getKGramIndex();
+        KGramIndex kGramIndex = new KGramIndex();
+
+        // minimally process the original token
+        WildcardTokenProcessor wildCardProcessor = new WildcardTokenProcessor();
+        String processedTerm = wildCardProcessor.processToken(mTerm).get(0);
+        kGramIndex.addToken(processedTerm, 3);
+
+        List<String> candidateTokens = findPositionlessCandidates(corpusKGramIndex, kGramIndex);
+
+        List<String> finalTokens = postFilter(candidateTokens, processedTerm);
+
+        List<String> finalTerms = new ArrayList<>();
+        for (String finalToken : finalTokens) {
+            List<String> terms = processor.processToken(finalToken);
+
+            for (String term : terms) {
+                if (!finalTerms.contains(term)) {
+                    finalTerms.add(term);
+                }
+            }
+        }
+
+        // once we collect all of our final terms, we "OR" the postings to combine them and ignore duplicates
+        List<Posting> resultPostings = new ArrayList<>();
+
+        for (String finalTerm : finalTerms) {
+            /* note that we add any documents, duplicates included; this is because there can be multiple
+              wildcard literals within the same document (and they could be for the same or different term),
+              so we must include the postings for every term that we find that match the wildcard pattern */
+            resultPostings.addAll(corpusIndex.getPositionlessPostings(finalTerm));
+        }
+        Collections.sort(resultPostings);
+
+        if (Application.enabledLogs) {
+            System.out.println("--------------------------------------------------------------------------------" +
+                    "\nWildcard literal: `" + mTerm + "`" +
+                    "\n\nCandidate tokens for `" + mTerm + "`: " + candidateTokens +
+                    "\n\nFinal tokens for `" + mTerm + "`: " + finalTokens +
+                    "\n\nFinal terms for `" + mTerm + "`: " + finalTerms +
+                    "\n\n---> `" + mTerm + "` -- " + resultPostings.size() + " posting(s)" +
                     "\n--------------------------------------------------------------------------------");
         }
 
@@ -90,6 +139,34 @@ public class WildcardLiteral implements QueryComponent {
             // intersect terms within their respective vocabularies
             for (String wildcardToken : kGramIndex.getVocabulary()) {
                 List<String> wildcardKGrams = kGramIndex.getPostings(wildcardToken);
+
+                // if the token does not contain all wildcard k-grams, it cannot be a candidate
+                if (!corpusKGrams.containsAll(wildcardKGrams)) {
+                    candidateMatchesAll = false;
+                }
+            }
+
+            // only add candidates with all the k-grams from the wildcard query
+            if (candidateMatchesAll) {
+                candidateTokens.add(corpusToken);
+            }
+        }
+
+        return candidateTokens;
+    }
+
+    private List<String> findPositionlessCandidates(Index<String, String> corpusKGramIndex, Index<String, String> kGramIndex) {
+        List<String> candidateTokens = new ArrayList<>();
+
+        /* find candidate tokens by traversing through the corpus and comparing each of them to our
+          generated k-grams; intersect the postings by finding tokens that share the same k-gram patterns */
+        for (String corpusToken : corpusKGramIndex.getVocabulary()) {
+            ArrayList<String> corpusKGrams = new ArrayList<>(corpusKGramIndex.getPositionlessPostings(corpusToken));
+            boolean candidateMatchesAll = true;
+
+            // intersect terms within their respective vocabularies
+            for (String wildcardToken : kGramIndex.getVocabulary()) {
+                List<String> wildcardKGrams = kGramIndex.getPositionlessPostings(wildcardToken);
 
                 // if the token does not contain all wildcard k-grams, it cannot be a candidate
                 if (!corpusKGrams.containsAll(wildcardKGrams)) {

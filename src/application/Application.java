@@ -373,10 +373,10 @@ public class Application {
         if (meetsThreshold && !newQuery.toString().equals(query) && !query.contains(" + ")) {
             System.out.print("Couldn't find results for ");
             for (int i = 0; i < possibleTypos.size(); ++i) {
-                String possibleType = possibleTypos.get(i);
+                String possibleTypo = possibleTypos.get(i);
                 System.out.print( ((i < possibleTypos.size() - 1) ?
-                        "`" + possibleType + "`, " :
-                        "`" + possibleType + "`." ) );
+                        "`" + possibleTypo + "`, " :
+                        "`" + possibleTypo + "`." ) );
             }
             System.out.print("\nDid you mean `" + newQuery + "`? (`y` to proceed)\n >> ");
             query = in.nextLine();

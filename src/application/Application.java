@@ -129,6 +129,7 @@ public class Application {
         // initialize the DiskPositionalIndex and k-grams using pre-constructed indexes on disk
         corpusIndex = new DiskPositionalIndex(indexPaths.get("bTreeBin"), indexPaths.get("postingsBin"));
         biWordTreeIndex = new DiskPositionalIndex(indexPaths.get("biwordBTreeBin"), indexPaths.get("biwordBin"));
+        biwordIndex.initializeBTree(indexPaths.get("biwordBTreeBin"));
         kGramIndex = DiskIndexReader.readKGrams(indexPaths.get("kGramsBin"));
         DocumentWeightScorer.setRandomAccessor(indexPaths.get("docWeightsBin"));
 

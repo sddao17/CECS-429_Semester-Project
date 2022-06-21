@@ -1,5 +1,8 @@
 package application.indexes;
 
+import org.apache.jdbm.*;
+
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -9,34 +12,102 @@ import java.util.*;
 public class BiwordIndex implements Index<String, Posting> {
 
     private final Map<String, List<Posting>> biwordIndex;
+    private BTree<String, Integer> bTree;
     private int lastDocID = 0;
     private String lastToken = null;
+    private RandomAccessFile randomAccessPosting;
+    private String pathToBTreeBin;
 
     public BiwordIndex() {
         biwordIndex = new HashMap<>();
+        bTree = new BTree<>();
+    }
+
+    public void initializeBTree(String newPathToBtreeBin){
+        pathToBTreeBin = newPathToBtreeBin;
     }
 
     @Override
     public List<Posting> getPostings(String term) {
-        // return an empty list if the term doesn't exist in the map
-        if (!biwordIndex.containsKey(term))
-            return new ArrayList<>();
+        List<Posting> resultPostings = new ArrayList<>();
+        try {
+            // retrieve the byte position value for the term key within the B+ Tree
+            int bytePosition = bTree.get(term);
+            // jump to the offset containing the term's postings
+            randomAccessPosting.seek(bytePosition);
+            // the current int value at the offset is the size of the postings list
+            int postingsSize = randomAccessPosting.readInt();
+            int latestDocumentId = 0;
 
-        return biwordIndex.get(term);
+            // iterate through all postings for the term
+            for (int i = 0; i < postingsSize; ++i) {
+                ArrayList<Integer> positions = new ArrayList<>();
+                // first document ID is as-is; the rest are gaps
+                int currentDocumentId = randomAccessPosting.readInt() + latestDocumentId;
+                latestDocumentId = currentDocumentId - latestDocumentId;
+                //int positionsSize = randomAccessPosting.readInt();
+                //int latestPosition = 0;
+
+                //for (int j = 0; j < positionsSize; ++j) {
+                // first position is as-is; the rest are gaps
+                // int currentPosition = randomAccessPosting.readInt() + latestPosition;
+                // positions.add(currentPosition);
+                //latestPosition = currentPosition - latestPosition;
+                //}
+                Posting newPosting = new Posting(currentDocumentId, null);
+                resultPostings.add(newPosting);
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (NullPointerException e) {
+            // bTree.get(term) returning null means that the term does not exist in the vocabulary
+            return new ArrayList<>();
+        }
+
+        return resultPostings;
     }
 
     @Override
     public List<Posting> getPositionlessPostings(String term) {
-        // return an empty list if the term doesn't exist in the map
-        if (!biwordIndex.containsKey(term))
+        List<Posting> resultPostings = new ArrayList<>();
+
+        try {
+            // retrieve the byte position value for the term key within the B+ Tree
+            int bytePosition = bTree.get(term);
+            // jump to the offset containing the term's postings
+            randomAccessPosting.seek(bytePosition);
+            // the current int value at the offset is the size of the postings list
+            int postingsSize = randomAccessPosting.readInt();
+            int latestDocumentId = 0;
+
+            // iterate through all postings for the term
+            for (int i = 0; i < postingsSize; ++i) {
+                ArrayList<Integer> positions = new ArrayList<>();
+                // first document ID is as-is; the rest are gaps
+                int currentDocumentId = randomAccessPosting.readInt() + latestDocumentId;
+                latestDocumentId = currentDocumentId - latestDocumentId;
+                int positionsSize = randomAccessPosting.readInt();
+                // skip the other position bytes
+                randomAccessPosting.skipBytes(positionsSize * Integer.BYTES);
+
+                // add empty positions
+                for (int j = 0; j < positionsSize; ++j) {
+                    positions.add(0);
+                }
+
+                Posting newPosting = new Posting(currentDocumentId, positions);
+                resultPostings.add(newPosting);
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (NullPointerException e) {
+            // bTree.get(term) returning null means that the term does not exist in the vocabulary
             return new ArrayList<>();
+        }
 
-        // perform an extra iteration copy to avoid returning Postings without positions
-        List<Posting> positionlessPostings = new ArrayList<>();
-        biwordIndex.get(term).forEach(posting -> positionlessPostings.add(
-                new Posting(posting.getDocumentId(), new ArrayList<>())));
-
-        return positionlessPostings;
+        return resultPostings;
     }
 
     @Override
@@ -61,9 +132,9 @@ public class BiwordIndex implements Index<String, Posting> {
             List<Posting> existingPostings = biwordIndex.get(finalTerm);
             //term doesn't exist in the vocabulary yet, so will now need to add it.
             if (existingPostings == null) {
-                    ArrayList<Posting> newPostings = new ArrayList<>(){
-                        {add(new Posting(docId, new ArrayList<>(){{}}));}};
-                    biwordIndex.put(finalTerm, newPostings);
+                ArrayList<Posting> newPostings = new ArrayList<>(){
+                    {add(new Posting(docId, new ArrayList<>(){{}}));}};
+                biwordIndex.put(finalTerm, newPostings);
 
             } else {
                 //get the last index of the existing postings

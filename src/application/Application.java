@@ -371,7 +371,7 @@ public class Application {
         }
 
         // only proceed if we made a suggestion to the original query
-        if (meetsThreshold) {
+        if (meetsThreshold && !newQuery.toString().equals(query) && !query.contains(" + ")) {
             System.out.print("Did you mean `" + newQuery + "`? (`y` to proceed)\n >> ");
             query = in.nextLine();
 

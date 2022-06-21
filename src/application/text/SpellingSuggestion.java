@@ -52,7 +52,7 @@ public class SpellingSuggestion {
                     "\n\nCandidate types: " + candidates + "\n");
             candidateEdits.forEach(
                     (candidate, edit) ->
-                            System.out.println("(candidate, edit) ---> (" + candidate + ", " + edit + ")"));
+                            System.out.println("(candidate, edits) ---> (" + candidate + ", " + edit + ")"));
             System.out.println("\nFinal types: " + finalCandidates +
                     "\nFinal replacement: `" + finalReplacement + "`" +
                     "\n--------------------------------------------------------------------------------");

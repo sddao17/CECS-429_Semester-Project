@@ -154,7 +154,7 @@ public class DiskIndexWriter {
     }
 
     public static List<Integer> writeBiword(String pathToBiwordBin, BiwordIndex biwordIndex){
-        /* 3. writeIndex should return a list of (8-byte) integer values, one value for each of the terms
+  /* 3. writeIndex should return a list of (8-byte) integer values, one value for each of the terms
           in the index vocabulary. Each integer value should equal the byte position of where the postings
           for the corresponding term from the vocabulary begin in postings.bin. */
         List<Integer> bytePositions = new ArrayList<>();

@@ -204,19 +204,21 @@ public class DiskIndexWriter {
                     dataStream.writeInt(currentDocumentId);
                     latestDocumentId = currentDocumentId;
 
+                    /**
+                     *
+                     */
                     // (2, iii, B). Write tf(t,d) as a 4-byte integer.
-                    dataStream.writeInt(currentPositions.size());
+                    //dataStream.writeInt(currentPositions.size());
 
-                    int latestPosition = 0;
+                    //int latestPosition = 0;
 
-                    for (int currentPosition : currentPositions) {
+                    //for (int currentPosition : currentPositions) {
                         /* (2, iii, C). Write the list of positions, each a 4-byte gap. (The first position
                           is written as-is. All the rest are gaps from the previous value.) */
-                        currentPosition = currentPosition - latestPosition;
-                        dataStream.writeInt(currentPosition);
-                        latestPosition = currentPosition;
-
-                    }
+                    //currentPosition = currentPosition - latestPosition;
+                    //dataStream.writeInt(currentPosition);
+                    //latestPosition = currentPosition;
+                    //}
                 }
                 // (2, iv). Repeat for each term in the vocabulary.
             }

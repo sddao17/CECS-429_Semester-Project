@@ -1,3 +1,4 @@
+
 package application.indexes;
 
 import java.io.*;
@@ -67,7 +68,7 @@ public class DiskIndexWriter {
                 // (2, iv). Repeat for each term in the vocabulary.
             }
 
-        } catch(IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
 
@@ -124,7 +125,7 @@ public class DiskIndexWriter {
                 dataStream.writeInt(values.size());
 
                 // iterate through the k-gram values
-                for (String value :values) {
+                for (String value : values) {
                     byte[] valueBytes = value.getBytes();
                     int currentBytesLength = valueBytes.length;
 
@@ -150,6 +151,22 @@ public class DiskIndexWriter {
 
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    public static void writeLds(String pathToDocWeightsBin, List<Double> lds) {
+        // overwrite any existing files
+        try (FileOutputStream fileStream = new FileOutputStream(pathToDocWeightsBin, false);
+             BufferedOutputStream bufferStream = new BufferedOutputStream(fileStream);
+             DataOutputStream dataStream = new DataOutputStream(bufferStream)) {
+            for (Double ld : lds) {
+                dataStream.writeDouble(ld);
+            }
+
+        } catch (IOException e) {
+            System.err.println("Invalid path; please restart the program and build an index" +
+                    " with a valid directory path.");
+            System.exit(0);
         }
     }
 
@@ -212,5 +229,4 @@ public class DiskIndexWriter {
 
         return bytePositions;
     }
-
 }

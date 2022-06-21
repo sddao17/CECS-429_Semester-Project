@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import application.Application;
+import application.indexes.BiwordIndex;
 import application.indexes.Index;
 import application.indexes.Posting;
 import application.text.TokenProcessor;

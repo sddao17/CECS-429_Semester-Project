@@ -1,12 +1,41 @@
 
+package application;
+
+import application.UI.CorpusSelection;
+import application.documents.*;
+import application.indexes.*;
+import application.queries.*;
+import application.text.*;
+import application.utilities.Menu;
+import application.utilities.PostingUtility;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.Reader;
+import java.nio.file.Path;
+import java.text.DecimalFormat;
+import java.util.*;
+
+/**
+ * Search engine term project for CECS-429.
+ * Date: May 24, 2022
+ * @author Caitlin Martinez
+ * @author Miguel Zavala
+ * @author Steven Dao
+ */
+public class Application {
+
     private static final int VOCABULARY_PRINT_SIZE = 1_000; // number of vocabulary terms to print
     private static final int MAX_DISPLAYED_RANKED_ENTRIES = 10;  // the maximum number of ranked entries to display
+    private static final int SPELLING_CORRECTION_THRESHOLD = 10; // the trigger to suggest spelling corrections
 
     private static CorpusSelection cSelect;
     private static DirectoryCorpus corpus;  // we need only one of each corpus and index active at a time,
     private static Index<String, Posting> corpusIndex;  // and multiple methods need access to them
     private static KGramIndex kGramIndex = new KGramIndex();
     private static BiwordIndex biwordIndex = new BiwordIndex();
+
+    private static Index<String, Posting> biWordTreeIndex;
     private static final List<Double> lds = new ArrayList<>();    // the values representing document weights
 
     public static boolean enabledLogs = false;
@@ -84,11 +113,12 @@
         DiskIndexWriter.writeKGrams(indexPaths.get("kGramsBin"), kGramIndex);
         System.out.println("K-Grams written to `" + indexPaths.get("kGramsBin") + "` successfully.");
 
-        //write the biword index to disk
-        DiskIndexWriter.writeBiword(indexPaths.get("biwordBin"), biwordIndex);
-        System.out.println("Biword index written to `" + indexPaths.get("biwordBin") + "` successfully.");
+        List<Integer> bytePositions1 = DiskIndexWriter.writeBiword(indexPaths.get("biwordBin"), biwordIndex);
+        System.out.println("biword index written to `" + indexPaths.get("biwordBin") + " successfully.");
 
-        //write a biword b-tre
+        DiskIndexWriter.writeBTree(indexPaths.get("biwordBTreeBin"), biwordIndex.getVocabulary(), bytePositions1);
+        System.out.println("Biword B tree written to `" + indexPaths.get("biwordBTreeBin") + "` successfully.");
+
         // after writing the components to disk, we can terminate the program
         System.exit(0);
     }
@@ -98,8 +128,8 @@
 
         // initialize the DiskPositionalIndex and k-grams using pre-constructed indexes on disk
         corpusIndex = new DiskPositionalIndex(indexPaths.get("bTreeBin"), indexPaths.get("postingsBin"));
+        biWordTreeIndex = new DiskPositionalIndex(indexPaths.get("biwordBTreeBin"), indexPaths.get("biwordBin"));
         kGramIndex = DiskIndexReader.readKGrams(indexPaths.get("kGramsBin"));
-        //biwordIndex = DiskIndexReader.readBiwords(indexPaths.get("biwordBin"));
         DocumentWeightScorer.setRandomAccessor(indexPaths.get("docWeightsBin"));
 
         // if we're reading from disk using DiskPositionalIndex, then we know it is Closeable
@@ -147,7 +177,6 @@
                     for (String term : terms) {
                         index.addTerm(term, document.getId(), currentPosition);
                         biwordIndex.addTerm(term, document.getId());
-
                         // build up L(d) for the current document
                         if (tftds.get(term) == null) {
                             tftds.put(term, 1);
@@ -177,7 +206,6 @@
                 Found %s documents.
                 Distinct k-grams: %s
                 """, timeElapsedInSeconds, corpus.getCorpusSize(), kGramIndex.getDistinctKGrams().size());
-
 
         return index;
     }
@@ -236,19 +264,7 @@
                         }
                         System.out.println("Found " + vocabulary.size() + " types.");
                     }
-                    case ":?" ->
-                        System.out.printf("""
-                            %nSpecial Commands:
-                            :index `directory-name`  --  Index the folder at the specified path.
-                                      :stem `token`  --  Stem, then print the token string.
-                                             :vocab  --  Print the first %s terms in the vocabulary of the corpus,
-                                                         then print the total number of vocabulary terms.
-                                            :kgrams  --  Print the first %s k-gram mappings of vocabulary types to
-                                                         k-gram tokens, then print the total number of vocabulary types.
-                                      `query` --log  --  Enable printing a debugging log to the console before printing
-                                                         the query results.
-                                                 :q  --  Exit the program.
-                            """, VOCABULARY_PRINT_SIZE, VOCABULARY_PRINT_SIZE);
+                    case ":?" -> Menu.showCommandMenu(VOCABULARY_PRINT_SIZE);
                     case ":q", "" -> {}
                     default -> {
                         int numOfResults;
@@ -258,7 +274,11 @@
                             default -> numOfResults = 0;
                         }
 
-                        if (numOfResults > 0) {
+                        /* if a term does not meet the posting size threshold,
+                          suggest a modified query including a spelling suggestion */
+                        boolean corrected = trySpellingSuggestion(in, query, queryMode);
+
+                        if (numOfResults > 0 || corrected) {
                             PostingUtility.promptForDocumentContent(in, corpus);
                         }
                     }
@@ -307,6 +327,52 @@
         return rankedEntries.size();
     }
 
+    public static boolean trySpellingSuggestion(Scanner in, String query, String queryMode) {
+        SpellingSuggestion spellingCheck = new SpellingSuggestion(corpusIndex, kGramIndex);
+        String[] splitQuery = query.split(" ");
+        StringBuilder newQuery = new StringBuilder();
+
+        for (int i = 0; i < splitQuery.length; ++i) {
+            VocabularyTokenProcessor processor = new VocabularyTokenProcessor();
+            String currentToken = splitQuery[i];
+            int dft = corpusIndex.getPositionlessPostings(processor.processToken(currentToken).get(0)).size();
+            String replacementType;
+
+            /* verify that each term meets the threshold requirement for postings sizes;
+              if it does, use the original query type, or if it doesn't, suggest a correction */
+            if (dft > SPELLING_CORRECTION_THRESHOLD) {
+                replacementType = currentToken;
+            } else {
+                replacementType = spellingCheck.suggestCorrection(currentToken);
+            }
+
+            newQuery.append(replacementType);
+            if (i < splitQuery.length - 1) {
+                newQuery.append(" ");
+            }
+        }
+
+        // only proceed if the original query did not need modifications
+        if (!newQuery.toString().equals(query)) {
+            System.out.print("Did you mean `" + newQuery + "`? (`y` to proceed)\n >> ");
+            query = in.nextLine();
+
+            if (query.equals("y")) {
+                System.out.println("Showing results for `" + newQuery + "`:");
+
+                switch (queryMode) {
+                    case "boolean" -> displayBooleanResults(newQuery.toString());
+                    case "ranked" -> displayRankedResults(newQuery.toString());
+                    default -> throw new RuntimeException("Unexpected input: " + query);
+                }
+                return true;
+            } else {
+                return false;
+            }
+        }
+        return false;
+    }
+
     private static void closeOpenFiles() {
         // close all open file resources case-by-case
         for (Closeable stream : closeables) {
@@ -327,4 +393,3 @@
         return kGramIndex;
     }
 }
-

@@ -1,6 +1,7 @@
 
 package application.text;
 
+import application.Application;
 import application.indexes.Index;
 import application.indexes.KGramIndex;
 import application.indexes.Posting;
@@ -13,11 +14,10 @@ import java.util.*;
  */
 public class SpellingSuggestion {
 
-    public static final double K_GRAM_OVERLAP_THRESHOLD = 0.5;
-    public static final double JACCARD_COEFF_THRESHOLD = 0.425;
+    private static final double K_GRAM_OVERLAP_THRESHOLD = 0.4;
+    private static final double JACCARD_COEFF_THRESHOLD = 0.4;
     private final Index<String, Posting> corpusIndex;
     private final Index<String, String> kGramIndex;
-    private List<String> currentIntersections;
 
     public SpellingSuggestion(Index<String, Posting> inputCorpusIndex, Index<String, String> inputKGramIndex) {
         corpusIndex = inputCorpusIndex;
@@ -25,7 +25,15 @@ public class SpellingSuggestion {
     }
 
     public String suggestCorrection(String token) {
-        List<String> candidates = getCandidates(token);
+        double kGramOverlapThreshold = K_GRAM_OVERLAP_THRESHOLD;
+        double jaccardCoeffThreshold = JACCARD_COEFF_THRESHOLD;
+        // increase accuracy and decrease workload for longer tokens
+        if (token.length() > 10) {
+            kGramOverlapThreshold += (1.0 - K_GRAM_OVERLAP_THRESHOLD) / (1 + Math.log(token.length()));
+            jaccardCoeffThreshold += (1.0 - JACCARD_COEFF_THRESHOLD) / (1 + Math.log(token.length()));
+        }
+
+        List<String> candidates = getCandidates(token, kGramOverlapThreshold, jaccardCoeffThreshold);
 
         // if there are no candidates, simply return the original token
         if (candidates.size() == 0) {
@@ -34,16 +42,31 @@ public class SpellingSuggestion {
 
         Map<String, Integer> candidateEdits = getCandidateEdits(candidates, token);
         List<String> finalCandidates = getFinalCandidates(candidateEdits);
+        String finalReplacement = getFinalReplacement(corpusIndex, finalCandidates, token);
 
-        return getFinalReplacement(corpusIndex, finalCandidates, token);
+        if (Application.enabledLogs) {
+            System.out.println("--------------------------------------------------------------------------------" +
+                    "\n`" + token + "`" +
+                    "\nK-gram overlap ratio: " + kGramOverlapThreshold +
+                    "\nJaccard coefficient: " + jaccardCoeffThreshold +
+                    "\n\nCandidate types: " + candidates + "\n");
+            candidateEdits.forEach(
+                    (candidate, edit) ->
+                            System.out.println("(candidate, edits) ---> (" + candidate + ", " + edit + ")"));
+            System.out.println("\nFinal types: " + finalCandidates +
+                    "\nFinal replacement: `" + finalReplacement + "`" +
+                    "\n--------------------------------------------------------------------------------");
+        }
+
+        return finalReplacement;
     }
 
-    public List<String> getCandidates(String token) {
+    public List<String> getCandidates(String token, double kGramOverlapThreshold, double jaccardCoeffThreshold) {
         List<String> indexVocabulary = kGramIndex.getVocabulary();
         List<String> candidates = new ArrayList<>();
 
         KGramIndex tokenKGramIndex = new KGramIndex();
-        tokenKGramIndex.addToken(token, 2);
+        tokenKGramIndex.addToken(token, 4);
         List<String> tokenKGrams = tokenKGramIndex.getPostings(token);
         // remember to sort the k-grams before we compare them
         Collections.sort(tokenKGrams);
@@ -54,12 +77,12 @@ public class SpellingSuggestion {
 
             /* 1. Select all vocabulary types that have k-grams in common with the misspelled term,
               as described in lecture. */
-            if (meetsOverlapThreshold(tokenKGrams, vocabularyTokenKGrams)) {
+            if (meetsOverlapThreshold(tokenKGrams, vocabularyTokenKGrams, kGramOverlapThreshold)) {
                 // 2. Calculate the Jaccard coefficient for each type in the selection.
                 double jaccardCoeff = calculateJaccardCoeff(tokenKGrams, vocabularyTokenKGrams);
 
                 // 3a. For each type whose coefficient exceeds some threshold (your decision)...
-                if (jaccardCoeff >= JACCARD_COEFF_THRESHOLD) {
+                if (jaccardCoeff >= jaccardCoeffThreshold) {
                     candidates.add(vocabularyType);
                 }
             }
@@ -120,21 +143,23 @@ public class SpellingSuggestion {
         return finalReplacement;
     }
 
-    public boolean meetsOverlapThreshold(List<String> originalKGrams, List<String> candidateKGrams) {
+    public boolean meetsOverlapThreshold(List<String> originalKGrams, List<String> candidateKGrams,
+                                         double kGramOverlapThreshold) {
         // add the intersection k-grams
-        currentIntersections = intersectKGrams(originalKGrams, candidateKGrams);
+        List<String> intersections = intersectKGrams(originalKGrams, candidateKGrams);
 
         // check if the k-gram overlap meets the threshold
-        double kGramOverlap = (double) currentIntersections.size() / originalKGrams.size();
+        double kGramOverlap = (double) intersections.size() / originalKGrams.size();
 
-        return kGramOverlap >= K_GRAM_OVERLAP_THRESHOLD;
+        return kGramOverlap >= kGramOverlapThreshold;
     }
 
     public double calculateJaccardCoeff(List<String> leftList, List<String> rightList) {
+        List<String> intersections = intersectKGrams(leftList, rightList);
         List<String> unions = unionizeKGrams(leftList,rightList);
 
         // JC = |A ∩ B| / |A ∪ B|
-        return (double) currentIntersections.size() / unions.size();
+        return (double) intersections.size() / unions.size();
     }
 
     public static List<String> intersectKGrams(List<String> leftList, List<String> rightList) {

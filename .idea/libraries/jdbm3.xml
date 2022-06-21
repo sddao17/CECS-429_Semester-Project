@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="jdbm3">
+    <CLASSES />
+    <JAVADOC />
+    <SOURCES>
+      <root url="file://$PROJECT_DIR$/extensions/jdbm3" />
+    </SOURCES>
+  </library>
+</component>

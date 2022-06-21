@@ -13,6 +13,11 @@ public interface Index<K, V> {
 	 * Retrieves a list of Postings of documents that contain the given term.
 	 */
 	List<V> getPostings(String term);
+
+	/**
+	 * Retrieves a list of Postings without positions of documents that contain the given term.
+	 */
+	List<V> getPositionlessPostings(String term);
 	
 	/**
 	 * A (sorted) list of all terms in the index vocabulary.

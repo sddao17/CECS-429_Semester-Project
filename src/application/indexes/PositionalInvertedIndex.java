@@ -25,6 +25,20 @@ public class PositionalInvertedIndex implements Index<String, Posting> {
     }
 
     @Override
+    public List<Posting> getPositionlessPostings(String term) {
+        // return an empty list if the term doesn't exist in the map
+        if (!index.containsKey(term))
+            return new ArrayList<>();
+
+        // perform an extra iteration copy to avoid returning Postings without positions
+        List<Posting> positionlessPostings = new ArrayList<>();
+        index.get(term).forEach(posting -> positionlessPostings.add(
+                new Posting(posting.getDocumentId(), new ArrayList<>())));
+
+        return positionlessPostings;
+    }
+
+    @Override
     public List<String> getVocabulary() {
         // remember to return a sorted vocabulary
         List<String> vocabulary = new ArrayList<>(index.keySet().stream().toList());

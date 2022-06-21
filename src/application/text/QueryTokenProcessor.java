@@ -1,4 +1,3 @@
-
 package application.text;
 
 import java.util.ArrayList;
@@ -24,15 +23,13 @@ public class QueryTokenProcessor extends TokenProcessor {
         token = removeQuotes(token);
 
         // skip 3 (splitting token on hyphens)
+        token = token.replaceAll("-", "");
 
         // 4. Convert the token to lowercase.
         token = convertToLowercase(token);
 
-        String[] splitTokens = token.split(" ");
-        for (String currentToken : splitTokens) {
-            // 5. Stem the token using an implementation of the Porter2 stemmer.
-            terms.add(stem(currentToken));
-        }
+        // 5. Stem the token using an implementation of the Porter2 stemmer.
+        terms.add(stem(token));
 
         return terms;
     }

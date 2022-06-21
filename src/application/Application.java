@@ -33,9 +33,6 @@ public class Application {
     private static DirectoryCorpus corpus;  // we need only one of each corpus and index active at a time,
     private static Index<String, Posting> corpusIndex;  // and multiple methods need access to them
     private static KGramIndex kGramIndex = new KGramIndex();
-    private static BiwordIndex biwordIndex = new BiwordIndex();
-
-    private static Index<String, Posting> biWordTreeIndex;
     private static final List<Double> lds = new ArrayList<>();    // the values representing document weights
 
     public static boolean enabledLogs = false;
@@ -113,12 +110,6 @@ public class Application {
         DiskIndexWriter.writeKGrams(indexPaths.get("kGramsBin"), kGramIndex);
         System.out.println("K-Grams written to `" + indexPaths.get("kGramsBin") + "` successfully.");
 
-        DiskIndexWriter.writeBiword(indexPaths.get("biwordBin"), biwordIndex);
-        System.out.println("K-Grams written to `" + indexPaths.get("kGramsBin") + "` successfully.");
-
-        DiskIndexWriter.writeBTree(indexPaths.get("biWordBTreeBin"), biwordIndex.getVocabulary(), bytePositions);
-        System.out.println("K-Grams written to `" + indexPaths.get("kGramsBin") + "` successfully.");
-
         // after writing the components to disk, we can terminate the program
         System.exit(0);
     }
@@ -128,7 +119,6 @@ public class Application {
 
         // initialize the DiskPositionalIndex and k-grams using pre-constructed indexes on disk
         corpusIndex = new DiskPositionalIndex(indexPaths.get("bTreeBin"), indexPaths.get("postingsBin"));
-        biWordTreeIndex = new DiskPositionalIndex(indexPaths.get("bTreeBin"), indexPaths.get("postingsBin"));
         kGramIndex = DiskIndexReader.readKGrams(indexPaths.get("kGramsBin"));
         DocumentWeightScorer.setRandomAccessor(indexPaths.get("docWeightsBin"));
 
@@ -176,7 +166,7 @@ public class Application {
                     // since each token can produce multiple terms, add all terms using the same documentID and position
                     for (String term : terms) {
                         index.addTerm(term, document.getId(), currentPosition);
-                        biwordIndex.addTerm(term, document.getId());
+
                         // build up L(d) for the current document
                         if (tftds.get(term) == null) {
                             tftds.put(term, 1);
@@ -264,7 +254,7 @@ public class Application {
                         }
                         System.out.println("Found " + vocabulary.size() + " types.");
                     }
-                    case ":?" -> Menu.showSpecialCommandMenu(VOCABULARY_PRINT_SIZE);
+                    case ":?" -> Menu.showCommandMenu(VOCABULARY_PRINT_SIZE);
                     case ":q", "" -> {}
                     default -> {
                         int numOfResults;

@@ -2,30 +2,27 @@
 package application.queries;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import application.Application;
+import application.UI.CorpusSelection;
 import application.indexes.Index;
 import application.indexes.KGramIndex;
 import application.indexes.Posting;
 import application.text.TokenProcessor;
-import application.text.VocabularyTokenProcessor;
 import application.text.WildcardTokenProcessor;
 
 /**
- * A WildcardLiteral represents a single token containing one or more * characters.
+ * A WildcardLiteral represents a single token containing one or more `*` characters.
  */
 public class WildcardLiteral implements QueryComponent {
 
     private final String mTerm;
+    private static CorpusSelection CSelect = new CorpusSelection();
 
     public WildcardLiteral(String term) {
-        /* don't fully normalize the term yet; it will be normalized once we confirm the term's
-          unprocessed counterpart is within the document.
-          for now, keep the asterisks as the only non-alphanumeric character within our term */
-        TokenProcessor processor = new WildcardTokenProcessor();
-
-        mTerm = processor.processToken(term).get(0);
+        mTerm = term;
     }
 
     public String getTerm() {
@@ -33,24 +30,52 @@ public class WildcardLiteral implements QueryComponent {
     }
 
     @Override
-    public List<Posting> getPostings(Index<String, Posting> corpusIndex) {
+    public List<Posting> getPostings(Index<String, Posting> corpusIndex, TokenProcessor processor) {
         Index<String, String> corpusKGramIndex = Application.getKGramIndex();
         KGramIndex kGramIndex = new KGramIndex();
-        kGramIndex.buildKGramIndex(new ArrayList<>(){{add(mTerm);}}, 3);
-        String[] originalTokens = mTerm.split("\\*");
+
+        // minimally process the original token
+        WildcardTokenProcessor wildCardProcessor = new WildcardTokenProcessor();
+        String processedTerm = wildCardProcessor.processToken(mTerm).get(0);
+        kGramIndex.addToken(processedTerm, 3);
 
         List<String> candidateTokens = findCandidates(corpusKGramIndex, kGramIndex);
-        System.out.println("Candidate tokens: " + candidateTokens);
 
-        List<String> finalTerms = postFilter(candidateTokens, originalTokens);
-        System.out.println("Final terms: " + finalTerms);
+        List<String> finalTokens = postFilter(candidateTokens, processedTerm);
+
+        List<String> finalTerms = new ArrayList<>();
+        for (String finalToken : finalTokens) {
+            List<String> terms = processor.processToken(finalToken);
+
+            for (String term : terms) {
+                if (!finalTerms.contains(term)) {
+                    finalTerms.add(term);
+                }
+            }
+        }
 
         // once we collect all of our final terms, we "OR" the postings to combine them and ignore duplicates
-        List<QueryComponent> literals = new ArrayList<>();
-        finalTerms.forEach(term -> literals.add(new TermLiteral(term)));
-        OrQuery query = new OrQuery(literals);
+        List<Posting> resultPostings = new ArrayList<>();
 
-        return query.getPostings(corpusIndex);
+        for (String finalTerm : finalTerms) {
+            /* note that we add any documents, duplicates included; this is because there can be multiple
+              wildcard literals within the same document (and they could be for the same or different term),
+              so we must include the postings for every term that we find that match the wildcard pattern */
+            resultPostings.addAll(corpusIndex.getPostings(finalTerm));
+        }
+        Collections.sort(resultPostings);
+
+        if (Application.enabledLogs) {
+            System.out.println("--------------------------------------------------------------------------------" +
+                    "\nWildcard literal: `" + mTerm + "`" +
+                    "\n---> Candidate tokens for `" + mTerm + "`: " + candidateTokens +
+                    "\n---> Final tokens for `" + mTerm + "`: " + finalTokens +
+                    "\n---> Final terms for `" + mTerm + "`: " + finalTerms +
+                    "\n---> `" + mTerm + "` -- " + resultPostings.size() + " posting(s)" +
+                    "\n--------------------------------------------------------------------------------");
+        }
+
+        return resultPostings;
     }
 
     private List<String> findCandidates(Index<String, String> corpusKGramIndex, Index<String, String> kGramIndex) {
@@ -60,19 +85,20 @@ public class WildcardLiteral implements QueryComponent {
           generated k-grams; intersect the postings by finding tokens that share the same k-gram patterns */
         for (String corpusToken : corpusKGramIndex.getVocabulary()) {
             ArrayList<String> corpusKGrams = new ArrayList<>(corpusKGramIndex.getPostings(corpusToken));
-            boolean containsAllKGrams = true;
+            boolean candidateMatchesAll = true;
 
             // intersect terms within their respective vocabularies
             for (String wildcardToken : kGramIndex.getVocabulary()) {
                 List<String> wildcardKGrams = kGramIndex.getPostings(wildcardToken);
 
-                // if the corpus KGrams list contains all wildcard k-grams, the corpus token is a candidate
+                // if the token does not contain all wildcard k-grams, it cannot be a candidate
                 if (!corpusKGrams.containsAll(wildcardKGrams)) {
-                    containsAllKGrams = false;
+                    candidateMatchesAll = false;
                 }
             }
 
-            if (containsAllKGrams) {
+            // only add candidates with all the k-grams from the wildcard query
+            if (candidateMatchesAll) {
                 candidateTokens.add(corpusToken);
             }
         }
@@ -80,68 +106,44 @@ public class WildcardLiteral implements QueryComponent {
         return candidateTokens;
     }
 
-    private List<String> postFilter(List<String> candidateTokens, String[] originalTokens) {
-        List<String> finalTerms = new ArrayList<>();
+    private List<String> postFilter(List<String> candidateTokens, String processedTerm) {
+        List<String> finalTokens = new ArrayList<>();
 
         // post-filtering step: confirm that the candidate token matches the original pattern
         for (String candidateToken : candidateTokens) {
-            int tokenCount = 0;
-            int startIndex = 0;
-            int endIndex = 0;
-            int candidateIndex = 0;
-            boolean candidateMatchesOrder = true;
+            // convert our mTerm to a suitable regex matching pattern
+            String wildcardRegex = wildcardToRegex(processedTerm);
 
-            /* traverse through the original `mTerm`; for every substring leading to an asterisk, verify
-              that the original token's substrings exists in the same order within the candidate token */
-            while (startIndex < mTerm.length()) {
-                char currentChar = mTerm.charAt(endIndex);
-
-                // stop incrementing the right bound when reached either an asterisk or the last character
-                while (currentChar != '*' && endIndex < mTerm.length() - 1) {
-                    ++endIndex;
-                    currentChar = mTerm.charAt(endIndex);
-                }
-                if (endIndex == mTerm.length() - 1  && currentChar != '*') {
-                    ++endIndex;
-                }
-
-                // if there is an asterisk at the first index, skip to the next substring
-                if (mTerm.charAt(startIndex) != '*') {
-                    String tokenSubString = mTerm.substring(startIndex, endIndex);
-                    int currentCandidateIndex = candidateToken.indexOf(tokenSubString, candidateIndex);
-
-                    if (currentCandidateIndex < 0) {
-                        candidateMatchesOrder = false;
-                        break;
-                    } else {
-                        candidateIndex = currentCandidateIndex + tokenSubString.length();
-                        ++tokenCount;
-                    }
-                }
-                // increment towards the end of the string
-                endIndex += 1;
-                startIndex = endIndex;
-            }
-
-            /* if we've matched the number of split tokens (separated by asterisks) within the original token
-              then the token fulfills the pattern */
-            if (tokenCount < originalTokens.length - 1) {
-                candidateMatchesOrder = false;
-            }
-
-            /* if the candidate matches the original token, we can finally process and add the term;
-              only add the processed term once */
-            if (candidateMatchesOrder) {
-                TokenProcessor processor = new VocabularyTokenProcessor();
-                String term = processor.processToken(candidateToken).get(0);
-
-                if (!finalTerms.contains(term)) {
-                    finalTerms.add(term);
-                }
+            // if the candidate matches the original token pattern, we can verify it as a valid term
+            if (candidateToken.matches(wildcardRegex)) {
+                finalTokens.add(candidateToken);
             }
         }
 
-        return finalTerms;
+        return finalTokens;
+    }
+
+    public static String wildcardToRegex(String wildcard) {
+        int stringLength = wildcard.length();
+        StringBuilder regex = new StringBuilder(wildcard.length());
+
+        regex.append('^');
+        for (int i = 0; i < stringLength; ++i) {
+            char character = wildcard.charAt(i);
+
+            /* for each meta character in the original wildcard String,
+              convert it into its escaped pattern matching character */
+            switch (character) {
+                case '*' -> regex.append(".*");
+                case '?' -> regex.append(".");
+                case '(', ')', '[', ']', '$', '^', '.', '{', '}', '|', '\\' ->
+                        regex.append("\\").append(character);
+                default -> regex.append(character);
+            }
+        }
+        regex.append('$');
+
+        return(regex.toString());
     }
 
     @Override

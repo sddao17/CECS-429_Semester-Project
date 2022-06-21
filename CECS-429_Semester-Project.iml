@@ -8,6 +8,7 @@
       <sourceFolder url="file://$MODULE_DIR$/src/main/java" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/main/resources" type="java-resource" />
       <sourceFolder url="file://$MODULE_DIR$/src/test/java" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/extensions/jdbm3/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />
@@ -18,10 +19,11 @@
     <orderEntry type="module-library" exported="">
       <library>
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/extensions/lucene-snowball-3.0.2.jar!/" />
+          <root url="jar://$MODULE_DIR$/extensions/porter2-stemmer/lucene-snowball-3.0.2.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
+        <jarDirectory url="jar://$MODULE_DIR$/extensions/porter2-stemmer/lucene-snowball-3.0.2.jar!/" recursive="false" />
       </library>
     </orderEntry>
   </component>

@@ -49,7 +49,8 @@ public class DiskIndexReader {
             }
 
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Index files were not found; please restart the program and build an index.");
+            System.exit(0);
         }
 
         return bTree;

@@ -67,7 +67,6 @@ public class DiskIndexWriter {
                 }
                 // (2, iv). Repeat for each term in the vocabulary.
             }
-
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -94,7 +93,6 @@ public class DiskIndexWriter {
                 dataStream.write(bytes);
                 dataStream.writeInt(currentBytePosition);
             }
-
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -148,7 +146,6 @@ public class DiskIndexWriter {
                 dataStream.writeInt(currentBytesLength);
                 dataStream.write(bytes);
             }
-
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -162,7 +159,6 @@ public class DiskIndexWriter {
             for (Double ld : lds) {
                 dataStream.writeDouble(ld);
             }
-
         } catch (IOException e) {
             System.err.println("Invalid path; please restart the program and build an index" +
                     " with a valid directory path.");
@@ -195,9 +191,6 @@ public class DiskIndexWriter {
 
                 // 2 (c, iii). For each posting:
                 for (Posting currentPosting : postings) {
-                    // store values for readability
-                    List<Integer> currentPositions = currentPosting.getPositions();
-
                     /* (2, iii, A). Write the posting's document ID as a 4-byte gap. (The first document in a list
                       is written as-is. All the rest are gaps from the previous value.) */
                     int currentDocumentId = currentPosting.getDocumentId() - latestDocumentId;
@@ -206,7 +199,6 @@ public class DiskIndexWriter {
                 }
                 // (2, iv). Repeat for each term in the vocabulary.
             }
-
         } catch (IOException e) {
             e.printStackTrace();
         }

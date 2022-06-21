@@ -300,16 +300,13 @@ public class Application {
         if (parsedQuery instanceof PhraseLiteral) {
             processor = new QueryTokenProcessor();
             resultPostings = parsedQuery.getPostings(corpusIndex, processor);
-        } else if (parsedQuery instanceof WildcardLiteral) {
-            processor = new WildcardTokenProcessor();
-            resultPostings = parsedQuery.getPositionlessPostings(corpusIndex, processor);
-            // in case the query contains wildcards, only display each unique posting once
-            resultPostings = PostingUtility.getDistinctPostings(resultPostings);
         } else {
             processor = new VocabularyTokenProcessor();
             resultPostings = parsedQuery.getPositionlessPostings(corpusIndex, processor);
         }
 
+        // in case the query contains wildcards, only display each unique posting once
+        resultPostings = PostingUtility.getDistinctPostings(resultPostings);
         PostingUtility.displayPostings(corpus, resultPostings);
         return resultPostings.size();
     }
@@ -384,9 +381,8 @@ public class Application {
                     default -> throw new RuntimeException("Unexpected input: " + query);
                 }
                 return true;
-            } else {
-                return false;
             }
+            return false;
         }
         return false;
     }
@@ -396,7 +392,6 @@ public class Application {
         for (Closeable stream : closeables) {
             try {
                 stream.close();
-
             } catch (IOException e) {
                 e.printStackTrace();
             }

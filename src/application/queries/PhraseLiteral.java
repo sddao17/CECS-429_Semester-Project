@@ -38,7 +38,7 @@ public class PhraseLiteral implements QueryComponent {
 		  and positional merge them together. */
 		// if the phrase only contains one component, simply return its postings
 		if (mComponents.size() == 1) {
-			return mComponents.get(0).getPostings(index, processor);
+			resultPostings = mComponents.get(0).getPostings(index, processor);
 		}
 		// biword indexes do not support wildcards
 		else if (mComponents.size() == 2 && !(mComponents.get(0) instanceof WildcardLiteral) &&
@@ -48,8 +48,8 @@ public class PhraseLiteral implements QueryComponent {
 			resultPostings = biwordIndex.getPostings(processor.processToken(mComponents.get(0).toString()).get(0) +
 					" " + processor.processToken(mComponents.get(1).toString()).get(0));
 		} else {
-		/* store posting-position1-position2 tuples where all the terms are sequentially in +1 positional order,
-		  beginning with the postings of the first term */
+			/* store posting-position1-position2 tuples where all the terms are sequentially in +1 positional order,
+		  	  beginning with the postings of the first term */
 			// int[0], int[1], int[2] --> doc id, position1 (int), position2 (int)
 			List<int[]> positionalIntersects = new ArrayList<>();
 			int firstTermIntersects = 0;
@@ -102,8 +102,8 @@ public class PhraseLiteral implements QueryComponent {
 					processor.processToken(mComponents.get(0).toString()).get(0) + " " +
 					processor.processToken(mComponents.get(1).toString()).get(0));
 		} else {
-		/* store posting-position1-position2 tuples where all the terms are sequentially in +1 positional order,
-		  beginning with the postings of the first term */
+			/* store posting-position1-position2 tuples where all the terms are sequentially in +1 positional order,
+		  	  beginning with the postings of the first term */
 			// int[0], int[1], int[2] --> doc id, position1 (int), position2 (int)
 			List<int[]> positionalIntersects = new ArrayList<>();
 			int firstTermIntersects = 0;

@@ -115,13 +115,13 @@ public class SpellingSuggestion {
         priorityQueue.addAll(candidateEdits.entrySet());
 
         List<String> finalCandidates = new ArrayList<>();
-        int max = Integer.MAX_VALUE;
+        int min = Integer.MAX_VALUE;
 
         // 4a. Select the type with the lowest edit distance.
-        while (priorityQueue.peek() != null && priorityQueue.peek().getValue() <= max) {
+        while (priorityQueue.peek() != null && priorityQueue.peek().getValue() <= min) {
             Map.Entry<String, Integer> entry = priorityQueue.poll();
             finalCandidates.add(entry.getKey());
-            max = entry.getValue();
+            min = entry.getValue();
         }
 
         return finalCandidates;
@@ -158,7 +158,6 @@ public class SpellingSuggestion {
                                          double kGramOverlapThreshold) {
         // add the intersection k-grams
         List<String> intersections = intersectKGrams(originalKGrams, candidateKGrams);
-
         // check if the k-gram overlap meets the threshold
         double kGramOverlap = (double) intersections.size() / originalKGrams.size();
 

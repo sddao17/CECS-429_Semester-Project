@@ -106,7 +106,7 @@ public class DocumentWeightScorer implements Closeable {
         if (Application.enabledLogs) {
             System.out.println(
                     Application.getCorpus().getDocument(posting.getDocumentId()).getTitle() + " (ID: " + documentId + ")" +
-                            "\n---> Tf(t, d) -- " + tftd +
+                            "\n---> tf(t, d) -- " + tftd +
                             "\n---> w(d, t) -- " + wdt +
                             "\n---> L(d) -- " + DiskIndexReader.readLdFromBinFile(randomAccessor, documentId));
         }
@@ -190,7 +190,6 @@ public class DocumentWeightScorer implements Closeable {
     public void close() {
         try {
             randomAccessor.close();
-
         } catch (IOException e) {
             e.printStackTrace();
         }

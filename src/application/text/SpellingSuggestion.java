@@ -89,7 +89,7 @@ public class SpellingSuggestion {
                 double jaccardCoeff = calculateJaccardCoeff(tokenKGrams, vocabularyTokenKGrams);
 
                 // 3a. For each type whose coefficient exceeds some threshold (your decision)...
-                if (jaccardCoeff >= jaccardCoeffThreshold) {
+                if (jaccardCoeff >= jaccardCoeffThreshold && !vocabularyType.equals(token)) {
                     candidates.add(vocabularyType);
                 }
             }

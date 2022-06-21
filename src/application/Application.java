@@ -113,11 +113,11 @@ public class Application {
         DiskIndexWriter.writeKGrams(indexPaths.get("kGramsBin"), kGramIndex);
         System.out.println("K-Grams written to `" + indexPaths.get("kGramsBin") + "` successfully.");
 
-        DiskIndexWriter.writeBiword(indexPaths.get("biwordBin"), biwordIndex);
-        System.out.println("K-Grams written to `" + indexPaths.get("kGramsBin") + "` successfully.");
+        List<Integer> bytePositions1 = DiskIndexWriter.writeBiword(indexPaths.get("biwordBin"), biwordIndex);
+        System.out.println("biword index written to `" + indexPaths.get("biwordBin") + " successfully.");
 
-        DiskIndexWriter.writeBTree(indexPaths.get("biWordBTreeBin"), biwordIndex.getVocabulary(), bytePositions);
-        System.out.println("K-Grams written to `" + indexPaths.get("kGramsBin") + "` successfully.");
+        DiskIndexWriter.writeBTree(indexPaths.get("biwordBTreeBin"), biwordIndex.getVocabulary(), bytePositions1);
+        System.out.println("Biword B tree written to `" + indexPaths.get("biwordBTreeBin") + "` successfully.");
 
         // after writing the components to disk, we can terminate the program
         System.exit(0);
@@ -128,7 +128,7 @@ public class Application {
 
         // initialize the DiskPositionalIndex and k-grams using pre-constructed indexes on disk
         corpusIndex = new DiskPositionalIndex(indexPaths.get("bTreeBin"), indexPaths.get("postingsBin"));
-        biWordTreeIndex = new DiskPositionalIndex(indexPaths.get("bTreeBin"), indexPaths.get("postingsBin"));
+        biWordTreeIndex = new DiskPositionalIndex(indexPaths.get("biwordBTreeBin"), indexPaths.get("biwordBin"));
         kGramIndex = DiskIndexReader.readKGrams(indexPaths.get("kGramsBin"));
         DocumentWeightScorer.setRandomAccessor(indexPaths.get("docWeightsBin"));
 
@@ -264,7 +264,7 @@ public class Application {
                         }
                         System.out.println("Found " + vocabulary.size() + " types.");
                     }
-                    case ":?" -> Menu.showSpecialCommandMenu(VOCABULARY_PRINT_SIZE);
+                    case ":?" -> Menu.showCommandMenu(VOCABULARY_PRINT_SIZE);
                     case ":q", "" -> {}
                     default -> {
                         int numOfResults;

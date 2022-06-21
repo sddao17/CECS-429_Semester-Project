@@ -25,6 +25,7 @@ public class DiskPositionalIndex implements Index<String, Posting>, Closeable {
             System.exit(0);
         }
     }
+    
 
     /**
      * Returns a list of postings including positions.

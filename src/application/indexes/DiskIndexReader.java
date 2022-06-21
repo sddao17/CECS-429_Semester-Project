@@ -13,15 +13,16 @@ import java.util.List;
 public class DiskIndexReader {
 
     public static BTree<String, Integer> readBTree(String pathToBTreeBin) {
-        // initialize the database and B+ Tree
-        DB database = DBMaker.openFile(pathToBTreeBin).deleteFilesAfterClose().closeOnExit().make();
         BTree<String, Integer> bTree = new BTree<>();
 
+        // initialize the database and B+ Tree
         try {
+            DB database = DBMaker.openFile(pathToBTreeBin).deleteFilesAfterClose().closeOnExit().make();
             bTree = BTree.createInstance((DBStore) database);
 
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException | IOError e) {
+            System.err.println("Index files were not found; please restart the program and build an index.");
+            System.exit(0);
         }
 
         // load the persisted term -> byte positions map into the B+ Tree
@@ -48,7 +49,8 @@ public class DiskIndexReader {
             }
 
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Index files were not found; please restart the program and build an index.");
+            System.exit(0);
         }
 
         return bTree;
@@ -116,23 +118,6 @@ public class DiskIndexReader {
         }
 
         return kgramIndex;
-    }
-
-    public static BiwordIndex readBiwords(String pathToBiwordBin) {
-        BiwordIndex biwordIndex = new BiwordIndex();
-        // overwrite any existing files
-        try (FileInputStream fileStream = new FileInputStream(pathToBiwordBin);
-             BufferedInputStream bufferStream = new BufferedInputStream(fileStream);
-             DataInputStream dataStream = new DataInputStream(bufferStream)) {
-            // read the main k-grams first, starting with the size of the keys
-            int keysSize = dataStream.readInt();
-
-            return biwordIndex;
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return null;
     }
 
 

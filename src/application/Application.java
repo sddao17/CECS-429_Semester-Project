@@ -338,6 +338,7 @@ public class Application {
         SpellingSuggestion spellingCheck = new SpellingSuggestion(corpusIndex, kGramIndex);
         String[] splitQuery = query.replace(" + ", " ").split(" ");
         StringBuilder newQuery = new StringBuilder();
+        List<String> possibleTypos = new ArrayList<>();
         boolean meetsThreshold = false;
 
         for (int i = 0; i < splitQuery.length; ++i) {
@@ -357,6 +358,7 @@ public class Application {
             if (dft > SPELLING_CORRECTION_THRESHOLD || currentToken.contains("*")) {
                 replacementType = currentToken;
             } else {
+                possibleTypos.add(currentToken);
                 replacementType = spellingCheck.suggestCorrection(currentToken);
                 meetsThreshold = true;
             }
@@ -369,7 +371,14 @@ public class Application {
 
         // only proceed if we made a suggestion to the original query
         if (meetsThreshold && !newQuery.toString().equals(query) && !query.contains(" + ")) {
-            System.out.print("Did you mean `" + newQuery + "`? (`y` to proceed)\n >> ");
+            System.out.print("Couldn't find results for ");
+            for (int i = 0; i < possibleTypos.size(); ++i) {
+                String possibleType = possibleTypos.get(i);
+                System.out.print( ((i < possibleTypos.size() - 1) ?
+                        "`" + possibleType + "`, " :
+                        "`" + possibleType + "`." ) );
+            }
+            System.out.print("\nDid you mean `" + newQuery + "`? (`y` to proceed)\n >> ");
             query = in.nextLine();
 
             if (query.equals("y")) {

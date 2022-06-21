@@ -47,6 +47,37 @@ public class Application {
 
         initializeComponents(Path.of(directoryPath));
 
+        String directoryString = in.nextLine();
+        corpus = DirectoryCorpus.loadDirectory(Path.of(directoryString));
+
+        return directoryString;
+    }
+
+    private static void initializeComponents(Map<String, String> indexPaths) {
+        corpusIndex = indexCorpus(corpus);
+
+        DiskIndexWriter.createIndexDirectory(indexPaths.get("indexDirectory"));
+        System.out.println("\nWriting files to index directory...");
+
+        // write the documents weights to disk
+        DiskIndexWriter.writeLds(indexPaths.get("docWeightsBin"), lds);
+        System.out.println("Document weights written to `" + indexPaths.get("docWeightsBin") + "` successfully.");
+
+        // write the postings using the corpus index to disk
+        List<Integer> bytePositions = DiskIndexWriter.writeIndex(indexPaths.get("postingsBin"), corpusIndex);
+        System.out.println("Postings written to `" + indexPaths.get("postingsBin") + "` successfully.");
+
+        // write the B+ tree mappings of term -> byte positions to disk
+        DiskIndexWriter.writeBTree(indexPaths.get("bTreeBin"), corpusIndex.getVocabulary(), bytePositions);
+        System.out.println("B+ Tree written to `" + indexPaths.get("bTreeBin") + "` successfully.");
+
+        // write the k-grams to disk
+        DiskIndexWriter.writeKGrams(indexPaths.get("kGramsBin"), kGramIndex);
+        System.out.println("K-Grams written to `" + indexPaths.get("kGramsBin") + "` successfully.");
+
+        DiskIndexWriter.writeBiword(indexPaths.get("biwordBin"), biwordIndex);
+        System.out.println("K-Grams written to `" + indexPaths.get("biwordBin") + "` successfully.");
+
         System.out.printf("""
                 %nSpecial Commands:
                 :index `directory-name`  --  Index the folder at the specified path.

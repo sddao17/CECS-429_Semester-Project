@@ -14,8 +14,8 @@ import java.util.*;
  */
 public class SpellingSuggestion {
 
-    private static final double K_GRAM_OVERLAP_THRESHOLD = 0.3;
-    private static final double JACCARD_COEFF_THRESHOLD = 0.4;
+    private static final double K_GRAM_OVERLAP_THRESHOLD = 0.2;
+    private static final double JACCARD_COEFF_THRESHOLD = 0.3;
     private final Index<String, Posting> corpusIndex;
     private final Index<String, String> kGramIndex;
 
@@ -45,7 +45,7 @@ public class SpellingSuggestion {
                     "\n`" + token + "`" +
                     "\nK-gram overlap ratio: " + kGramOverlapThreshold +
                     "\nJaccard coefficient: " + jaccardCoeffThreshold +
-                    "\n\nCandidate types: " + candidates);
+                    "\n\nCandidate types: " + candidates + "\n");
         }
 
         Map<String, Integer> candidateEdits = getCandidateEdits(candidates, token);
@@ -265,24 +265,31 @@ public class SpellingSuggestion {
         }
 
         // dynamic programming - store values of visited table cells
-        int[][] visitedMemo = new int[j + 1][i + 1];
+        int[][] visitedMemo = new int[i + 1][j + 1];
         for (int[] row : visitedMemo) {
             Arrays.fill(row, -1);
         }
 
-        return calculateEdits(leftToken, rightToken, i, j, visitedMemo);
+        int finalEdit = calculateEdits(leftToken, rightToken, i, j, visitedMemo);
+
+        if (Application.enabledLogs) {
+            visitedMemo[i][j] = finalEdit;
+            System.out.println("(" + leftToken + ", " + rightToken + ")\n" +
+                    getGridAsString(visitedMemo));
+        }
+
+        return finalEdit;
     }
 
     public static int calculateEdits(String leftToken, String rightToken, int i, int j, int[][] visitedMemo) {
-        //System.out.println("ENTERED: (" + leftToken + ", " + rightToken + ") --> " + i + ", " + j);
         // top edit distance is just the value of the previous top value + 1, if it exists
         int topEdit;
         if (i - 1 >= 0) {
-            if (visitedMemo[j][i - 1] > -1) {
-                topEdit = visitedMemo[j][i - 1];
+            if (visitedMemo[i - 1][j] > -1) {
+                topEdit = visitedMemo[i - 1][j];
             } else {
                 topEdit = calculateEdits(leftToken, rightToken, i - 1, j, visitedMemo) + 1;
-                visitedMemo[j][i - 1] = topEdit;
+                visitedMemo[i][j - 1] = topEdit;
             }
         } else {
             topEdit = Integer.MAX_VALUE;
@@ -291,11 +298,11 @@ public class SpellingSuggestion {
         // left edit distance is just the value of the previous left value + 1, if it exists
         int leftEdit;
         if (j - 1 >= 0) {
-            if (visitedMemo[j - 1][i] > -1) {
-                leftEdit = visitedMemo[j - 1][i];
+            if (visitedMemo[i][j - 1] > -1) {
+                leftEdit = visitedMemo[i][j - 1];
             } else {
                 leftEdit = calculateEdits(leftToken, rightToken, i, j - 1, visitedMemo) + 1;
-                visitedMemo[j - 1][i] = leftEdit;
+                visitedMemo[i][j - 1] = leftEdit;
             }
         } else {
             leftEdit = Integer.MAX_VALUE;
@@ -318,6 +325,24 @@ public class SpellingSuggestion {
 
         //System.out.println("i = " + i + ", j = " + j + "\n" + topEdit + ", " + leftEdit + ", " + diagonalEdit);
         return Math.min(Math.min(topEdit, leftEdit), diagonalEdit);
+    }
+
+    /**
+     * Returns the integer grid as a String.
+     * @param inputGrid the provided 2D array of integers
+     * @return the 2D array as a String
+     */
+    public static String getGridAsString(int[][] inputGrid) {
+        StringBuilder gridToString = new StringBuilder();
+
+        // add each integer from the grid to the string
+        for (int[] row : inputGrid) {
+            for (int column : row)
+                gridToString.append(String.format("%2s", column)).append(" ");
+            gridToString.append("\n");
+        }
+
+        return gridToString.toString();
     }
 
     /*

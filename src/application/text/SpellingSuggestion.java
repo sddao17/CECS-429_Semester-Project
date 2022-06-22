@@ -244,14 +244,13 @@ public class SpellingSuggestion {
           { min( (d(i - 1, j) + 1, d(i, j - 1) + 1, d(i - 1, j - 1) + (u(i) =/= v(j)) )
 
           Ex: leftToken = fries, rightToken = fryz
-               (j) f  r  y  z
-              +--------------
-          (i) | 0  1  2  3  4
-           f  | 1  0  1  2  3
-           r  | 2  1  0  1  2
-           i  | 3  2  1  1  2
-           e  | 4  3  2  2  2
-           s  | 5  4  3  3  3 < levenshtein edit distance = 3 */
+            (j) f  r  y  z
+          (i) ------------
+           f  | 0  1  2  3
+           r  | 1  0  1  2
+           i  | 2  1  1  2
+           e  | 3  2  2  2
+           s  | 4  3  3  3 < levenshtein edit distance = 3 */
         // index pointers to the last character of the left /right token
         int i = leftToken.length() - 1;
         int j = rightToken.length() - 1;
@@ -275,7 +274,7 @@ public class SpellingSuggestion {
         if (Application.enabledLogs) {
             visitedMemo[i][j] = finalEdit;
             System.out.println("(" + leftToken + ", " + rightToken + ")\n" +
-                    getGridAsString(visitedMemo));
+                    getGridAsString(visitedMemo, leftToken, rightToken));
         }
 
         return finalEdit;
@@ -323,7 +322,6 @@ public class SpellingSuggestion {
 
         int diagonalEdit = previousDiagonal + ( (leftToken.charAt(i) != rightToken.charAt(j)) ? 1 : 0 );
 
-        //System.out.println("i = " + i + ", j = " + j + "\n" + topEdit + ", " + leftEdit + ", " + diagonalEdit);
         return Math.min(Math.min(topEdit, leftEdit), diagonalEdit);
     }
 
@@ -332,86 +330,24 @@ public class SpellingSuggestion {
      * @param inputGrid the provided 2D array of integers
      * @return the 2D array as a String
      */
-    public static String getGridAsString(int[][] inputGrid) {
+    private static String getGridAsString(int[][] inputGrid, String leftToken, String rightToken) {
         StringBuilder gridToString = new StringBuilder();
+
+        gridToString.append("  (j)");
+        for (int i = 0; i < rightToken.length(); ++i) {
+            gridToString.append("  ").append(rightToken.charAt(i));
+        }
+        gridToString.append("\n(i) ").append("---".repeat(rightToken.length()));
+        int leftTokenIndex = 0;
 
         // add each integer from the grid to the string
         for (int[] row : inputGrid) {
+            gridToString.append("\n ").append(leftToken.charAt(leftTokenIndex)).append("  | ");
+            ++leftTokenIndex;
             for (int column : row)
                 gridToString.append(String.format("%2s", column)).append(" ");
-            gridToString.append("\n");
         }
 
-        return gridToString.toString();
+        return gridToString.append("\n").toString();
     }
-
-    /*
-    // testing purposes only
-    public static void main(String[] args) {
-        // testing jaccard coefficients
-        List<String> leftList = new ArrayList<>(){{
-            add("data");
-            add("is");
-            add("the");
-            add("new");
-            add("oil");
-            add("of");
-            add("digital");
-            add("economy");
-        }};
-
-        List<String> rightList = new ArrayList<>(){{
-            add("data");
-            add("is");
-            add("a");
-            add("new");
-            add("oil");
-        }};
-
-        // remember - O(n) intersections / unions involved sorted lists!
-        Collections.sort(leftList);
-        Collections.sort(rightList);
-
-        List<String> intersections = intersectKGrams(leftList, rightList);
-        List<String> unions = unionizeKGrams(leftList,rightList);
-
-        System.out.println("Intersection: " + intersections +
-                "\nUnion: " + unions +
-                "\nJC = " + intersections.size() + " / " + unions.size() +
-                "\n   = " + calculateJaccardCoeff(leftList, rightList));
-
-        // testing levenshtein edit distance
-        leftList = new ArrayList<>(){{
-            //add("mavs");
-            //add("spurs");
-            //add("lakers");
-            //add("cavs");
-            //add("fries");
-            add("aboard");
-            //add("indubitably");
-            //add("");
-            //add("");
-        }};
-
-        rightList = new ArrayList<>(){{
-            //add("rockets");
-            //add("pacers");
-            //add("warriors");
-            //add("celtics");
-            //add("fryz");
-            add("bort");
-            //add("");
-            //add("frighteningly");
-            //add("");
-        }};
-
-        for (int i = 0; i < leftList.size(); ++i) {
-            String leftToken = leftList.get(i);
-            String rightToken = rightList.get(i);
-
-            System.out.println("Levenshtein edit distance for (" + leftToken + ", " + rightToken + ") = " +
-                    calculateLevenshteinDistance(leftToken, rightToken));
-        }
-    }
-     */
 }

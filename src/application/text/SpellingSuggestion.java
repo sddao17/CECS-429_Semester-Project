@@ -264,14 +264,43 @@ public class SpellingSuggestion {
             return 0;
         }
 
-        return calculateEdits(leftToken, rightToken, i, j);
+        // dynamic programming - store values of visited table cells
+        int[][] visitedMemo = new int[j + 1][i + 1];
+        for (int[] row : visitedMemo) {
+            Arrays.fill(row, -1);
+        }
+
+        return calculateEdits(leftToken, rightToken, i, j, visitedMemo);
     }
 
-    public static int calculateEdits(String leftToken, String rightToken, int i, int j) {
+    public static int calculateEdits(String leftToken, String rightToken, int i, int j, int[][] visitedMemo) {
+        //System.out.println("ENTERED: (" + leftToken + ", " + rightToken + ") --> " + i + ", " + j);
         // top edit distance is just the value of the previous top value + 1, if it exists
-        int topEdit = ( (i - 1 >= 0) ? calculateEdits(leftToken, rightToken, i - 1, j) + 1 : Integer.MAX_VALUE );
+        int topEdit;
+        if (i - 1 >= 0) {
+            if (visitedMemo[j][i - 1] > -1) {
+                topEdit = visitedMemo[j][i - 1];
+            } else {
+                topEdit = calculateEdits(leftToken, rightToken, i - 1, j, visitedMemo) + 1;
+                visitedMemo[j][i - 1] = topEdit;
+            }
+        } else {
+            topEdit = Integer.MAX_VALUE;
+        }
+
         // left edit distance is just the value of the previous left value + 1, if it exists
-        int leftEdit = ( (j - 1 >= 0) ? calculateEdits(leftToken, rightToken, i, j - 1) + 1: Integer.MAX_VALUE );
+        int leftEdit;
+        if (j - 1 >= 0) {
+            if (visitedMemo[j - 1][i] > -1) {
+                leftEdit = visitedMemo[j - 1][i];
+            } else {
+                leftEdit = calculateEdits(leftToken, rightToken, i, j - 1, visitedMemo) + 1;
+                visitedMemo[j - 1][i] = leftEdit;
+            }
+        } else {
+            leftEdit = Integer.MAX_VALUE;
+        }
+
         /* diagonal edit distance = 0 if both index pointers are at the start of their tokens, or it = the previous
           diagonal edit distance if it exists, or it is not considered if the diagonal would be out of bounds otherwise;
           we additionally add + 1 if the current characters don't match */
@@ -280,7 +309,7 @@ public class SpellingSuggestion {
         if (i == 0 && j == 0) {
             previousDiagonal = 0;
         } else if (i - 1 >= 0 && j - 1 >= 0) {
-            previousDiagonal = calculateEdits(leftToken, rightToken, i - 1, j - 1);
+            previousDiagonal = calculateEdits(leftToken, rightToken, i - 1, j - 1, visitedMemo);
         } else {
             previousDiagonal = Integer.MAX_VALUE - 1;
         }

@@ -371,11 +371,14 @@ public class Application {
 
         // only proceed if we made a suggestion to the original query
         if (meetsThreshold && !newQuery.toString().equals(query) && !query.contains(" + ")) {
-            System.out.print("Results shown for `");
-            for (int i = 0; i < currentQuery.size(); ++i) {
-                String currentType = currentQuery.get(i);
-                System.out.print( ((i < currentQuery.size() - 1) ? currentType + " " : currentType + "`.\n") );
+            if (currentQuery.size() > 0) {
+                System.out.print("Results shown for `");
+                for (int i = 0; i < currentQuery.size(); ++i) {
+                    String currentType = currentQuery.get(i);
+                    System.out.print(((i < currentQuery.size() - 1) ? currentType + " " : currentType + "`.\n"));
+                }
             }
+            
             System.out.print("Did you mean `" + newQuery + "`? (`y` to proceed)\n >> ");
             query = in.nextLine();
 

@@ -380,7 +380,7 @@ public class Application {
             query = in.nextLine();
 
             if (query.equals("y")) {
-                System.out.println("Showing results for `" + newQuery + "`:");
+                System.out.println("Results shown for `" + newQuery + "`:");
                 switch (queryMode) {
                     case "boolean" -> displayBooleanResults(newQuery.toString());
                     case "ranked" -> displayRankedResults(newQuery.toString());

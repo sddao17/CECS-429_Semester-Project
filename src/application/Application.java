@@ -381,7 +381,6 @@ public class Application {
 
             if (query.equals("y")) {
                 System.out.println("Showing results for `" + newQuery + "`:");
-
                 switch (queryMode) {
                     case "boolean" -> displayBooleanResults(newQuery.toString());
                     case "ranked" -> displayRankedResults(newQuery.toString());

@@ -105,7 +105,7 @@ public class DocumentWeightScorer implements Closeable {
         // debugging log
         if (Application.enabledLogs) {
             System.out.println(
-                    Application.getCorpus().getDocument(posting.getDocumentId()).getTitle() + " (ID: " + documentId + ")" +
+                    Application.getCorpus().getDocument(documentId).getTitle() + " (ID: " + documentId + ")" +
                             "\n---> tf(t, d) -- " + tftd +
                             "\n---> w(d, t) -- " + wdt +
                             "\n---> L(d) -- " + DiskIndexReader.readLdFromBinFile(randomAccessor, documentId));

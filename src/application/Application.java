@@ -378,7 +378,7 @@ public class Application {
                     System.out.print(((i < currentQuery.size() - 1) ? currentType + " " : currentType + "`.\n"));
                 }
             }
-            
+
             System.out.print("Did you mean `" + newQuery + "`? (`y` to proceed)\n >> ");
             query = in.nextLine();
 

@@ -263,7 +263,7 @@ public class SpellingSuggestion {
             return 0;
         }
 
-        // dynamic programming - store values of visited table cells
+        // memoization - store values of visited table cells
         int[][] visitedMemo = new int[i + 1][j + 1];
         for (int[] row : visitedMemo) {
             Arrays.fill(row, -1);

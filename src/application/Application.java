@@ -371,7 +371,7 @@ public class Application {
 
         // only proceed if we made a suggestion to the original query
         if (meetsThreshold && !newQuery.toString().equals(query) && !query.contains(" + ")) {
-            System.out.print("Results shown for `");
+            System.out.print("Showing results for `");
             for (int i = 0; i < currentQuery.size(); ++i) {
                 String currentType = currentQuery.get(i);
                 System.out.print( ((i < currentQuery.size() - 1) ? currentType + " " : currentType + "`.\n") );
@@ -380,6 +380,8 @@ public class Application {
             query = in.nextLine();
 
             if (query.equals("y")) {
+                System.out.println("Showing results for `" + newQuery + "`:");
+
                 switch (queryMode) {
                     case "boolean" -> displayBooleanResults(newQuery.toString());
                     case "ranked" -> displayRankedResults(newQuery.toString());

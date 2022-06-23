@@ -28,7 +28,7 @@ public class Menu {
     }
 
     public static void showHelpMenu(int vocabPrintSize) {
-        if (Application.hasInnerDirectories) {
+        if (Application.getAllDirectoryPaths().size() > 1) {
             System.out.printf("""
                     Detected %s subdirectories within the root directory.
                     By default, the corpus is set to the root (see `:set` command):
@@ -37,7 +37,7 @@ public class Menu {
         }
 
         System.out.printf("""
-                %n:set `subdirectory-path`  --  Sets the directory corpus to the specified subdirectory.
+                %n:set `subdirectory-path`  --  Sets the components to read the contents of the subdirectory path.
                  :index `directory-name`  --  Index the folder at the specified path.
                            :stem `token`  --  Stem, then print the token string.
                                   :vocab  --  Print the first %s terms in the vocabulary of the corpus,

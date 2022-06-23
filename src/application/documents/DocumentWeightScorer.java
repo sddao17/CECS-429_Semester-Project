@@ -56,7 +56,7 @@ public class DocumentWeightScorer implements Closeable {
         normalizeAccumulators();
     }
 
-    public void accumulateWildcards(Index<String, Posting> index, String wildcard) {
+    private void accumulateWildcards(Index<String, Posting> index, String wildcard) {
         KGramIndex kGramIndex = Application.getKGramIndexes().get(Application.getCurrentDirectory() + "/index/kGrams.bin");
 
         for (String type : kGramIndex.getVocabulary()) {
@@ -71,7 +71,7 @@ public class DocumentWeightScorer implements Closeable {
         }
     }
 
-    public void accumulateTermAtATime(Index<String, Posting> index, List<String> queryTerms) {
+    private void accumulateTermAtATime(Index<String, Posting> index, List<String> queryTerms) {
         DirectoryCorpus corpus = Application.getCorpora().get(Application.getCurrentDirectory());
 
         // implement the "term at a time" algorithm from lecture;
@@ -107,7 +107,7 @@ public class DocumentWeightScorer implements Closeable {
         }
     }
 
-    public void acquireAccumulator(Posting posting, double wqt) {
+    private void acquireAccumulator(Posting posting, double wqt) {
         int documentId = posting.getDocumentId();
         int tftd = posting.getPositions().size();
 
@@ -121,7 +121,7 @@ public class DocumentWeightScorer implements Closeable {
                     corpus.getDocument(documentId).getTitle() + " (ID: " + documentId + ")" +
                             "\n---> tf(t, d) -- " + tftd +
                             "\n---> w(d, t) -- " + wdt +
-                            "\n---> L(d) -- " + DiskIndexReader.readLdFromBinFile(randomAccessor, documentId));
+                            "\n---> L(d) -- " + DiskIndexReader.readLd(randomAccessor, documentId));
         }
 
         // 1 (b, iii). Increase A(d) by wd,t × wq,t.
@@ -135,7 +135,7 @@ public class DocumentWeightScorer implements Closeable {
         }
     }
 
-    public void normalizeAccumulators() {
+    private void normalizeAccumulators() {
         // iterate through all entries
         for (Map.Entry<Integer, Double> entry : finalAccumulators.entrySet()) {
             int currentDocumentId = entry.getKey();
@@ -143,7 +143,7 @@ public class DocumentWeightScorer implements Closeable {
 
             // 2. For each non-zero A(d), divide A(d) by L(d), where L(d) is read from the `docWeights.bin` file.
             if (currentAd > 0) {
-                double ld = DiskIndexReader.readLdFromBinFile(randomAccessor, currentDocumentId);
+                double ld = DiskIndexReader.readLd(randomAccessor, currentDocumentId);
                 finalAccumulators.replace(currentDocumentId, currentAd / ld);
             }
         }

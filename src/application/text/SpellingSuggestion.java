@@ -9,7 +9,7 @@ import application.indexes.Posting;
 import java.util.*;
 
 /**
- * Suggests a suitable correction to a given token given the k-grams of existing vocabulary type
+ * Suggests a suitable correction to a given token given the k-grams of existing vocabulary types
  * using Jaccard coefficients and the Levenshtein edit distance algorithm.
  */
 public class SpellingSuggestion {
@@ -238,6 +238,12 @@ public class SpellingSuggestion {
         return unions;
     }
 
+    /**
+     * Calculates the lowest edit distance of two tokens using dynamic programming.
+     * @param leftToken the left token to compare, representing the characters of `i` in the algorithm
+     * @param rightToken the right token to compare, representing the characters of `j` in the algorithm
+     * @return the lowest edit distance of the tokens
+     */
     public int calculateLevenshteinDistance(String leftToken, String rightToken) {
         /* dynamic programming algorithm from lecture material:
           d(i, j) =

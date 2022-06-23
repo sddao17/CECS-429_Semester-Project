@@ -28,20 +28,19 @@ public class Application {
 
     private static final int VOCABULARY_PRINT_SIZE = 1_000; // number of vocabulary terms to print
     private static final int MAX_DISPLAYED_RANKED_ENTRIES = 10;  // the maximum number of ranked entries to display
-    private static final int SPELLING_CORRECTION_THRESHOLD = 10; // the trigger to suggest spelling corrections
+    private static final int SPELLING_CORRECTION_THRESHOLD = 10; // the posting size trigger to suggest corrections
 
     private static CorpusSelection cSelect;
+    private static String currentDirectory; // the user's current directory to use for queries, initially set to root
+    private static List<String> allDirectoryPaths = new ArrayList<>();
+
     private static final Map<String, DirectoryCorpus> corpora = new HashMap<>();
     private static final Map<String, Index<String, Posting>> corpusIndexes = new HashMap<>();
     private static final Map<String, Index<String, Posting>> biwordIndexes = new HashMap<>();
     private static final Map<String, KGramIndex> kGramIndexes = new HashMap<>();
     private static final Map<String, List<Double>> lds = new HashMap<>();
-    private static List<String> allDirectoryPaths = new ArrayList<>();
-    private static String root; // the root path of the user's input corpus directory
-    private static String currentDirectory; // the user's current directory to use for queries
 
     public static boolean enabledLogs = false;
-    public static boolean hasInnerDirectories = false;
     public static final List<Closeable> closeables = new ArrayList<>(); // considers all cases of indexing
 
     public static void main(String[] args) {
@@ -68,8 +67,7 @@ public class Application {
         /* 1. At startup, ask the user for the name of a directory that they would like to index,
           and construct a DirectoryCorpus from that directory. */
         String directoryString = promptCorpusDirectory(in);
-        root = directoryString;
-        currentDirectory = root;
+        currentDirectory = directoryString;
         allDirectoryPaths = getAllDirectories(directoryString);
 
         // depending on the user's input, either build the index from scratch or read from an on-disk index
@@ -103,8 +101,6 @@ public class Application {
         if (directories == null) {
             System.err.println("Index files were not found; please restart the program and build an index.");
             System.exit(0);
-        } else if (directories.length > 0) {
-            hasInnerDirectories = true;
         }
 
         List<String> allDirectoryPaths = new ArrayList<>(){};
@@ -126,7 +122,7 @@ public class Application {
         for (String directoryPath : allDirectoryPaths) {
             Map<String, String> indexPaths = PostingUtility.createIndexPathsMap(directoryPath);
             Path path = Path.of(directoryPath);
-            boolean isRoot = (directoryPath.equals(root));
+            boolean isRoot = (directoryPath.equals(currentDirectory));
 
             DirectoryCorpus corpus = DirectoryCorpus.loadDirectory(path, isRoot);
             Index<String, Posting> corpusIndex = indexCorpus(corpus, indexPaths);
@@ -170,7 +166,7 @@ public class Application {
         for (String directoryPath : allDirectoryPaths) {
             Map<String, String> indexPaths = PostingUtility.createIndexPathsMap(directoryPath);
             Path path = Path.of(directoryPath);
-            boolean isRoot = (directoryPath.equals(root));
+            boolean isRoot = (directoryPath.equals(currentDirectory));
 
             DirectoryCorpus corpus = DirectoryCorpus.loadDirectory(path, isRoot);
             System.out.println("\nReading index from  `" + indexPaths.get("root") + "`...");
@@ -280,7 +276,8 @@ public class Application {
         String query;
 
         do {
-            // unless the user other specifies, the default corpus and indexes will be set to the root directory
+            /* unless the user otherwise specifies, the default corpus and indexes will be set to those associated
+              with the root directory; else, it will be set to the new current directory */
             DirectoryCorpus corpus = corpora.get(currentDirectory);
             Index<String, Posting> corpusIndex = corpusIndexes.get(currentDirectory);
             KGramIndex kGramIndex = kGramIndexes.get(currentDirectory + "/index/kGrams.bin");

@@ -118,7 +118,7 @@ public class DiskIndexReader {
     }
 
 
-    public static double readLdFromBinFile(RandomAccessFile randomAccessor, int documentId) {
+    public static double readLd(RandomAccessFile randomAccessor, int documentId) {
         int bytePosition = documentId * Double.BYTES;
         double ld = 0;
 

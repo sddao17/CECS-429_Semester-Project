@@ -315,10 +315,8 @@ public class SpellingSuggestion {
         int previousDiagonal;
         if (i == 0 && j == 0) {
             previousDiagonal = 0;
-            visitedMemo[0][0] = 0;
         } else if (i - 1 >= 0 && j - 1 >= 0) {
             previousDiagonal = calculateEdits(leftToken, rightToken, i - 1, j - 1, visitedMemo);
-            visitedMemo[i - 1][j- 1] = previousDiagonal;
         } else {
             previousDiagonal = Integer.MAX_VALUE - 1;
         }

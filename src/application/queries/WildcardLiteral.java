@@ -19,7 +19,7 @@ import application.text.WildcardTokenProcessor;
 public class WildcardLiteral implements QueryComponent {
 
     private final String mTerm;
-    private static CorpusSelection CSelect = new CorpusSelection();
+    private static final CorpusSelection CSelect = new CorpusSelection();
 
     public WildcardLiteral(String term) {
         mTerm = term;
@@ -31,7 +31,8 @@ public class WildcardLiteral implements QueryComponent {
 
     @Override
     public List<Posting> getPostings(Index<String, Posting> corpusIndex, TokenProcessor processor) {
-        Index<String, String> corpusKGramIndex = Application.getKGramIndex();
+        Index<String, String> corpusKGramIndex = Application.getKGramIndexes()
+                .get(Application.getCurrentDirectory() + "/index/kGrams.bin");
         KGramIndex kGramIndex = new KGramIndex();
 
         // minimally process the original token
@@ -80,7 +81,8 @@ public class WildcardLiteral implements QueryComponent {
 
     @Override
     public List<Posting> getPositionlessPostings(Index<String, Posting> corpusIndex, TokenProcessor processor) {
-        Index<String, String> corpusKGramIndex = Application.getKGramIndex();
+        Index<String, String> corpusKGramIndex = Application.getKGramIndexes()
+                .get(Application.getCurrentDirectory() + "/index/kGrams.bin");
         KGramIndex kGramIndex = new KGramIndex();
 
         // minimally process the original token

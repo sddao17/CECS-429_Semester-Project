@@ -1,6 +1,7 @@
 
 package application.queries;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import application.Application;
@@ -28,7 +29,10 @@ public class TermLiteral implements QueryComponent {
 		// Somehow incorporate a TokenProcessor into the getPostings call sequence.
 		List<String> processedTerms = processor.processToken(mTerm);
 
-		List<Posting> resultPostings = index.getPostings(processedTerms.get(0));
+		List<Posting> resultPostings = new ArrayList<>();
+		if (processedTerms.size() > 0) {
+			resultPostings = index.getPostings(processedTerms.get(0));
+		}
 
 		if (Application.enabledLogs) {
 			System.out.println("--------------------------------------------------------------------------------" +
@@ -44,7 +48,10 @@ public class TermLiteral implements QueryComponent {
 		// Somehow incorporate a TokenProcessor into the getPostings call sequence.
 		List<String> processedTerms = processor.processToken(mTerm);
 
-		List<Posting> resultPostings = index.getPositionlessPostings(processedTerms.get(0));
+		List<Posting> resultPostings = new ArrayList<>();
+		if (processedTerms.size() > 0) {
+			resultPostings = index.getPositionlessPostings(processedTerms.get(0));
+		}
 
 		if (Application.enabledLogs) {
 			System.out.println("--------------------------------------------------------------------------------" +

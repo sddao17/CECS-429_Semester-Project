@@ -1,28 +1,32 @@
 
 package application.Test;
 
-import application.Application;
 import application.documents.DirectoryCorpus;
 import application.documents.Document;
+import application.documents.DocumentCorpus;
 import application.indexes.Index;
 import application.indexes.Posting;
 import application.queries.BooleanQueryParser;
 import application.queries.QueryComponent;
 import application.text.*;
+import application.utilities.PostingUtility;
 import org.junit.Test;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+import static application.Application.indexCorpus;
 import static org.junit.Assert.assertTrue;
 
 public class WildcardQueryTest {
 
 
-    Path directoryPath = Path.of("./corpus/parks-test");
-    DirectoryCorpus testCorpus = DirectoryCorpus.loadDirectory(directoryPath);
-    Index<String, Posting> index = Application.indexCorpus(testCorpus);
+    String directoryPath = "./corpus/parks-test";
+    Map<String, String> indexPaths = PostingUtility.createIndexPathsMap(directoryPath);
+    DocumentCorpus testCorpus = DirectoryCorpus.loadDirectory(Path.of(directoryPath), false);
+    Index<String, Posting> index = indexCorpus(testCorpus, indexPaths);
     TokenProcessor processor = new WildcardTokenProcessor();
     BooleanQueryParser parser = new BooleanQueryParser();
 

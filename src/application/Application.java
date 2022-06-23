@@ -10,6 +10,7 @@ import application.utilities.Menu;
 import application.utilities.PostingUtility;
 
 import java.io.Closeable;
+import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Path;
@@ -30,12 +31,14 @@ public class Application {
     private static final int SPELLING_CORRECTION_THRESHOLD = 10; // the trigger to suggest spelling corrections
 
     private static CorpusSelection cSelect;
-    private static DirectoryCorpus corpus;  // we need only one of each corpus and index active at a time,
-    private static Index<String, Posting> corpusIndex;  // and multiple methods need access to them
-    private static Index<String, Posting> biwordIndex = new BiwordIndex();
-    private static KGramIndex kGramIndex = new KGramIndex();
-
-    private static final List<Double> lds = new ArrayList<>();    // the values representing document weights
+    private static final Map<String, DirectoryCorpus> corpora = new HashMap<>();
+    private static final Map<String, Index<String, Posting>> corpusIndexes = new HashMap<>();
+    private static final Map<String, Index<String, Posting>> biwordIndexes = new HashMap<>();
+    private static final Map<String, KGramIndex> kGramIndexes = new HashMap<>();
+    private static final Map<String, List<Double>> lds = new HashMap<>();
+    private static String root; // the root path of the user's input corpus directory
+    private static String currentDirectory; // the user's current directory to use for queries
+    private static boolean hasInnerDirectories = false;
 
     public static boolean enabledLogs = false;
     public static final List<Closeable> closeables = new ArrayList<>(); // considers all cases of indexing
@@ -44,6 +47,7 @@ public class Application {
         System.out.printf("""
                 %nCopy/paste for testing:
                 ./corpus/parks
+                ./corpus/federalist-papers
                 ./corpus/parks-test
                 ./corpus/kanye-test
                 ./corpus/moby-dick%n""");
@@ -53,7 +57,7 @@ public class Application {
         //cSelect.CorpusSelectionUI();
     }
 
-    private static void startApplication() {
+    public static void startApplication() {
         Scanner in = new Scanner(System.in);
         closeables.add(in);
 
@@ -62,12 +66,15 @@ public class Application {
         /* 1. At startup, ask the user for the name of a directory that they would like to index,
           and construct a DirectoryCorpus from that directory. */
         String directoryString = promptCorpusDirectory(in);
-        Map<String, String> indexPaths = PostingUtility.createIndexPathsMap(directoryString);
+        root = directoryString;
+        currentDirectory = root;
+        List<String> allDirectoryPaths = getAllDirectories(directoryString);
 
         // depending on the user's input, either build the index from scratch or read from an on-disk index
         switch (input) {
-            case "1" -> initializeComponents(indexPaths);
-            case "2" -> readFromComponents(indexPaths);
+            case "1" -> initializeComponents(allDirectoryPaths);
+            case "2" -> readFromComponents(allDirectoryPaths);
+            default -> throw new RuntimeException("Unexpected input: " + input);
         }
 
         input = Menu.showBooleanOrRankedMenu(in);
@@ -84,73 +91,121 @@ public class Application {
 
     private static String promptCorpusDirectory(Scanner in) {
         System.out.print("\nEnter the path of the directory corpus:\n >> ");
-        String directoryString = in.nextLine();
-        corpus = DirectoryCorpus.loadDirectory(Path.of(directoryString));
-
-        return directoryString;
+        return in.nextLine();
     }
 
-    private static void initializeComponents(Map<String, String> indexPaths) {
-        corpusIndex = indexCorpus(corpus);
+    private static List<String> getAllDirectories(String directoryPath) {
+        File[] directories = new File(directoryPath).listFiles(File::isDirectory);
 
-        DiskIndexWriter.createIndexDirectory(indexPaths.get("indexDirectory"));
-        System.out.println("\nWriting files to index directory...");
+        if (directories == null) {
+            System.err.println("Index files were not found; please restart the program and build an index.");
+            System.exit(0);
+        } else if (directories.length > 0) {
+            hasInnerDirectories = true;
+        }
 
-        // write the documents weights to disk
-        DiskIndexWriter.writeLds(indexPaths.get("docWeightsBin"), lds);
-        System.out.println("Document weights written to `" + indexPaths.get("docWeightsBin") + "` successfully.");
+        List<String> allDirectoryPaths = new ArrayList<>(){{{add(directoryPath);}}};
 
-        // write the postings using the corpus index to disk
-        List<Integer> positionalBytePositions = DiskIndexWriter.writeIndex(indexPaths.get("postingsBin"), corpusIndex);
-        System.out.println("Postings written to `" + indexPaths.get("postingsBin") + "` successfully.");
+        // get all non-index directories listed within the initial path
+        for (File file : directories) {
+            if (!file.getAbsolutePath().endsWith("/index")) {
+                allDirectoryPaths.add(file.getAbsolutePath());
+            }
+        }
 
-        // write the B+ tree mappings of term -> byte positions to disk
-        DiskIndexWriter.writeBTree(indexPaths.get("bTreeBin"), corpusIndex.getVocabulary(), positionalBytePositions);
-        System.out.println("B+ Tree written to `" + indexPaths.get("bTreeBin") + "` successfully.");
+        return allDirectoryPaths;
+    }
 
-        // write the k-grams to disk
-        DiskIndexWriter.writeKGrams(indexPaths.get("kGramsBin"), kGramIndex);
-        System.out.println("K-Grams written to `" + indexPaths.get("kGramsBin") + "` successfully.");
+    private static void initializeComponents(List<String> allDirectoryPaths) {
+        for (String directoryPath : allDirectoryPaths) {
+            Map<String, String> indexPaths = PostingUtility.createIndexPathsMap(directoryPath);
+            Path path = Path.of(directoryPath);
+            boolean isRoot = (directoryPath.equals(root));
 
-        List<Integer> biwordBytePositions = DiskIndexWriter.writeBiword(indexPaths.get("biwordBin"), biwordIndex);
-        System.out.println("Biword index written to `" + indexPaths.get("biwordBin") + " successfully.");
+            DirectoryCorpus corpus = DirectoryCorpus.loadDirectory(path, isRoot);
+            Index<String, Posting> corpusIndex = indexCorpus(corpus, indexPaths);
+            Index<String, Posting> biwordIndex = biwordIndexes.get(indexPaths.get("biwordBin"));
+            KGramIndex kGramIndex = kGramIndexes.get(indexPaths.get("kGramsBin"));
 
-        DiskIndexWriter.writeBTree(indexPaths.get("biwordBTreeBin"), biwordIndex.getVocabulary(), biwordBytePositions);
-        System.out.println("Biword B tree written to `" + indexPaths.get("biwordBTreeBin") + "` successfully.");
+            corpora.put(indexPaths.get("root"), corpus);
+            corpusIndexes.put(indexPaths.get("root"), corpusIndex);
+
+            DiskIndexWriter.createIndexDirectory(indexPaths.get("indexDirectory"));
+            System.out.println("\nWriting files to index directory...");
+
+            // write the documents weights to disk
+            DiskIndexWriter.writeLds(indexPaths.get("docWeightsBin"), lds.get(indexPaths.get("docWeightsBin")));
+            System.out.println("Document weights written to `" + indexPaths.get("docWeightsBin") + "` successfully.");
+
+            // write the postings using the corpus index to disk
+            List<Integer> positionalBytePositions = DiskIndexWriter.writeIndex(indexPaths.get("postingsBin"), corpusIndex);
+            System.out.println("Postings written to `" + indexPaths.get("postingsBin") + "` successfully.");
+
+            // write the B+ tree mappings of term -> byte positions to disk
+            DiskIndexWriter.writeBTree(indexPaths.get("bTreeBin"), corpusIndex.getVocabulary(), positionalBytePositions);
+            System.out.println("B+ Tree written to `" + indexPaths.get("bTreeBin") + "` successfully.");
+
+            List<Integer> biwordBytePositions = DiskIndexWriter.writeBiword(indexPaths.get("biwordBin"), biwordIndex);
+            System.out.println("Biword index written to `" + indexPaths.get("biwordBin") + " successfully.");
+
+            DiskIndexWriter.writeBTree(indexPaths.get("biwordBTreeBin"), biwordIndex.getVocabulary(), biwordBytePositions);
+            System.out.println("Biword B+ tree written to `" + indexPaths.get("biwordBTreeBin") + "` successfully.");
+
+            // write the k-grams to disk
+            DiskIndexWriter.writeKGrams(indexPaths.get("kGramsBin"), kGramIndex);
+            System.out.println("K-Grams written to `" + indexPaths.get("kGramsBin") + "` successfully.");
+        }
 
         // after writing the components to disk, we can terminate the program
         System.exit(0);
     }
 
-    private static void readFromComponents(Map<String, String> indexPaths) {
-        System.out.println("\nReading from the on-disk index...");
+    private static void readFromComponents(List<String> allDirectoryPaths) {
+        for (String directoryPath : allDirectoryPaths) {
+            Map<String, String> indexPaths = PostingUtility.createIndexPathsMap(directoryPath);
+            Path path = Path.of(directoryPath);
+            boolean isRoot = (directoryPath.equals(root));
 
-        // initialize the DiskPositionalIndex and k-grams using pre-constructed indexes on disk
-        corpusIndex = new DiskPositionalIndex(DiskIndexReader.readBTree(indexPaths.get("bTreeBin")),
-                indexPaths.get("bTreeBin"), indexPaths.get("postingsBin"));
-        biwordIndex = new DiskBiwordIndex(DiskIndexReader.readBTree(indexPaths.get("biwordBTreeBin")),
-                indexPaths.get("biwordBTreeBin"), indexPaths.get("biwordBin"));
-        kGramIndex = DiskIndexReader.readKGrams(indexPaths.get("kGramsBin"));
-        DocumentWeightScorer.setRandomAccessor(indexPaths.get("docWeightsBin"));
+            DirectoryCorpus corpus = DirectoryCorpus.loadDirectory(path, isRoot);
+            System.out.println("\nReading from  `" + indexPaths.get("root") + "`...");
 
-        // if we're reading from disk using DiskPositionalIndex, then we know it is Closeable
-        closeables.add((Closeable) corpusIndex);
+            corpora.put(indexPaths.get("root"), corpus);
+            // initialize the DiskPositionalIndex and k-grams using pre-constructed indexes on disk
+            corpusIndexes.put(indexPaths.get("root"),
+                    new DiskPositionalIndex(DiskIndexReader.readBTree(indexPaths.get("bTreeBin")),
+                    indexPaths.get("bTreeBin"), indexPaths.get("postingsBin")));
+            biwordIndexes.put(indexPaths.get("biwordBTreeBin"),
+                    new DiskBiwordIndex(DiskIndexReader.readBTree(indexPaths.get("biwordBTreeBin")),
+                    indexPaths.get("biwordBTreeBin"), indexPaths.get("biwordBin")));
+            kGramIndexes.put(indexPaths.get("kGramsBin"), DiskIndexReader.readKGrams(indexPaths.get("kGramsBin")));
 
-        System.out.printf("""
-                Reading complete.
-                
-                Found %s documents.
-                Distinct k-grams: %s
-                """, corpus.getCorpusSize(), kGramIndex.getDistinctKGrams().size());
+            Index<String, Posting> corpusIndex = corpusIndexes.get(indexPaths.get("bTreeBin"));
+            Index<String, Posting> biwordIndex = biwordIndexes.get(indexPaths.get("biwordBin"));
+
+            // if we're reading from disk, then we know it is Closeable
+            closeables.add((Closeable) corpusIndex);
+            closeables.add((Closeable) biwordIndex);
+
+            System.out.printf("""
+                    Reading complete.
+                                    
+                    Found %s documents.
+                    Distinct k-grams: %s
+                    """, corpus.getCorpusSize(),
+                    kGramIndexes.get(indexPaths.get("kGramsBin")).getDistinctKGrams().size());
+        }
     }
 
-    public static Index<String, Posting> indexCorpus(DocumentCorpus corpus) {
+    public static Index<String, Posting> indexCorpus(DocumentCorpus corpus, Map<String, String> indexPaths) {
         /* 2. Index all documents in the corpus to build a positional inverted index.
           Print to the screen how long (in seconds) this process takes. */
-        System.out.println("\nIndexing...");
+        System.out.println("\nIndexing `" + indexPaths.get("root") + "`...");
         long startTime = System.nanoTime();
 
         PositionalInvertedIndex index = new PositionalInvertedIndex();
+        BiwordIndex biwordIndex = new BiwordIndex();
+        KGramIndex kGramIndex = new KGramIndex();
+        List<Double> currentLds = new ArrayList<>();
         VocabularyTokenProcessor vocabProcessor = new VocabularyTokenProcessor();
         WildcardTokenProcessor wildcardProcessor = new WildcardTokenProcessor();
 
@@ -177,7 +232,7 @@ public class Application {
                     // since each token can produce multiple terms, add all terms using the same documentID and position
                     for (String term : terms) {
                         index.addTerm(term, document.getId(), currentPosition);
-                        ((BiwordIndex) biwordIndex).addTerm(term, document.getId());
+                        biwordIndex.addTerm(term, document.getId());
                         // build up L(d) for the current document
                         if (tftds.get(term) == null) {
                             tftds.put(term, 1);
@@ -195,8 +250,11 @@ public class Application {
             }
 
             // after processing all tokens into terms, calculate L(d) for the document and add it to our list
-            lds.add(DocumentWeightScorer.calculateLd(tftds));
+            currentLds.add(DocumentWeightScorer.calculateLd(tftds));
         }
+        kGramIndexes.put(indexPaths.get("kGramsBin"), kGramIndex);
+        biwordIndexes.put(indexPaths.get("biwordBin"), biwordIndex);
+        lds.put(indexPaths.get("docWeightsBin"), currentLds);
 
         long endTime = System.nanoTime();
         double timeElapsedInSeconds = (double) (endTime - startTime) / 1_000_000_000;
@@ -206,7 +264,8 @@ public class Application {
                 
                 Found %s documents.
                 Distinct k-grams: %s
-                """, timeElapsedInSeconds, corpus.getCorpusSize(), kGramIndex.getDistinctKGrams().size());
+                """, timeElapsedInSeconds, corpus.getCorpusSize(),
+                kGramIndexes.get(indexPaths.get("kGramsBin")).getDistinctKGrams().size());
 
         return index;
     }
@@ -215,6 +274,11 @@ public class Application {
         String query;
 
         do {
+            // unless the user other specifies, the default corpus and indexes will be set to the root directory
+            DirectoryCorpus corpus = corpora.get(currentDirectory);
+            Index<String, Posting> corpusIndex = corpusIndexes.get(currentDirectory);
+            KGramIndex kGramIndex = kGramIndexes.get(currentDirectory + "/index/kGrams.bin");
+
             // 3a. Ask for a search query.
             System.out.print("\nEnter the query (`:?` to list special commands):\n >> ");
             query = in.nextLine();
@@ -236,7 +300,7 @@ public class Application {
 
                 // 3(a, i). If it is a special query, perform that action.
                 switch (potentialCommand) {
-                    case ":index" -> initializeComponents(PostingUtility.createIndexPathsMap(parameter));
+                    case ":index" -> initializeComponents(getAllDirectories(parameter));
                     case ":stem" -> {
                         TokenStemmer stemmer = new TokenStemmer();
                         System.out.println(parameter + " -> " + stemmer.processToken(parameter).get(0));
@@ -278,7 +342,7 @@ public class Application {
 
                         /* if a term does not meet the posting size threshold,
                           suggest a modified query including a spelling suggestion */
-                        boolean corrected = trySpellingSuggestion(in, query, queryMode);
+                        boolean corrected = trySpellingSuggestion(in, query, queryMode, numOfResults);
 
                         if (numOfResults > 0 || corrected) {
                             PostingUtility.promptForDocumentContent(in, corpus);
@@ -291,6 +355,8 @@ public class Application {
     }
 
     private static int displayBooleanResults(String query) {
+        DirectoryCorpus corpus = corpora.get(currentDirectory);
+        Index<String, Posting> corpusIndex = corpusIndexes.get(currentDirectory);
         List<Posting> resultPostings;
         // 3(a, ii). If it isn't a special query, then parse the query and retrieve its postings.
         BooleanQueryParser parser = new BooleanQueryParser();
@@ -312,7 +378,9 @@ public class Application {
     }
 
     private static int displayRankedResults(String query) {
-        DocumentWeightScorer documentScorer = new DocumentWeightScorer();
+        DirectoryCorpus corpus = corpora.get(currentDirectory);
+        Index<String, Posting> corpusIndex = corpusIndexes.get(currentDirectory);
+        DocumentWeightScorer documentScorer = new DocumentWeightScorer(currentDirectory + "/index/docWeights.bin");
         closeables.add(documentScorer);
 
         documentScorer.storeTermAtATimeDocuments(corpusIndex, query);
@@ -334,12 +402,16 @@ public class Application {
         return rankedEntries.size();
     }
 
-    public static boolean trySpellingSuggestion(Scanner in, String query, String queryMode) {
+    public static boolean trySpellingSuggestion(Scanner in, String query, String queryMode, int numOfResults) {
+        Index<String, Posting> corpusIndex = corpusIndexes.get(currentDirectory);
+        KGramIndex kGramIndex = kGramIndexes.get(currentDirectory + "/index/kGrams.bin");
+
         SpellingSuggestion spellingCheck = new SpellingSuggestion(corpusIndex, kGramIndex);
         String[] splitQuery = query.replace(" + ", " ").split(" ");
         StringBuilder newQuery = new StringBuilder();
         List<String> currentQuery = new ArrayList<>();
         boolean meetsThreshold = false;
+        int newQueryDft = 0;
 
         for (int i = 0; i < splitQuery.length; ++i) {
             VocabularyTokenProcessor processor = new VocabularyTokenProcessor();
@@ -354,13 +426,14 @@ public class Application {
             String replacementType;
 
             /* verify that each term meets the threshold requirement for postings sizes;
-              if it does, use the original query type, or if it doesn't, suggest a correction */
+               if it does, suggest a correction, or if it doesn't, use the original query type, */
             if (dft > SPELLING_CORRECTION_THRESHOLD || currentToken.contains("*")) {
                 replacementType = currentToken;
                 currentQuery.add(currentToken);
             } else {
                 replacementType = spellingCheck.suggestCorrection(currentToken);
                 meetsThreshold = true;
+                newQueryDft += dft;
             }
 
             newQuery.append(replacementType);
@@ -370,7 +443,7 @@ public class Application {
         }
 
         // only proceed if we made a suggestion to the original query
-        if (meetsThreshold && !newQuery.toString().equals(query) && !query.contains(" + ")) {
+        if (meetsThreshold && newQueryDft > numOfResults && !newQuery.toString().equals(query) && !query.contains(" + ")) {
             if (currentQuery.size() > 0) {
                 System.out.print("Results shown for `");
                 for (int i = 0; i < currentQuery.size(); ++i) {
@@ -391,7 +464,6 @@ public class Application {
                 }
                 return true;
             }
-            return false;
         }
         return false;
     }
@@ -407,15 +479,19 @@ public class Application {
         }
     }
 
-    public static DirectoryCorpus getCorpus() {
-        return corpus;
+    public static Map<String, DirectoryCorpus> getCorpora() {
+        return corpora;
     }
 
-    public static Index<String, Posting> getBiwordIndex() {
-        return biwordIndex;
+    public static Map<String, Index<String, Posting>> getBiwordIndexes() {
+        return biwordIndexes;
     }
 
-    public static Index<String, String> getKGramIndex() {
-        return kGramIndex;
+    public static Map<String, KGramIndex> getKGramIndexes() {
+        return kGramIndexes;
+    }
+
+    public static String getCurrentDirectory() {
+        return currentDirectory;
     }
 }

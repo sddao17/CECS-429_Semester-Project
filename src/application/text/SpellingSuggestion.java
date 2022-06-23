@@ -54,7 +54,8 @@ public class SpellingSuggestion {
         if (Application.enabledLogs) {
             candidateEdits.forEach(
                     (candidate, edit) ->
-                            System.out.println("---> (candidate, edits) ---> (" + candidate + ", " + edit + ")"));
+                            System.out.println("(originalType, candidate, edits) ---> (" +
+                                    token + ", " + candidate + ", " + edit + ")"));
             System.out.println("\nFinal types: " + finalCandidates);
         }
 
@@ -84,12 +85,13 @@ public class SpellingSuggestion {
 
             /* 1. Select all vocabulary types that have k-grams in common with the misspelled term,
               as described in lecture. */
-            if (meetsOverlapThreshold(tokenKGrams, vocabularyTokenKGrams, kGramOverlapThreshold)) {
+            if (!vocabularyType.equals(token) &&
+                    meetsOverlapThreshold(tokenKGrams, vocabularyTokenKGrams, kGramOverlapThreshold)) {
                 // 2. Calculate the Jaccard coefficient for each type in the selection.
                 double jaccardCoeff = calculateJaccardCoeff(tokenKGrams, vocabularyTokenKGrams);
 
                 // 3a. For each type whose coefficient exceeds some threshold (your decision)...
-                if (jaccardCoeff >= jaccardCoeffThreshold && !vocabularyType.equals(token)) {
+                if (jaccardCoeff >= jaccardCoeffThreshold) {
                     candidates.add(vocabularyType);
                 }
             }
@@ -172,7 +174,7 @@ public class SpellingSuggestion {
         return (double) intersections.size() / unions.size();
     }
 
-    public static List<String> intersectKGrams(List<String> leftList, List<String> rightList) {
+    public List<String> intersectKGrams(List<String> leftList, List<String> rightList) {
         List<String> intersections = new ArrayList<>();
 
         int leftIndex = 0;
@@ -199,7 +201,7 @@ public class SpellingSuggestion {
         return intersections;
     }
 
-    public static List<String> unionizeKGrams(List<String> leftList, List<String> rightList) {
+    public List<String> unionizeKGrams(List<String> leftList, List<String> rightList) {
         List<String> unions = new ArrayList<>();
 
         int leftIndex = 0;
@@ -236,7 +238,7 @@ public class SpellingSuggestion {
         return unions;
     }
 
-    public static int calculateLevenshteinDistance(String leftToken, String rightToken) {
+    public int calculateLevenshteinDistance(String leftToken, String rightToken) {
         /* dynamic programming algorithm from lecture material:
           d(i, j) =
           { i, if j = 0
@@ -280,7 +282,7 @@ public class SpellingSuggestion {
         return finalEdit;
     }
 
-    public static int calculateEdits(String leftToken, String rightToken, int i, int j, int[][] visitedMemo) {
+    public int calculateEdits(String leftToken, String rightToken, int i, int j, int[][] visitedMemo) {
         // top edit distance is just the value of the previous top value + 1, if it exists
         int topEdit;
         if (i - 1 >= 0) {
@@ -288,7 +290,7 @@ public class SpellingSuggestion {
                 topEdit = visitedMemo[i - 1][j];
             } else {
                 topEdit = calculateEdits(leftToken, rightToken, i - 1, j, visitedMemo) + 1;
-                visitedMemo[i][j - 1] = topEdit;
+                visitedMemo[i - 1][j] = topEdit;
             }
         } else {
             topEdit = Integer.MAX_VALUE;
@@ -311,7 +313,6 @@ public class SpellingSuggestion {
           diagonal edit distance if it exists, or it is not considered if the diagonal would be out of bounds otherwise;
           we additionally add + 1 if the current characters don't match */
         int previousDiagonal;
-
         if (i == 0 && j == 0) {
             previousDiagonal = 0;
         } else if (i - 1 >= 0 && j - 1 >= 0) {
@@ -330,14 +331,14 @@ public class SpellingSuggestion {
      * @param inputGrid the provided 2D array of integers
      * @return the 2D array as a String
      */
-    private static String getGridAsString(int[][] inputGrid, String leftToken, String rightToken) {
+    private String getGridAsString(int[][] inputGrid, String leftToken, String rightToken) {
         StringBuilder gridToString = new StringBuilder();
 
         gridToString.append("  (j)");
         for (int i = 0; i < rightToken.length(); ++i) {
             gridToString.append("  ").append(rightToken.charAt(i));
         }
-        gridToString.append("\n(i) ").append("---".repeat(rightToken.length()));
+        gridToString.append("\n(i) -").append("---".repeat(rightToken.length()));
         int leftTokenIndex = 0;
 
         // add each integer from the grid to the string

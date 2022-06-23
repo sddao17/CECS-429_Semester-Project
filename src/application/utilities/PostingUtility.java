@@ -15,6 +15,7 @@ public class PostingUtility {
         String pathToIndexDirectory = directoryString + "/index";
 
         return new HashMap<>() {{
+            put("root", directoryString);
             put("indexDirectory", pathToIndexDirectory);
             put("postingsBin", pathToIndexDirectory + "/postings.bin");
             put("docWeightsBin", pathToIndexDirectory + "/docWeights.bin");

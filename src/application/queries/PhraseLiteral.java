@@ -43,12 +43,12 @@ public class PhraseLiteral implements QueryComponent {
 		// biword indexes do not support wildcards
 		else if (mComponents.size() == 2 && !(mComponents.get(0) instanceof WildcardLiteral) &&
 				!(mComponents.get(1) instanceof WildcardLiteral)) {
-			Index<String, Posting> biwordIndex = Application.getBiwordIndex();
+			Index<String, Posting> biwordIndex = Application.getBiwordIndexes().get(Application.getCurrentDirectory());
 
 			resultPostings = biwordIndex.getPostings(processor.processToken(mComponents.get(0).toString()).get(0) +
 					" " + processor.processToken(mComponents.get(1).toString()).get(0));
 		} else {
-			/* store posting-position1-position2 tuples where all the terms are sequentially in +1 positional order,
+			/* store docID-position1-position2 tuples where all the terms are sequentially in +1 positional order,
 		  	  beginning with the postings of the first term */
 			// int[0], int[1], int[2] --> doc id, position1 (int), position2 (int)
 			List<int[]> positionalIntersects = new ArrayList<>();
@@ -96,7 +96,7 @@ public class PhraseLiteral implements QueryComponent {
 		// biword indexes do not support wildcards
 		else if (mComponents.size() == 2 && !(mComponents.get(0) instanceof WildcardLiteral) &&
 				!(mComponents.get(1) instanceof WildcardLiteral)) {
-			Index<String, Posting> biwordIndex = Application.getBiwordIndex();
+			Index<String, Posting> biwordIndex = Application.getBiwordIndexes().get(Application.getCurrentDirectory());
 
 			resultPostings = biwordIndex.getPositionlessPostings(
 					processor.processToken(mComponents.get(0).toString()).get(0) + " " +

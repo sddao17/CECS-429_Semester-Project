@@ -44,18 +44,18 @@ public class BiwordIndex implements Index<String, Posting> {
         return vocabulary;
     }
 
-
     public void addTerm(String term, int docId) {
-        //if the docID is not the previous doc's ID, then update
+        // if the docID is not the previous doc's ID, then update
         if (docId != lastDocID) {
             lastToken = term;
             lastDocID = docId;
         }
         else {
-            //format the term to be inputted into the index
+            // format the term to be inputted into the index
             String finalTerm = String.format("%s %s", lastToken, term);
             List<Posting> existingPostings = index.get(finalTerm);
-            //term doesn't exist in the vocabulary yet, so will now need to add it.
+
+            // term doesn't exist in the vocabulary yet, so will now need to add it
             if (existingPostings == null) {
                 ArrayList<Posting> newPostings = new ArrayList<>(){{
                     add(new Posting(docId, new ArrayList<>()));
@@ -63,15 +63,14 @@ public class BiwordIndex implements Index<String, Posting> {
                 index.put(finalTerm, newPostings);
 
             } else {
-                //get the last index of the existing postings
+                // get the last index of the existing postings
                 int latestIndex = existingPostings.size() - 1;
                 int latestDocumentId = existingPostings.get(latestIndex).getDocumentId();
 
-                //if the document ID is not in the index, then add the doc ID to the term
+                // if the document ID is not in the index, then add the doc ID to the term
                 if (latestDocumentId != docId) {
                     existingPostings.add(new Posting(docId, new ArrayList<>()));
                 }
-
             }
             lastToken = term;
         }

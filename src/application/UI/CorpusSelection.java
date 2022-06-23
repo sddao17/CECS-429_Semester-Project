@@ -118,7 +118,7 @@ public class CorpusSelection {
     }
 
     public static void initializeComponents(Path directoryPath) {
-        corpus = DirectoryCorpus.loadDirectory(directoryPath);
+        corpus = DirectoryCorpus.loadDirectory(directoryPath, false);
         // by default, our `k` value for k-gram indexes will be set to 3
         index = indexCorpus(corpus);
        // passing the corpus to use for queries

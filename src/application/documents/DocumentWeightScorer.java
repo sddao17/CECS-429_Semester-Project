@@ -4,6 +4,7 @@ package application.documents;
 import application.Application;
 import application.indexes.DiskIndexReader;
 import application.indexes.Index;
+import application.indexes.KGramIndex;
 import application.indexes.Posting;
 import application.queries.WildcardLiteral;
 import application.text.VocabularyTokenProcessor;
@@ -21,8 +22,14 @@ public class DocumentWeightScorer implements Closeable {
     private static RandomAccessFile randomAccessor;
     private final Map<Integer, Double> finalAccumulators;
 
-    public DocumentWeightScorer() {
+    public DocumentWeightScorer(String inputFilePath) {
         finalAccumulators = new HashMap<>();
+
+        try {
+            randomAccessor = new RandomAccessFile(inputFilePath, "rw");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public void storeTermAtATimeDocuments(Index<String, Posting> index, String query) {
@@ -31,7 +38,7 @@ public class DocumentWeightScorer implements Closeable {
         List<String> queryTerms = new ArrayList<>();
 
         for (String token : splitQuery) {
-            // if the token is a wildcard, allow all vocabulary types that match the pattern to accumulate points
+            // if the token has a wildcard, allow all vocabulary types that match the pattern to accumulate points
             if (token.contains("*")) {
                 accumulateWildcards(index, token);
             } else {
@@ -44,29 +51,33 @@ public class DocumentWeightScorer implements Closeable {
             }
         }
 
-        iterateTermAtATime(index, queryTerms);
+        accumulateTermAtATime(index, queryTerms);
         normalizeAccumulators();
     }
 
     public void accumulateWildcards(Index<String, Posting> index, String wildcard) {
-        for (String type : Application.getKGramIndex().getVocabulary()) {
+        KGramIndex kGramIndex = Application.getKGramIndexes().get(Application.getCurrentDirectory() + "/index/kGrams.bin");
+
+        for (String type : kGramIndex.getVocabulary()) {
             if (type.matches(WildcardLiteral.wildcardToRegex(wildcard))) {
                 VocabularyTokenProcessor processor = new VocabularyTokenProcessor();
                 List<String> terms = processor.processToken(type);
 
                 if (terms.size() > 0) {
-                    iterateTermAtATime(index, new ArrayList<>(){{add(terms.get(0));}});
+                    accumulateTermAtATime(index, new ArrayList<>(){{add(terms.get(0));}});
                 }
             }
         }
     }
 
-    public void iterateTermAtATime(Index<String, Posting> index, List<String> queryTerms) {
+    public void accumulateTermAtATime(Index<String, Posting> index, List<String> queryTerms) {
+        DirectoryCorpus corpus = Application.getCorpora().get(Application.getCurrentDirectory());
+
         // implement the "term at a time" algorithm from lecture;
         // 1. For each term t in the query:
         for (String term : queryTerms) {
             // N = total number of documents in the corpus
-            int n = Application.getCorpus().getCorpusSize();
+            int n = corpus.getCorpusSize();
             List<Posting> postings = index.getPositionlessPostings(term);
             // df(t) = number of documents the term has appeared in
             int dft = postings.size();
@@ -104,8 +115,9 @@ public class DocumentWeightScorer implements Closeable {
 
         // debugging log
         if (Application.enabledLogs) {
+            DirectoryCorpus corpus = Application.getCorpora().get(Application.getCurrentDirectory());
             System.out.println(
-                    Application.getCorpus().getDocument(documentId).getTitle() + " (ID: " + documentId + ")" +
+                    corpus.getDocument(documentId).getTitle() + " (ID: " + documentId + ")" +
                             "\n---> tf(t, d) -- " + tftd +
                             "\n---> w(d, t) -- " + wdt +
                             "\n---> L(d) -- " + DiskIndexReader.readLdFromBinFile(randomAccessor, documentId));
@@ -176,14 +188,6 @@ public class DocumentWeightScorer implements Closeable {
         }
 
         return Math.sqrt(sum);
-    }
-
-    public static void setRandomAccessor(String pathToDocWeightsBin) {
-        try {
-            randomAccessor = new RandomAccessFile(pathToDocWeightsBin, "rw");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
     @Override

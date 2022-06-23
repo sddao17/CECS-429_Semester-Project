@@ -1,7 +1,6 @@
 
 package application.Test;
 
-import application.Application;
 import application.documents.DirectoryCorpus;
 import application.documents.DocumentCorpus;
 import application.indexes.Index;
@@ -9,23 +8,25 @@ import application.indexes.Posting;
 import application.queries.BooleanQueryParser;
 import application.queries.QueryComponent;
 import application.text.QueryTokenProcessor;
+import application.utilities.PostingUtility;
 import org.junit.Test;
 
-import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+import static application.Application.indexCorpus;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class QueryProcessingTest {
 
 
-    String directoryPathString = "./corpus/kanye-test";
-    String extensionType = ".txt";
-    DocumentCorpus testCorpus = DirectoryCorpus.loadTextDirectory(
-            Paths.get(directoryPathString).toAbsolutePath(), extensionType);
-    Index<String, Posting> index = Application.indexCorpus(testCorpus);
+    String directoryPath = "./corpus/kanye-test";
+    Map<String, String> indexPaths = PostingUtility.createIndexPathsMap(directoryPath);
+    DocumentCorpus testCorpus = DirectoryCorpus.loadDirectory(Path.of(directoryPath), false);
+    Index<String, Posting> index = indexCorpus(testCorpus, indexPaths);
     BooleanQueryParser parser = new BooleanQueryParser();
 
     public List<String> ResultTitles(String query){

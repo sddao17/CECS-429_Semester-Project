@@ -424,7 +424,6 @@ public class Application {
         StringBuilder newQuery = new StringBuilder();
         List<String> currentQuery = new ArrayList<>();
         boolean meetsThreshold = false;
-        int newQueryDft = 0;
 
         for (int i = 0; i < splitQuery.length; ++i) {
             VocabularyTokenProcessor processor = new VocabularyTokenProcessor();
@@ -446,7 +445,6 @@ public class Application {
             } else {
                 replacementType = spellingCheck.suggestCorrection(currentToken);
                 meetsThreshold = true;
-                newQueryDft += dft;
             }
 
             newQuery.append(replacementType);
@@ -456,7 +454,7 @@ public class Application {
         }
 
         // only proceed if we made a suggestion to the original query
-        if (meetsThreshold && newQueryDft > numOfResults && !newQuery.toString().equals(query) && !query.contains(" + ")) {
+        if (meetsThreshold && !newQuery.toString().equals(query) && !query.contains(" + ")) {
             if (currentQuery.size() > 0) {
                 System.out.print("Results shown for `");
                 for (int i = 0; i < currentQuery.size(); ++i) {

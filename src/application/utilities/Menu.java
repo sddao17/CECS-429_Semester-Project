@@ -28,16 +28,17 @@ public class Menu {
     public static void showCommandMenu(int vocabPrintSize) {
         System.out.printf("""
                 %nCommands:
-                :index `directory-name`  --  Index the folder at the specified path.
-                          :stem `token`  --  Stem, then print the token string.
-                                 :vocab  --  Print the first %s terms in the vocabulary of the corpus,
-                                             then print the total number of vocabulary terms.
-                                :kgrams  --  Print the first %s k-gram mappings of vocabulary types to
-                                             k-gram tokens, then print the total number of vocabulary types.
-                            :set `path`  --  Sets the current corpus to the specified directory path.
-                          `query` --log  --  Enable printing a debugging log to the console before printing
-                                             the query results.
-                                     :q  --  Exit the program.
+                 :index `directory-name`  --  Index the folder at the specified path.
+                           :stem `token`  --  Stem, then print the token string.
+                                  :vocab  --  Print the first %s terms in the vocabulary of the corpus,
+                                              then print the total number of vocabulary terms.
+                                 :kgrams  --  Print the first %s k-gram mappings of vocabulary types to
+                                              k-gram tokens, then print the total number of vocabulary types.
+                :set `subdirectory-path`  --  Sets the current corpus to the specified subdirectory within the
+                                              original root directory.
+                           `query` --log  --  Enable printing a debugging log to the console before printing
+                                              the query results.
+                                      :q  --  Exit the program.
                 """, vocabPrintSize, vocabPrintSize);
     }
 }

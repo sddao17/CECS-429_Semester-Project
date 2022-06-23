@@ -358,7 +358,8 @@ public class Application {
                                 PostingUtility.promptForDocumentContent(in, corpus);
                             }
                         } catch (NullPointerException e) {
-                            System.err.println("The current directory is not valid; change it via the `:set` command.");
+                            System.err.println("The current corpus directory is not valid; " +
+                                    "change it via the `:set` command.");
                         }
                     }
                 }

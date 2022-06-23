@@ -167,7 +167,7 @@ public class Application {
             boolean isRoot = (directoryPath.equals(root));
 
             DirectoryCorpus corpus = DirectoryCorpus.loadDirectory(path, isRoot);
-            System.out.println("\nReading from  `" + indexPaths.get("root") + "`...");
+            System.out.println("\nReading index from  `" + indexPaths.get("root") + "`...");
 
             corpora.put(indexPaths.get("root"), corpus);
             // initialize the DiskPositionalIndex and k-grams using pre-constructed indexes on disk

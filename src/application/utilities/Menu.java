@@ -38,7 +38,6 @@ public class Menu {
 
         System.out.printf("""
                 %n:set `subdirectory-path`  --  Sets the directory corpus to the specified subdirectory.
-                                              The subdirectory must exist within the root.
                  :index `directory-name`  --  Index the folder at the specified path.
                            :stem `token`  --  Stem, then print the token string.
                                   :vocab  --  Print the first %s terms in the vocabulary of the corpus,

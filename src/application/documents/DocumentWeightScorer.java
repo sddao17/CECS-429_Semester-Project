@@ -10,6 +10,7 @@ import application.queries.WildcardLiteral;
 import application.text.VocabularyTokenProcessor;
 
 import java.io.Closeable;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.*;
@@ -27,8 +28,8 @@ public class DocumentWeightScorer implements Closeable {
 
         try {
             randomAccessor = new RandomAccessFile(inputFilePath, "rw");
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (FileNotFoundException e) {
+            System.err.println("The `docWeights.bin` file could not be found.");
         }
     }
 

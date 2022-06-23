@@ -352,7 +352,7 @@ public class Application {
 
                             /* if a term does not meet the posting size threshold,
                               suggest a modified query including a spelling suggestion */
-                            boolean corrected = trySpellingSuggestion(in, query, queryMode, numOfResults);
+                            boolean corrected = trySpellingSuggestion(in, query, queryMode);
 
                             if (numOfResults > 0 || corrected) {
                                 PostingUtility.promptForDocumentContent(in, corpus);
@@ -415,7 +415,7 @@ public class Application {
         return rankedEntries.size();
     }
 
-    public static boolean trySpellingSuggestion(Scanner in, String query, String queryMode, int numOfResults) {
+    public static boolean trySpellingSuggestion(Scanner in, String query, String queryMode) {
         Index<String, Posting> corpusIndex = corpusIndexes.get(currentDirectory);
         KGramIndex kGramIndex = kGramIndexes.get(currentDirectory + "/index/kGrams.bin");
 

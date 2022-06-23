@@ -34,6 +34,7 @@ public class Menu {
                                              then print the total number of vocabulary terms.
                                 :kgrams  --  Print the first %s k-gram mappings of vocabulary types to
                                              k-gram tokens, then print the total number of vocabulary types.
+                            :set `path`  --  Sets the current corpus to the specified directory path.
                           `query` --log  --  Enable printing a debugging log to the console before printing
                                              the query results.
                                      :q  --  Exit the program.

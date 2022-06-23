@@ -48,6 +48,7 @@ public class Application {
                 %nCopy/paste for testing:
                 ./corpus/parks
                 ./corpus/federalist-papers
+                ./corpus/combined-test
                 ./corpus/parks-test
                 ./corpus/kanye-test
                 ./corpus/moby-dick%n""");
@@ -95,6 +96,7 @@ public class Application {
     }
 
     private static List<String> getAllDirectories(String directoryPath) {
+        String basePath = directoryPath.substring(0, directoryPath.lastIndexOf("/"));
         File[] directories = new File(directoryPath).listFiles(File::isDirectory);
 
         if (directories == null) {
@@ -104,14 +106,17 @@ public class Application {
             hasInnerDirectories = true;
         }
 
-        List<String> allDirectoryPaths = new ArrayList<>(){{{add(directoryPath);}}};
+        List<String> allDirectoryPaths = new ArrayList<>(){};
 
         // get all non-index directories listed within the initial path
         for (File file : directories) {
-            if (!file.getAbsolutePath().endsWith("/index")) {
-                allDirectoryPaths.add(file.getAbsolutePath());
+            String absolutePath = file.getAbsolutePath();
+            String relativePath = absolutePath.substring(absolutePath.indexOf(basePath));
+            if (!relativePath.endsWith("/index")) {
+                allDirectoryPaths.add(relativePath);
             }
         }
+        allDirectoryPaths.add(directoryPath);
 
         return allDirectoryPaths;
     }
@@ -330,22 +335,30 @@ public class Application {
                         }
                         System.out.println("Found " + vocabulary.size() + " types.");
                     }
+                    case ":set" -> {
+                        currentDirectory = parameter;
+                        System.out.println("Corpus set to `" + parameter + "`.");
+                    }
                     case ":?" -> Menu.showCommandMenu(VOCABULARY_PRINT_SIZE);
                     case ":q", "" -> {}
                     default -> {
-                        int numOfResults;
-                        switch (queryMode) {
-                            case "boolean" -> numOfResults = displayBooleanResults(query);
-                            case "ranked" -> numOfResults = displayRankedResults(query);
-                            default -> numOfResults = 0;
-                        }
+                        try {
+                            int numOfResults;
+                            switch (queryMode) {
+                                case "boolean" -> numOfResults = displayBooleanResults(query);
+                                case "ranked" -> numOfResults = displayRankedResults(query);
+                                default -> throw new RuntimeException("Unexpected input: " + queryMode);
+                            }
 
-                        /* if a term does not meet the posting size threshold,
-                          suggest a modified query including a spelling suggestion */
-                        boolean corrected = trySpellingSuggestion(in, query, queryMode, numOfResults);
+                            /* if a term does not meet the posting size threshold,
+                              suggest a modified query including a spelling suggestion */
+                            boolean corrected = trySpellingSuggestion(in, query, queryMode, numOfResults);
 
-                        if (numOfResults > 0 || corrected) {
-                            PostingUtility.promptForDocumentContent(in, corpus);
+                            if (numOfResults > 0 || corrected) {
+                                PostingUtility.promptForDocumentContent(in, corpus);
+                            }
+                        } catch (NullPointerException e) {
+                            System.err.println("The current directory is not valid; change it via the `:set` command.");
                         }
                     }
                 }

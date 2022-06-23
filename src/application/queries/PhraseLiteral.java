@@ -43,7 +43,8 @@ public class PhraseLiteral implements QueryComponent {
 		// biword indexes do not support wildcards
 		else if (mComponents.size() == 2 && !(mComponents.get(0) instanceof WildcardLiteral) &&
 				!(mComponents.get(1) instanceof WildcardLiteral)) {
-			Index<String, Posting> biwordIndex = Application.getBiwordIndexes().get(Application.getCurrentDirectory());
+			Index<String, Posting> biwordIndex = Application.getBiwordIndexes()
+					.get(Application.getCurrentDirectory() + "/index/biword.bin");
 
 			resultPostings = biwordIndex.getPostings(processor.processToken(mComponents.get(0).toString()).get(0) +
 					" " + processor.processToken(mComponents.get(1).toString()).get(0));
@@ -96,7 +97,8 @@ public class PhraseLiteral implements QueryComponent {
 		// biword indexes do not support wildcards
 		else if (mComponents.size() == 2 && !(mComponents.get(0) instanceof WildcardLiteral) &&
 				!(mComponents.get(1) instanceof WildcardLiteral)) {
-			Index<String, Posting> biwordIndex = Application.getBiwordIndexes().get(Application.getCurrentDirectory());
+			Index<String, Posting> biwordIndex = Application.getBiwordIndexes()
+					.get(Application.getCurrentDirectory() + "/index/biword.bin");
 
 			resultPostings = biwordIndex.getPositionlessPostings(
 					processor.processToken(mComponents.get(0).toString()).get(0) + " " +

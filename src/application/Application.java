@@ -509,6 +509,8 @@ public class Application {
     }
 
     public static List<String> getAllDirectoryPaths() {
-        return allDirectoryPaths;
+        List<String> sortedPaths = new ArrayList<>(allDirectoryPaths);
+        Collections.sort(sortedPaths);
+        return sortedPaths;
     }
 }

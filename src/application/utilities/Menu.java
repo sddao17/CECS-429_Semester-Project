@@ -1,6 +1,8 @@
 
 package application.utilities;
 
+import application.Application;
+
 import java.util.Scanner;
 
 public class Menu {
@@ -25,10 +27,16 @@ public class Menu {
         return CheckInput.checkMenuInput(in);
     }
 
-    public static void showCommandMenu(int vocabPrintSize) {
+    public static void showHelpMenu(int vocabPrintSize) {
+        if (Application.hasInnerDirectories) {
+            System.out.println("Detected subdirectories within the root." +
+                    "\nBy default, the corpus is set to the root directory; " +
+                    "switch using the `:set` command:");
+            Application.getAllDirectoryPaths().forEach(System.out::println);
+        }
+
         System.out.printf("""
-                %nCommands:
-                 :index `directory-name`  --  Index the folder at the specified path.
+                %n :index `directory-name`  --  Index the folder at the specified path.
                            :stem `token`  --  Stem, then print the token string.
                                   :vocab  --  Print the first %s terms in the vocabulary of the corpus,
                                               then print the total number of vocabulary terms.

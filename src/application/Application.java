@@ -36,11 +36,12 @@ public class Application {
     private static final Map<String, Index<String, Posting>> biwordIndexes = new HashMap<>();
     private static final Map<String, KGramIndex> kGramIndexes = new HashMap<>();
     private static final Map<String, List<Double>> lds = new HashMap<>();
+    private static List<String> allDirectoryPaths = new ArrayList<>();
     private static String root; // the root path of the user's input corpus directory
     private static String currentDirectory; // the user's current directory to use for queries
-    private static boolean hasInnerDirectories = false;
 
     public static boolean enabledLogs = false;
+    public static boolean hasInnerDirectories = false;
     public static final List<Closeable> closeables = new ArrayList<>(); // considers all cases of indexing
 
     public static void main(String[] args) {
@@ -49,9 +50,9 @@ public class Application {
                 ./corpus/parks
                 ./corpus/federalist-papers
                 ./corpus/combined-test
-                ./corpus/parks-test
                 ./corpus/kanye-test
-                ./corpus/moby-dick%n""");
+                ./corpus/moby-dick
+                ./corpus/parks-test%n""");
         startApplication();
 
         //cSelect = new CorpusSelection();
@@ -69,7 +70,7 @@ public class Application {
         String directoryString = promptCorpusDirectory(in);
         root = directoryString;
         currentDirectory = root;
-        List<String> allDirectoryPaths = getAllDirectories(directoryString);
+        allDirectoryPaths = getAllDirectories(directoryString);
 
         // depending on the user's input, either build the index from scratch or read from an on-disk index
         switch (input) {
@@ -285,7 +286,7 @@ public class Application {
             KGramIndex kGramIndex = kGramIndexes.get(currentDirectory + "/index/kGrams.bin");
 
             // 3a. Ask for a search query.
-            System.out.print("\nEnter the query (`:?` to list special commands):\n >> ");
+            System.out.print("\nEnter the query (`:?` for help):\n >> ");
             query = in.nextLine();
             String[] splitQuery = query.split(" ");
 
@@ -339,7 +340,7 @@ public class Application {
                         currentDirectory = parameter;
                         System.out.println("Corpus set to `" + parameter + "`.");
                     }
-                    case ":?" -> Menu.showCommandMenu(VOCABULARY_PRINT_SIZE);
+                    case ":?" -> Menu.showHelpMenu(VOCABULARY_PRINT_SIZE);
                     case ":q", "" -> {}
                     default -> {
                         try {
@@ -505,5 +506,9 @@ public class Application {
 
     public static String getCurrentDirectory() {
         return currentDirectory;
+    }
+
+    public static List<String> getAllDirectoryPaths() {
+        return allDirectoryPaths;
     }
 }

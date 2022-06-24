@@ -1,16 +1,13 @@
 
 package application.classifications;
 
-import application.Application;
 import application.documents.DirectoryCorpus;
 import application.documents.Document;
 import application.documents.DocumentWeightScorer;
 import application.indexes.DiskIndexReader;
 import application.indexes.Index;
 import application.indexes.Posting;
-import application.utilities.IndexUtility;
 
-import javax.print.Doc;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.*;
@@ -48,7 +45,6 @@ public class RocchioClassification implements Classification {
 
             // skip the root directory since it combines all documents
             if (!directoryPath.equals(rootDirectoryPath)) {
-                Index<String, Posting> currentIndex = entry.getValue();
                 DirectoryCorpus currentCorpus = corpora.get(directoryPath);
 
                 // if the weight vector does not have an entry for the current directory path, add it with an empty map

@@ -4,10 +4,14 @@ package application.classifications;
 import application.documents.DirectoryCorpus;
 import application.documents.Document;
 import application.documents.DocumentWeightScorer;
+import application.indexes.DiskIndexReader;
 import application.indexes.Index;
 import application.indexes.Posting;
 import application.utilities.IndexUtility;
 
+import javax.print.Doc;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -75,7 +79,35 @@ public class RocchioClassification implements Classification {
                 DirectoryCorpus currentCorpus = corpora.get(directoryPath);
                 Map<Integer, List<Double>> currentWeightVector = allWeightVectors.get(directoryPath);
 
-                System.out.println();
+                // iterate through the vocabulary for each index
+                for (String term : vocabulary) {
+                    List<Posting> postings = currentIndex.getPostings(term);
+
+                    for (Posting currentPosting : postings) {
+                        int documentId = currentPosting.getDocumentId();
+                        int tftd = currentPosting.getPositions().size();
+
+                        double wdt = DocumentWeightScorer.calculateWdt(tftd);
+                        // update the old accumulating w(d, t) values with the new ones
+                        double oldAccumulator = currentWeightVector.get(documentId).get(vocabulary.indexOf(term));
+                        currentWeightVector.get(documentId).set(vocabulary.indexOf(term), oldAccumulator + wdt);
+                    }
+                }
+
+                // divide each individual w(d, t) value by their respective L(d)
+                for (Map.Entry<Integer, List<Double>> vectorEntry : currentWeightVector.entrySet()) {
+                    int documentId = vectorEntry.getKey();
+                    List<Double> currentVector = vectorEntry.getValue();
+
+                    try (RandomAccessFile randomAccessor = new RandomAccessFile(directoryPath +
+                            "/index/docWeights.bin", "rw")) {
+                        double currentLd = DiskIndexReader.readLd(randomAccessor, documentId);
+                        currentVector.replaceAll(accumulator ->
+                                accumulator / currentLd);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
             }
         }
     }

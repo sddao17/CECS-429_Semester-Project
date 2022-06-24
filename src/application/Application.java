@@ -504,13 +504,18 @@ public class Application {
                         try {
                             System.out.print("Enter the number of results to be shown (skip for all):\n >> ");
                             numOfResults = Integer.parseInt(in.nextLine());
+
+                            // error handling: if the requested number of results exceeds the max, set it to the max
+                            if (numOfResults > vocabulary.size()) {
+                                numOfResults = vocabulary.size();
+                            }
                         } catch (NumberFormatException e) {
                             numOfResults = vocabulary.size();
                         }
 
                         for (int i = 0; i < numOfResults; ++i) {
                             System.out.print("(" + vocabulary.get(i) + ": " + weightVector.get(i) +
-                                    (i < vocabulary.size() - 1 ? "), " : ")"));
+                                    (i < numOfResults - 1 ? "), " : ")\n"));
                         }
                     } catch (NullPointerException e) {
                         System.out.println("That combination does not exist; please try again.");
@@ -521,7 +526,7 @@ public class Application {
                         System.out.print("Enter the directory's subfolder (ex: `/jay`):\n >> ");
                         String subfolder = in.nextLine();
 
-                        System.out.println(rocchio.getVocabulary(currentDirectory + subfolder));
+                        rocchio.getVocabulary(currentDirectory + subfolder).forEach(term -> System.out.print(term + " "));
                     } catch (NullPointerException e) {
                         System.out.println("The subfolder does not exist; please try again.");
                     }

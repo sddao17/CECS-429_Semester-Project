@@ -74,7 +74,7 @@ public class RocchioClassification implements Classification {
     public String classifyDocument(String directoryPath, int documentId) {
         List<String> subdirectoryPaths = IndexUtility.getAllDirectories(rootDirectoryPath);
 
-        return "";
+        return "./hamilton";
     }
 
     @Override

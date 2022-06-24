@@ -150,17 +150,7 @@ public class RocchioClassification implements Classification {
 
     @Override
     public Map.Entry<String, Double> classifyDocument(String directoryPath, int documentId) {
-        Map<String, Double> candidateDistances = new HashMap<>();
-        List<Double> weightVector = allWeightVectors.get(directoryPath).get(documentId);
-
-        for (String currentDirectory : allIndexes.keySet()) {
-            // skip the root directory, since it contains all documents of all directories
-            if (!currentDirectory.equals(directoryPath) && !currentDirectory.equals(rootDirectoryPath)) {
-                List<Double> currentCentroid = centroids.get(currentDirectory);
-
-                candidateDistances.put(currentDirectory, calculateDistance(weightVector, currentCentroid));
-            }
-        }
+        Map<String, Double> candidateDistances = getCandidateDistances(directoryPath, documentId);
 
         // once all the distances are calculated, return the directory of the lowest distance
         PriorityQueue<Map.Entry<String, Double>> priorityQueue = new PriorityQueue<>(Map.Entry.comparingByValue());
@@ -178,6 +168,22 @@ public class RocchioClassification implements Classification {
         }
 
         return classifications;
+    }
+
+    public Map<String, Double> getCandidateDistances(String directoryPath, int documentId) {
+        Map<String, Double> candidateDistances = new HashMap<>();
+        List<Double> weightVector = allWeightVectors.get(directoryPath).get(documentId);
+
+        for (String currentDirectory : allIndexes.keySet()) {
+            // skip the root directory, since it contains all documents of all directories
+            if (!currentDirectory.equals(directoryPath) && !currentDirectory.equals(rootDirectoryPath)) {
+                List<Double> currentCentroid = centroids.get(currentDirectory);
+
+                candidateDistances.put(currentDirectory, calculateDistance(weightVector, currentCentroid));
+            }
+        }
+
+        return candidateDistances;
     }
 
     public List<Double> getCentroid(String directoryPath) {

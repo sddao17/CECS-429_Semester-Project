@@ -489,21 +489,49 @@ public class Application {
                     System.out.println("xxx");
                 } // get a document weight vector
                 case "4" -> {
-                    System.out.print("Enter the directory's subfolder:\n >> ");
-                    String subfolder = in.nextLine();
-                    System.out.print("Enter the document ID:\n >> ");
-                    int documentID = Integer.parseInt(in.nextLine());
+                    try {
+                        System.out.print("Enter the directory's subfolder (ex: `/jay`):\n >> ");
+                        String subfolder = currentDirectory + in.nextLine();
+                        IndexUtility.displayDocuments(corpora.get(subfolder));
 
-                    System.out.println(rocchio.getVector(currentDirectory + subfolder, documentID));
+                        System.out.print("Enter the document ID:\n >> ");
+                        int documentID = Integer.parseInt(in.nextLine());
+
+                        List<String> vocabulary = corpusIndexes.get(subfolder).getVocabulary();
+                        List<Double> weightVector = rocchio.getVector(subfolder, documentID);
+                        int numOfResults;
+
+                        try {
+                            System.out.print("Enter the number of results to be shown (skip for all):\n >> ");
+                            numOfResults = Integer.parseInt(in.nextLine());
+                        } catch (NumberFormatException e) {
+                            numOfResults = vocabulary.size();
+                        }
+
+                        for (int i = 0; i < numOfResults; ++i) {
+                            System.out.print("(" + vocabulary.get(i) + ": " + weightVector.get(i) +
+                                    (i < vocabulary.size() - 1 ? "), " : ")"));
+                        }
+                    } catch (NullPointerException e) {
+                        System.out.println("That combination does not exist; please try again.");
+                    }
                 } // get a vocabulary list
                 case "5" -> {
-                    System.out.print("Enter the directory's subfolder:\n >> ");
-                    String subfolder = in.nextLine();
+                    try {
+                        System.out.print("Enter the directory's subfolder (ex: `/jay`):\n >> ");
+                        String subfolder = in.nextLine();
 
-                    System.out.println(rocchio.getVocabulary(currentDirectory + subfolder));
+                        System.out.println(rocchio.getVocabulary(currentDirectory + subfolder));
+                    } catch (NullPointerException e) {
+                        System.out.println("The subfolder does not exist; please try again.");
+                    }
                 }
             }
         } while (!input.equals("0"));
+    }
+
+    private static void startKNNLoop(Scanner in, String rootDirectoryPath) {
+
     }
 
     private static void closeOpenFiles() {
@@ -511,14 +539,11 @@ public class Application {
         for (Closeable stream : closeables) {
             try {
                 stream.close();
+            } catch (NullPointerException ignored) {
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
-    }
-
-    private static void startKNNLoop(Scanner in, String rootDirectoryPath) {
-
     }
 
     public static Map<String, DirectoryCorpus> getCorpora() {
@@ -538,8 +563,6 @@ public class Application {
     }
 
     public static List<String> getAllDirectoryPaths() {
-        List<String> sortedPaths = new ArrayList<>(allDirectoryPaths);
-        Collections.sort(sortedPaths);
-        return sortedPaths;
+        return allDirectoryPaths.stream().sorted().toList();
     }
 }

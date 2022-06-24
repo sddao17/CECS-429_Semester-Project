@@ -67,6 +67,14 @@ public class IndexUtility {
         return distinctPostings;
     }
 
+    public static void displayDocuments(DirectoryCorpus corpus) {
+        for (Document document : corpus.getDocuments()) {
+            int currentDocumentId = document.getId();
+            System.out.println("- " + corpus.getDocument(currentDocumentId).getTitle() +
+                    " (ID: " + currentDocumentId + ")");
+        }
+    }
+
     public static void displayPostings(DirectoryCorpus corpus, List<Posting> resultPostings) {
         // 3(a, ii, A). Output the names of the documents returned from the query, one per line.
         for (Posting posting : resultPostings) {

@@ -30,6 +30,7 @@ public class RocchioClassification implements Classification {
         allIndexes = inputIndexes;
         allWeightVectors = new HashMap<>();
         centroids = new HashMap<>();
+        allIndexes.get(rootDirectoryPath).getVocabulary();
 
         initializeWeightVectors();
         calculateWeightVectors();
@@ -84,6 +85,7 @@ public class RocchioClassification implements Classification {
     }
 
     public List<String> getVocabulary(String directoryPath) {
+
         return allIndexes.get(directoryPath).getVocabulary();
     }
 
@@ -96,7 +98,6 @@ public class RocchioClassification implements Classification {
 
     @Override
     public List<Double> getVector(String directoryPath, int documentId) {
-        //System.out.println(allWeightVectors);
         return allWeightVectors.get(directoryPath).get(documentId);
     }
 }

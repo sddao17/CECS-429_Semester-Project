@@ -488,7 +488,7 @@ public class Application {
                 // classify a document
                 case "1" -> {
                     allDirectoryPaths.forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
-                    System.out.print("Enter the directory's subfolder (ex: `/jay`):\n >> ");
+                    System.out.print("Enter the directory's subfolder:\n >> ");
                     String lastFolder = in.nextLine();
                     String subfolder = currentDirectory + lastFolder;
                     IndexUtility.displayDocuments(corpora.get(subfolder));
@@ -503,7 +503,7 @@ public class Application {
                 } // get a centroid vector
                 case "3" -> {
                     allDirectoryPaths.forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
-                    System.out.print("Enter the directory's subfolder (ex: `/jay`):\n >> ");
+                    System.out.print("Enter the directory's subfolder:\n >> ");
                     String subfolder = currentDirectory + in.nextLine();
                     List<Double> centroid = rocchio.getCentroid(subfolder);
 
@@ -531,7 +531,7 @@ public class Application {
                 case "4" -> {
                     try {
                         allDirectoryPaths.forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
-                        System.out.print("Enter the directory's subfolder (ex: `/jay`):\n >> ");
+                        System.out.print("Enter the directory's subfolder:\n >> ");
                         String subfolder = currentDirectory + in.nextLine();
                         IndexUtility.displayDocuments(corpora.get(subfolder));
 
@@ -565,7 +565,7 @@ public class Application {
                 case "5" -> {
                     try {
                         allDirectoryPaths.forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
-                        System.out.print("Enter the directory's subfolder (ex: `/jay`, skip for all):\n >> ");
+                        System.out.print("Enter the directory's subfolder (skip for all):\n >> ");
                         String subfolder = in.nextLine();
 
                         rocchio.getVocabulary(currentDirectory + subfolder).forEach(term -> System.out.print(term + " "));

@@ -137,16 +137,12 @@ public class RocchioClassification implements Classification {
         }
     }
 
-    public List<Double> getCentroid(String directoryPath) {
-        return centroids.get(directoryPath);
-    }
-
     public static double calculateDistance(List<Double> xs, List<Double> ys) {
-        int sum = 0;
+        double sum = 0;
 
         // |x, y| = sqrt( sum of all ( (ys - xs)^2 ) )
         for (int i = 0; i < xs.size(); ++i) {
-            sum += Math.pow((ys.get(i) - xs.get(i)), 2);
+            sum += Math.pow((xs.get(i) - ys.get(i)), 2);
         }
 
         return Math.sqrt(sum);
@@ -184,9 +180,12 @@ public class RocchioClassification implements Classification {
         return classifications;
     }
 
+    public List<Double> getCentroid(String directoryPath) {
+        return centroids.get(directoryPath);
+    }
+
     @Override
     public List<String> getVocabulary(String directoryPath) {
-
         return allIndexes.get(directoryPath).getVocabulary();
     }
 

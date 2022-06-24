@@ -501,7 +501,7 @@ public class Application {
                     System.out.println("Lowest distance is " + distance + " from " + subfolder);
                 } // classify all disputed documents
                 case "2" -> {
-
+                    System.err.println("(not yet implemented)");
                 } // get a centroid vector
                 case "3" -> {
                     System.out.print("Enter the directory's subfolder (ex: `/jay`):\n >> ");
@@ -564,7 +564,7 @@ public class Application {
                 } // get a vocabulary list
                 case "5" -> {
                     try {
-                        System.out.print("Enter the directory's subfolder (ex: `/jay`):\n >> ");
+                        System.out.print("Enter the directory's subfolder (ex: `/jay`, skip for all):\n >> ");
                         String subfolder = in.nextLine();
 
                         rocchio.getVocabulary(currentDirectory + subfolder).forEach(term -> System.out.print(term + " "));

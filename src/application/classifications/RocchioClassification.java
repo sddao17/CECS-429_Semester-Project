@@ -1,6 +1,8 @@
 
 package application.classifications;
 
+import application.documents.DirectoryCorpus;
+import application.documents.Document;
 import application.documents.DocumentWeightScorer;
 import application.indexes.Index;
 import application.indexes.Posting;
@@ -15,50 +17,65 @@ public class RocchioClassification implements Classification {
 
     private final String rootDirectoryPath;
     // for each directory folder, get their respective indexes / vocabularies and map them to their directory paths
+    private final Map<String, DirectoryCorpus> corpora;
     private final Map<String, Index<String, Posting>> allIndexes;
+    // directory map of document ids with their term frequency vectors
     private final Map<String, Map<Integer, List<Double>>> allWeightVectors;
     private final Map<String, List<Double>> centroids;
 
-    public RocchioClassification(String inputRootDirectory, Map<String, Index<String, Posting>> inputIndexes) {
+    public RocchioClassification(String inputRootDirectory, Map<String, DirectoryCorpus> inputCorpora,
+                                 Map<String, Index<String, Posting>> inputIndexes) {
         rootDirectoryPath = inputRootDirectory;
+        corpora = inputCorpora;
         allIndexes = inputIndexes;
         allWeightVectors = new HashMap<>();
         centroids = new HashMap<>();
 
+        initializeWeightVectors();
         calculateWeightVectors();
         calculateCentroids();
     }
 
-    public void calculateWeightVectors() {
+    public void initializeWeightVectors() {
+        List<String> vocabulary = allIndexes.get(rootDirectoryPath).getVocabulary();
+
+        // iterate through each corpus index
         for (Map.Entry<String, Index<String, Posting>> entry : allIndexes.entrySet()) {
             String directoryPath = entry.getKey();
-            Index<String, Posting> currentIndex = entry.getValue();
-            List<String> vocabulary = currentIndex.getVocabulary();
 
-            Map<Integer, List<Double>> weightVectors = new HashMap<>();
-            List<Integer> tftds = new ArrayList<>();
+            // skip the root directory since it combines all documents
+            if (!directoryPath.equals(rootDirectoryPath)) {
+                Index<String, Posting> currentIndex = entry.getValue();
+                DirectoryCorpus currentCorpus = corpora.get(directoryPath);
 
-            for (String term : vocabulary) {
-                List<Posting> postings = currentIndex.getPostings(term);
-                List<Double> currentVector = new ArrayList<>();
+                // if the weight vector does not have an entry for the current directory path, add it with an empty map
+                allWeightVectors.putIfAbsent(directoryPath, new HashMap<>());
+                Map<Integer, List<Double>> currentWeightVector = allWeightVectors.get(directoryPath);
 
-                for (Posting currentPosting : postings) {
-                    int tftd = currentPosting.getPositions().size();
-                    tftds.add(tftd);
-
-                    double wdt = DocumentWeightScorer.calculateWdt(tftd);
-
-                    int documentId = currentPosting.getDocumentId();
-                    currentVector.add(wdt);
-                    weightVectors.put(documentId, currentVector);
-                }
+                /* for each document in the current corpora, add its document ID with an empty list initialized
+                  with zeros for each term in the vocabulary */
+                currentCorpus.getDocuments().forEach(document -> {
+                    List<Double> tftds = new ArrayList<>();
+                    vocabulary.forEach(term -> tftds.add(0.0));
+                    currentWeightVector.put(document.getId(), tftds);
+                });
             }
+        }
+    }
 
-            double ld = DocumentWeightScorer.calculateLd(tftds);
-            for (List<Double> vector : weightVectors.values()) {
-                vector.forEach(wdt -> wdt /= ld);
+    public void calculateWeightVectors() {
+        List<String> vocabulary = allIndexes.get(rootDirectoryPath).getVocabulary();
+
+        for (Map.Entry<String, Index<String, Posting>> entry : allIndexes.entrySet()) {
+            String directoryPath = entry.getKey();
+
+            if (!directoryPath.equals(rootDirectoryPath)) {
+                Index<String, Posting> currentIndex = entry.getValue();
+                DirectoryCorpus currentCorpus = corpora.get(directoryPath);
+                Map<Integer, List<Double>> currentWeightVector = allWeightVectors.get(directoryPath);
+
+                System.out.println();
             }
-            allWeightVectors.put(directoryPath, weightVectors);
         }
     }
 
@@ -79,6 +96,7 @@ public class RocchioClassification implements Classification {
 
     @Override
     public List<Double> getVector(String directoryPath, int documentId) {
+        //System.out.println(allWeightVectors);
         return allWeightVectors.get(directoryPath).get(documentId);
     }
 }

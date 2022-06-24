@@ -470,7 +470,7 @@ public class Application {
 
     private static void startRocchioLoop(Scanner in, String rootDirectoryPath) {
         System.out.println("\nCalculating...");
-        RocchioClassification rocchio = new RocchioClassification(rootDirectoryPath, corpusIndexes);
+        RocchioClassification rocchio = new RocchioClassification(rootDirectoryPath, corpora, corpusIndexes);
         System.out.println("Calculations complete.");
         String input;
 
@@ -489,21 +489,21 @@ public class Application {
                     System.out.println("xxx");
                 } // get a document weight vector
                 case "4" -> {
-                    System.out.print("Enter the directory path:\n >> ");
-                    String directoryPath = in.nextLine();
-                    System.out.println("Enter the document ID:\n >> ");
+                    System.out.print("Enter the directory's subfolder:\n >> ");
+                    String subfolder = in.nextLine();
+                    System.out.print("Enter the document ID:\n >> ");
                     int documentID = Integer.parseInt(in.nextLine());
 
-                    System.out.println(rocchio.getVector(directoryPath, documentID));
+                    System.out.println(rocchio.getVector(currentDirectory + subfolder, documentID));
                 } // get a vocabulary list
                 case "5" -> {
-                    System.out.print("Enter the directory path:\n >> ");
-                    String directoryPath = in.nextLine();
+                    System.out.print("Enter the directory's subfolder:\n >> ");
+                    String subfolder = in.nextLine();
 
-                    System.out.println(rocchio.getVocabulary(directoryPath));
+                    System.out.println(rocchio.getVocabulary(currentDirectory + subfolder));
                 }
             }
-        } while (!input.equals(":q"));
+        } while (!input.equals("0"));
     }
 
     private static void closeOpenFiles() {

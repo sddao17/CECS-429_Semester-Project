@@ -86,7 +86,7 @@ public class CheckInput {
             input = in.nextLine();
 
             if (input.equals("1") || input.equals("2") || input.equals("3") || input.equals("4") || input.equals("5")
-                    || input.equals("6")) {
+                    || input.equals("0")) {
                 isValidInput = true;
             } else {
                 System.out.print("Invalid input; please try again: ");

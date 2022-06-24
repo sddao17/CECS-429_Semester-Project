@@ -1,6 +1,7 @@
 
 package application.classifications;
 
+import application.Application;
 import application.documents.DirectoryCorpus;
 import application.documents.Document;
 import application.documents.DocumentWeightScorer;
@@ -12,10 +13,7 @@ import application.utilities.IndexUtility;
 import javax.print.Doc;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class RocchioClassification implements Classification {
 
@@ -36,12 +34,12 @@ public class RocchioClassification implements Classification {
         centroids = new HashMap<>();
         allIndexes.get(rootDirectoryPath).getVocabulary();
 
-        initializeWeightVectors();
+        initializeVectors();
         calculateWeightVectors();
         calculateCentroids();
     }
 
-    public void initializeWeightVectors() {
+    public void initializeVectors() {
         List<String> vocabulary = allIndexes.get(rootDirectoryPath).getVocabulary();
 
         // iterate through each corpus index
@@ -57,13 +55,18 @@ public class RocchioClassification implements Classification {
                 allWeightVectors.putIfAbsent(directoryPath, new HashMap<>());
                 Map<Integer, List<Double>> currentWeightVector = allWeightVectors.get(directoryPath);
 
-                /* for each document in the current corpora, add its document ID with an empty list initialized
+                /* for each document in the current corpus, add its document ID with an empty list initialized
                   with zeros for each term in the vocabulary */
                 currentCorpus.getDocuments().forEach(document -> {
                     List<Double> tftds = new ArrayList<>();
                     vocabulary.forEach(term -> tftds.add(0.0));
                     currentWeightVector.put(document.getId(), tftds);
                 });
+
+                // initialize the centroids with empty lists initialized with zeros for each term in the vocabulary
+                List<Double> zeros = new ArrayList<>();
+                vocabulary.forEach(term -> zeros.add(0.0));
+                centroids.put(directoryPath, zeros);
             }
         }
     }
@@ -74,9 +77,9 @@ public class RocchioClassification implements Classification {
         for (Map.Entry<String, Index<String, Posting>> entry : allIndexes.entrySet()) {
             String directoryPath = entry.getKey();
 
+            // skip the root directory, since it contains all documents of all directories
             if (!directoryPath.equals(rootDirectoryPath)) {
                 Index<String, Posting> currentIndex = entry.getValue();
-                DirectoryCorpus currentCorpus = corpora.get(directoryPath);
                 Map<Integer, List<Double>> currentWeightVector = allWeightVectors.get(directoryPath);
 
                 // iterate through the vocabulary for each index
@@ -113,19 +116,82 @@ public class RocchioClassification implements Classification {
     }
 
     public void calculateCentroids() {
+        for (Map.Entry<String, Index<String, Posting>> entry : allIndexes.entrySet()) {
+            String directoryPath = entry.getKey();
 
+            // skip the root directory, since it contains all documents of all directories
+            if (!directoryPath.equals(rootDirectoryPath)) {
+                DirectoryCorpus currentCorpus = corpora.get(directoryPath);
+                Map<Integer, List<Double>> currentWeightVector = allWeightVectors.get(directoryPath);
+                List<Double> currentCentroid = centroids.get(directoryPath);
+
+                // we only care about the vectors themselves, not the document IDs that they're mapped to
+                for (List<Double> currentVector : currentWeightVector.values()) {
+                    for (int i = 0; i < currentVector.size(); ++i) {
+                        double oldAccumulator = currentCentroid.get(i);
+                        double newWeight = currentVector.get(i);
+
+                        currentCentroid.set(i, oldAccumulator + newWeight);
+                    }
+                }
+
+                // divide each centroid value by the total number of documents in the set
+                currentCentroid.replaceAll(value -> value / currentCorpus.getCorpusSize());
+            }
+        }
     }
 
-    public List<String> getVocabulary(String directoryPath) {
+    public List<Double> getCentroid(String directoryPath) {
+        return centroids.get(directoryPath);
+    }
 
-        return allIndexes.get(directoryPath).getVocabulary();
+    public static double calculateDistance(List<Double> xs, List<Double> ys) {
+        int sum = 0;
+
+        // |x, y| = sqrt( sum of all ( (ys - xs)^2 ) )
+        for (int i = 0; i < xs.size(); ++i) {
+            sum += Math.pow((ys.get(i) - xs.get(i)), 2);
+        }
+
+        return Math.sqrt(sum);
     }
 
     @Override
-    public String classifyDocument(String directoryPath, int documentId) {
-        List<String> subdirectoryPaths = IndexUtility.getAllDirectories(rootDirectoryPath);
+    public Map.Entry<String, Double> classifyDocument(String directoryPath, int documentId) {
+        Map<String, Double> candidateDistances = new HashMap<>();
+        List<Double> weightVector = allWeightVectors.get(directoryPath).get(documentId);
 
-        return "./hamilton";
+        for (String currentDirectory : allIndexes.keySet()) {
+            // skip the root directory, since it contains all documents of all directories
+            if (!currentDirectory.equals(directoryPath) && !currentDirectory.equals(rootDirectoryPath)) {
+                List<Double> currentCentroid = centroids.get(currentDirectory);
+
+                candidateDistances.put(currentDirectory, calculateDistance(weightVector, currentCentroid));
+            }
+        }
+
+        // once all the distances are calculated, return the directory of the lowest distance
+        PriorityQueue<Map.Entry<String, Double>> priorityQueue = new PriorityQueue<>(Map.Entry.comparingByValue());
+        priorityQueue.addAll(candidateDistances.entrySet());
+
+        return priorityQueue.poll();
+    }
+
+    public List<Map.Entry<String, Double>> classifyDocuments(String directoryPath) {
+        List<Map.Entry<String, Double>> classifications = new ArrayList<>();
+        DirectoryCorpus corpus = corpora.get(directoryPath);
+
+        for (Document document : corpus.getDocuments()) {
+            classifications.add(classifyDocument(directoryPath, document.getId()));
+        }
+
+        return classifications;
+    }
+
+    @Override
+    public List<String> getVocabulary(String directoryPath) {
+
+        return allIndexes.get(directoryPath).getVocabulary();
     }
 
     @Override

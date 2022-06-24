@@ -470,8 +470,15 @@ public class Application {
 
     private static void startRocchioLoop(Scanner in, String rootDirectoryPath) {
         System.out.println("\nCalculating...");
+        long startTime = System.nanoTime();
+
         RocchioClassification rocchio = new RocchioClassification(rootDirectoryPath, corpora, corpusIndexes);
-        System.out.println("Calculations complete.");
+
+        long endTime = System.nanoTime();
+        double timeElapsedInSeconds = (double) (endTime - startTime) / 1_000_000_000;
+        System.out.println("Calculations complete." +
+                "\nTime elapsed: " + timeElapsedInSeconds);
+
         String input;
 
         do {
@@ -480,13 +487,47 @@ public class Application {
             switch (input) {
                 // classify a document
                 case "1" -> {
-                    System.out.println("x");
+                    System.out.print("Enter the directory's subfolder (ex: `/jay`):\n >> ");
+                    String subfolder = currentDirectory + in.nextLine();
+                    IndexUtility.displayDocuments(corpora.get(subfolder));
+
+                    System.out.print("Enter the document ID:\n >> ");
+                    int documentID = Integer.parseInt(in.nextLine());
+
+                    Map.Entry<String, Double> centroidDistance = rocchio.classifyDocument(subfolder, documentID);
+                    double distance = centroidDistance.getValue();
+                    subfolder = centroidDistance.getKey().substring(centroidDistance.getKey().lastIndexOf("/"));
+
+                    System.out.println("Lowest distance is " + distance + " from " + subfolder);
                 } // classify all disputed documents
                 case "2" -> {
-                    System.out.println("xx");
+
                 } // get a centroid vector
                 case "3" -> {
-                    System.out.println("xxx");
+                    System.out.print("Enter the directory's subfolder (ex: `/jay`):\n >> ");
+                    String subfolder = currentDirectory + in.nextLine();
+                    List<Double> centroid = rocchio.getCentroid(subfolder);
+
+                    int numOfResults;
+                    try {
+                        System.out.print("Enter the number of results to be shown (skip for all):\n >> ");
+                        numOfResults = Integer.parseInt(in.nextLine());
+
+                        // error handling: if the requested number of results exceeds the max, set it to the max
+                        if (numOfResults > centroid.size()) {
+                            numOfResults = centroid.size();
+                        }
+                    } catch (NumberFormatException e) {
+                        numOfResults = centroid.size();
+                    }
+
+                    List<String> vocabulary = corpusIndexes.get(rootDirectoryPath).getVocabulary();
+
+                    DecimalFormat df = new DecimalFormat("###.#########");
+                    for (int i = 0; i < numOfResults; ++i) {
+                        System.out.print("(" + vocabulary.get(i) + ": " + df.format(centroid.get(i)) +
+                                (i < numOfResults - 1 ? "), " : ")\n"));
+                    }
                 } // get a document weight vector
                 case "4" -> {
                     try {
@@ -527,6 +568,7 @@ public class Application {
                         String subfolder = in.nextLine();
 
                         rocchio.getVocabulary(currentDirectory + subfolder).forEach(term -> System.out.print(term + " "));
+                        System.out.println();
                     } catch (NullPointerException e) {
                         System.out.println("The subfolder does not exist; please try again.");
                     }

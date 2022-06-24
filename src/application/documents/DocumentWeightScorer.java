@@ -179,11 +179,11 @@ public class DocumentWeightScorer implements Closeable {
         return (Math.log(1 + ((double) n / dft)));
     }
 
-    public static double calculateLd(Map<String, Integer> tftds) {
+    public static double calculateLd(List<Integer> tftds) {
         double sum = 0;
 
         // L(d) = sqrt( sum of all(w(d, t)^2) )
-        for (Integer tftd : tftds.values()) {
+        for (Integer tftd : tftds) {
             double wdt = calculateWdt(tftd);
             sum += Math.pow(wdt, 2);
         }

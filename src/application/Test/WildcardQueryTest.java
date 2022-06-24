@@ -9,7 +9,7 @@ import application.indexes.Posting;
 import application.queries.BooleanQueryParser;
 import application.queries.QueryComponent;
 import application.text.*;
-import application.utilities.PostingUtility;
+import application.utilities.IndexUtility;
 import org.junit.Test;
 
 import java.nio.file.Path;
@@ -24,7 +24,7 @@ public class WildcardQueryTest {
 
 
     String directoryPath = "./corpus/parks-test";
-    Map<String, String> indexPaths = PostingUtility.createIndexPathsMap(directoryPath);
+    Map<String, String> indexPaths = IndexUtility.createIndexPathsMap(directoryPath);
     DocumentCorpus testCorpus = DirectoryCorpus.loadDirectory(Path.of(directoryPath), false);
     Index<String, Posting> index = indexCorpus(testCorpus, indexPaths);
     TokenProcessor processor = new WildcardTokenProcessor();

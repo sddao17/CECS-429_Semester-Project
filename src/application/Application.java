@@ -2,15 +2,15 @@
 package application;
 
 import application.UI.CorpusSelection;
+import application.classifications.RocchioClassification;
 import application.documents.*;
 import application.indexes.*;
 import application.queries.*;
 import application.text.*;
 import application.utilities.Menu;
-import application.utilities.PostingUtility;
+import application.utilities.IndexUtility;
 
 import java.io.Closeable;
-import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Path;
@@ -68,7 +68,7 @@ public class Application {
           and construct a DirectoryCorpus from that directory. */
         String directoryString = promptCorpusDirectory(in);
         currentDirectory = directoryString;
-        allDirectoryPaths = getAllDirectories(directoryString);
+        allDirectoryPaths = IndexUtility.getAllDirectories(directoryString);
 
         // depending on the user's input, either build the index from scratch or read from an on-disk index
         switch (input) {
@@ -77,15 +77,25 @@ public class Application {
             default -> throw new RuntimeException("Unexpected input: " + input);
         }
 
-        input = Menu.showBooleanOrRankedMenu(in);
+        input = Menu.showQueryMenu(in);
 
         String queryMode = switch (input) {
             case "1" -> "boolean";
             case "2" -> "ranked";
-            default -> throw new RuntimeException("Unexpected input: " + input);
+            default -> "";
         };
 
-        startQueryLoop(in, queryMode);
+        if (Integer.parseInt(input) < 3) {
+            startQueryLoop(in, queryMode);
+        } else {
+            queryMode = Menu.showClassificationMenu(in);
+
+            switch (queryMode) {
+                case "1" -> startBayesianLoop(in, currentDirectory);
+                case "2" -> startRocchioLoop(in, currentDirectory);
+                case "3" -> startKNNLoop(in, currentDirectory);
+            }
+        }
         closeOpenFiles();
     }
 
@@ -94,33 +104,9 @@ public class Application {
         return in.nextLine();
     }
 
-    private static List<String> getAllDirectories(String directoryPath) {
-        String basePath = directoryPath.substring(0, directoryPath.lastIndexOf("/"));
-        File[] directories = new File(directoryPath).listFiles(File::isDirectory);
-
-        if (directories == null) {
-            System.err.println("Index files were not found; please restart the program and build an index.");
-            System.exit(0);
-        }
-
-        List<String> allDirectoryPaths = new ArrayList<>(){};
-
-        // get all non-index directories listed within the initial path
-        for (File file : directories) {
-            String absolutePath = file.getAbsolutePath();
-            String relativePath = absolutePath.substring(absolutePath.indexOf(basePath));
-            if (!relativePath.endsWith("/index")) {
-                allDirectoryPaths.add(relativePath);
-            }
-        }
-        allDirectoryPaths.add(directoryPath);
-
-        return allDirectoryPaths;
-    }
-
     private static void initializeComponents(List<String> allDirectoryPaths) {
         for (String directoryPath : allDirectoryPaths) {
-            Map<String, String> indexPaths = PostingUtility.createIndexPathsMap(directoryPath);
+            Map<String, String> indexPaths = IndexUtility.createIndexPathsMap(directoryPath);
             Path path = Path.of(directoryPath);
             boolean isRoot = (directoryPath.equals(currentDirectory));
 
@@ -164,7 +150,7 @@ public class Application {
 
     private static void readFromComponents(List<String> allDirectoryPaths) {
         for (String directoryPath : allDirectoryPaths) {
-            Map<String, String> indexPaths = PostingUtility.createIndexPathsMap(directoryPath);
+            Map<String, String> indexPaths = IndexUtility.createIndexPathsMap(directoryPath);
             Path path = Path.of(directoryPath);
             boolean isRoot = (directoryPath.equals(currentDirectory));
 
@@ -252,7 +238,7 @@ public class Application {
             }
 
             // after processing all tokens into terms, calculate L(d) for the document and add it to our list
-            currentLds.add(DocumentWeightScorer.calculateLd(tftds));
+            currentLds.add(DocumentWeightScorer.calculateLd(new ArrayList<>(tftds.values())));
         }
         kGramIndexes.put(indexPaths.get("kGramsBin"), kGramIndex);
         biwordIndexes.put(indexPaths.get("biwordBin"), biwordIndex);
@@ -285,7 +271,7 @@ public class Application {
             // 3a. Ask for a search query.
             System.out.print("\nEnter the query (`:?` for help):\n >> ");
             query = in.nextLine();
-            String[] splitQuery = query.split(" ");
+            String[] splitQuery = query.toLowerCase().split(" ");
 
             // skip empty input
             if (splitQuery.length > 0) {
@@ -303,7 +289,11 @@ public class Application {
 
                 // 3(a, i). If it is a special query, perform that action.
                 switch (potentialCommand) {
-                    case ":index" -> initializeComponents(getAllDirectories(parameter));
+                    case ":set" -> {
+                        currentDirectory = parameter;
+                        System.out.println("Corpus set to `" + parameter + "`.");
+                    }
+                    case ":index" -> initializeComponents(IndexUtility.getAllDirectories(parameter));
                     case ":stem" -> {
                         TokenStemmer stemmer = new TokenStemmer();
                         System.out.println(parameter + " -> " + stemmer.processToken(parameter).get(0));
@@ -333,10 +323,6 @@ public class Application {
                         }
                         System.out.println("Found " + vocabulary.size() + " types.");
                     }
-                    case ":set" -> {
-                        currentDirectory = parameter;
-                        System.out.println("Corpus set to `" + parameter + "`.");
-                    }
                     case ":?" -> Menu.showHelpMenu(VOCABULARY_PRINT_SIZE);
                     case ":q", "" -> {}
                     default -> {
@@ -353,7 +339,7 @@ public class Application {
                             boolean corrected = trySpellingSuggestion(in, query, queryMode);
 
                             if (numOfResults > 0 || corrected) {
-                                PostingUtility.promptForDocumentContent(in, corpus);
+                                IndexUtility.promptForDocumentContent(in, corpus);
                             }
                         } catch (NullPointerException e) {
                             System.err.println("The current corpus directory is not valid; " +
@@ -384,8 +370,8 @@ public class Application {
         }
 
         // in case the query contains wildcards, only display each unique posting once
-        resultPostings = PostingUtility.getDistinctPostings(resultPostings);
-        PostingUtility.displayPostings(corpus, resultPostings);
+        resultPostings = IndexUtility.getDistinctPostings(resultPostings);
+        IndexUtility.displayPostings(corpus, resultPostings);
         return resultPostings.size();
     }
 
@@ -478,6 +464,48 @@ public class Application {
         return false;
     }
 
+    private static void startBayesianLoop(Scanner in, String rootDirectoryPath) {
+
+    }
+
+    private static void startRocchioLoop(Scanner in, String rootDirectoryPath) {
+        System.out.println("\nCalculating...");
+        RocchioClassification rocchio = new RocchioClassification(rootDirectoryPath, corpusIndexes);
+        System.out.println("Calculations complete.");
+        String input;
+
+        do {
+            input = Menu.showRocchioMenu(in);
+
+            switch (input) {
+                // classify a document
+                case "1" -> {
+                    System.out.println("x");
+                } // classify all disputed documents
+                case "2" -> {
+                    System.out.println("xx");
+                } // get a centroid vector
+                case "3" -> {
+                    System.out.println("xxx");
+                } // get a document weight vector
+                case "4" -> {
+                    System.out.print("Enter the directory path:\n >> ");
+                    String directoryPath = in.nextLine();
+                    System.out.println("Enter the document ID:\n >> ");
+                    int documentID = Integer.parseInt(in.nextLine());
+
+                    System.out.println(rocchio.getVector(directoryPath, documentID));
+                } // get a vocabulary list
+                case "5" -> {
+                    System.out.print("Enter the directory path:\n >> ");
+                    String directoryPath = in.nextLine();
+
+                    System.out.println(rocchio.getVocabulary(directoryPath));
+                }
+            }
+        } while (!input.equals(":q"));
+    }
+
     private static void closeOpenFiles() {
         // close all open file resources case-by-case
         for (Closeable stream : closeables) {
@@ -487,6 +515,10 @@ public class Application {
                 e.printStackTrace();
             }
         }
+    }
+
+    private static void startKNNLoop(Scanner in, String rootDirectoryPath) {
+
     }
 
     public static Map<String, DirectoryCorpus> getCorpora() {

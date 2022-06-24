@@ -6,10 +6,11 @@ import application.documents.Document;
 import application.indexes.Posting;
 import application.text.EnglishTokenStream;
 
+import java.io.File;
 import java.io.Reader;
 import java.util.*;
 
-public class PostingUtility {
+public class IndexUtility {
 
     public static Map<String, String> createIndexPathsMap(String directoryString) {
         String pathToIndexDirectory = directoryString + "/index";
@@ -24,6 +25,30 @@ public class PostingUtility {
             put("biwordBin", pathToIndexDirectory + "/biword.bin");
             put("biwordBTreeBin", pathToIndexDirectory + "/biwordBTree.bin");
         }};
+    }
+
+    public static List<String> getAllDirectories(String directoryPath) {
+        String basePath = directoryPath.substring(0, directoryPath.lastIndexOf("/"));
+        File[] directories = new File(directoryPath).listFiles(File::isDirectory);
+
+        if (directories == null) {
+            System.err.println("Index files were not found; please restart the program and build an index.");
+            System.exit(0);
+        }
+
+        List<String> allDirectoryPaths = new ArrayList<>(){};
+
+        // get all non-index directories listed within the initial path
+        for (File file : directories) {
+            String absolutePath = file.getAbsolutePath();
+            String relativePath = absolutePath.substring(absolutePath.indexOf(basePath));
+            if (!relativePath.endsWith("/index")) {
+                allDirectoryPaths.add(relativePath);
+            }
+        }
+        allDirectoryPaths.add(directoryPath);
+
+        return allDirectoryPaths;
     }
 
     public static List<Posting> getDistinctPostings(List<Posting> postings) {

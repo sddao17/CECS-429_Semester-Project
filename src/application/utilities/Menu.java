@@ -14,17 +14,43 @@ public class Menu {
                 2. Query an on-disk index
                  >>\040""");
 
-        return CheckInput.checkMenuInput(in);
+        return CheckInput.checkMenuInput2(in);
     }
 
-    public static String showBooleanOrRankedMenu(Scanner in) {
+    public static String showQueryMenu(Scanner in) {
         System.out.printf("""
                 %nSelect a query method:
                 1. Boolean queries
                 2. Ranked Retrieval queries
+                3. Classify documents
                  >>\040""");
 
-        return CheckInput.checkMenuInput(in);
+        return CheckInput.checkMenuInput3(in);
+    }
+
+    public static String showClassificationMenu(Scanner in) {
+        System.out.printf("""
+                %nSelect a classification method:
+                1. Bayesian
+                2. Rocchio
+                3. kNN
+                 >>\040""");
+
+        return CheckInput.checkMenuInput3(in);
+    }
+
+    public static String showRocchioMenu(Scanner in) {
+        System.out.printf("""
+                %nSelect an option:
+                1. Classify a document
+                2. Classify all disputed documents
+                3. Get a centroid vector
+                4. Get a document weight vector
+                5. Get a vocabulary list
+                0. Quit
+                 >>\040""");
+
+        return CheckInput.checkMenuInput6(in);
     }
 
     public static void showHelpMenu(int vocabPrintSize) {

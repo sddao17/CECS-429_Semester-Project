@@ -5,7 +5,7 @@ import application.documents.DirectoryCorpus;
 import application.documents.DocumentCorpus;
 import application.indexes.Index;
 import application.indexes.Posting;
-import application.utilities.PostingUtility;
+import application.utilities.IndexUtility;
 import org.junit.Test;
 
 import java.nio.file.Path;
@@ -20,7 +20,7 @@ import static org.junit.Assert.assertTrue;
 public class IndexTest {
     // run test corpus through our index
     String directoryPath = "./corpus/kanye-test";
-    Map<String, String> indexPaths = PostingUtility.createIndexPathsMap(directoryPath);
+    Map<String, String> indexPaths = IndexUtility.createIndexPathsMap(directoryPath);
     DocumentCorpus testCorpus = DirectoryCorpus.loadDirectory(Path.of(directoryPath), false);
     Index<String, Posting> index = indexCorpus(testCorpus, indexPaths);
     //inverted index by hand

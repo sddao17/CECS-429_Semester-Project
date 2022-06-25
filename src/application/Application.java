@@ -608,7 +608,7 @@ public class Application {
             String currentFolder = entry.getKey().substring(entry.getKey().lastIndexOf("/"));
             double currentDistance = entry.getValue();
             System.out.println("Dist from " + corpora.get(subfolder).getDocument(documentID).getTitle() +
-                    " to " + currentFolder + " is " + currentDistance);
+                    " to " + currentFolder + " is " + currentDistance + ".");
         }
 
         Map.Entry<String, Double> centroidDistance = rocchio.classifyDocument(subfolder, documentID);

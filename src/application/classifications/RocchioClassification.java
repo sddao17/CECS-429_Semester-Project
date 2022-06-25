@@ -22,6 +22,13 @@ public class RocchioClassification implements Classification {
     private final Map<String, Map<Integer, Map<String, Double>>> allWeightVectors;
     private final Map<String, List<Double>> centroids;
 
+    /**
+     * Constructs a Rocchio classification instance of a root directory containing subdirectories.
+     * Vectors are initialized with empty maps / lists for access when calculating weights and centroids.
+     * @param inputRootDirectory the root directory of all directories
+     * @param inputCorpora the corpora of all directories
+     * @param inputIndexes the indexes of all directories
+     */
     public RocchioClassification(String inputRootDirectory, Map<String, DirectoryCorpus> inputCorpora,
                                  Map<String, Index<String, Posting>> inputIndexes) {
         rootDirectoryPath = inputRootDirectory;
@@ -35,7 +42,11 @@ public class RocchioClassification implements Classification {
         calculateCentroids();
     }
 
-    public void initializeVectors() {
+    /**
+     * Initializes vectors with empty maps / lists for future access when calculating weights and centroids.
+     */
+    private void initializeVectors() {
+        // get the vocabulary of all directories, effectively combining all distinct vocabulary terms
         List<String> vocabulary = allIndexes.get(rootDirectoryPath).getVocabulary();
 
         // iterate through each corpus index
@@ -45,21 +56,20 @@ public class RocchioClassification implements Classification {
                 DirectoryCorpus currentCorpus = corpora.get(directoryPath);
 
                 // if the weight vector does not have an entry for the current directory path, add it with an empty map
-                allWeightVectors.put(directoryPath, new HashMap<>());
+                allWeightVectors.putIfAbsent(directoryPath, new HashMap<>());
                 Map<Integer, Map<String, Double>> currentWeightVector = allWeightVectors.get(directoryPath);
 
                 /* for each document in the current corpus, add its document ID with an empty list initialized
                   with zeros for each term in the vocabulary */
                 for (Document document : currentCorpus.getDocuments()) {
                     int documentId = document.getId();
-                    Map<String, Double> currentWeights = new HashMap<>();
+                    Map<String, Double> currentWeights = new LinkedHashMap<>();
                     currentWeightVector.put(documentId, currentWeights);
 
                     for (String term : vocabulary) {
                         currentWeights.put(term, 0.0);
                     }
                 }
-
 
                 // initialize the centroids with empty lists initialized with zeros for each term in the vocabulary
                 List<Double> zeros = new ArrayList<>();
@@ -69,7 +79,12 @@ public class RocchioClassification implements Classification {
         }
     }
 
-    public void calculateWeightVectors() {
+    /**
+     * Calculates the document weight vectors and uses the total vocabulary set as the vector length for each document
+     * weight. Skips calculating the document weights for the root directory since it is irrelevant to our information
+     * need, and allows us to avoid making unnecessary calculations.
+     */
+    private void calculateWeightVectors() {
         List<String> vocabulary = allIndexes.get(rootDirectoryPath).getVocabulary();
 
         for (Map.Entry<String, Index<String, Posting>> entry : allIndexes.entrySet()) {
@@ -84,6 +99,7 @@ public class RocchioClassification implements Classification {
                 for (String term : vocabulary) {
                     List<Posting> postings = currentIndex.getPostings(term);
 
+                    // for each posting, calculate the w(d, t) values and accumulate them into our weight vectors
                     for (Posting currentPosting : postings) {
                         int documentId = currentPosting.getDocumentId();
                         int tftd = currentPosting.getPositions().size();
@@ -104,6 +120,7 @@ public class RocchioClassification implements Classification {
                     try (RandomAccessFile randomAccessor = new RandomAccessFile(directoryPath +
                             "/index/docWeights.bin", "rw")) {
                         double currentLd = DiskIndexReader.readLd(randomAccessor, documentId);
+
                         currentVector.replaceAll((term, accumulator) -> accumulator / currentLd);
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -113,7 +130,10 @@ public class RocchioClassification implements Classification {
         }
     }
 
-    public void calculateCentroids() {
+    /**
+     * Calculates the centroids of each training set within the root directory, excluding the root directory itself.
+     */
+    private void calculateCentroids() {
         for (String directoryPath : allIndexes.keySet()) {
             // skip the root directory, since it contains all documents of all directories
             if (!directoryPath.equals(rootDirectoryPath)) {
@@ -123,8 +143,9 @@ public class RocchioClassification implements Classification {
 
                 // we only care about the vectors themselves, not the document IDs that they're mapped to
                 for (Map<String, Double> currentWeights : currentWeightVector.values()) {
-                    List<String> currentTerms = currentWeights.keySet().stream().sorted().toList();
+                    List<String> currentTerms = currentWeights.keySet().stream().toList();
 
+                    // accumulate each weight vector into our centroid
                     for (int i = 0; i < currentWeights.size(); ++i) {
                         double oldAccumulator = currentCentroid.get(i);
                         double newWeight = currentWeights.get(currentTerms.get(i));
@@ -139,6 +160,12 @@ public class RocchioClassification implements Classification {
         }
     }
 
+    /**
+     * Calculates the Euclidean distance between two sets of points.
+     * @param xs the list of points represented as mathematical x's, ie. x1, x2, x3, ...
+     * @param ys the list of points represented as mathematical y's, ie. y1, y2, y3, ...
+     * @return the Euclidean distance between the two sets of points
+     */
     public static double calculateDistance(List<Double> xs, List<Double> ys) {
         double sum = 0;
 
@@ -150,6 +177,12 @@ public class RocchioClassification implements Classification {
         return Math.sqrt(sum);
     }
 
+    /**
+     * Classifies the document using Rocchio Classification (according to the centroid its closest class).
+     * @param directoryPath the path of the subdirectory whose document will be classified
+     * @param documentId the document ID of the document to be classified
+     * @return the classification of the document's subdirectory as a String
+     */
     @Override
     public Map.Entry<String, Double> classifyDocument(String directoryPath, int documentId) {
         Map<String, Double> candidateDistances = getCandidateDistances(directoryPath, documentId);
@@ -161,6 +194,12 @@ public class RocchioClassification implements Classification {
         return priorityQueue.poll();
     }
 
+    /**
+     * Classifies each document within the set of documents within a subdirectory using Rocchio Classification
+     * (according to the centroid its closest class).
+     * @param directoryPath the path of the subdirectory of the document
+     * @return the classification of the documents' subdirectory as a String
+     */
     public List<Map.Entry<String, Double>> classifyDocuments(String directoryPath) {
         List<Map.Entry<String, Double>> classifications = new ArrayList<>();
         DirectoryCorpus corpus = corpora.get(directoryPath);
@@ -172,12 +211,18 @@ public class RocchioClassification implements Classification {
         return classifications;
     }
 
+    /**
+     * Calculates the distances from the document to the centroid of each training set and includes them within a Map.
+     * @param directoryPath the path of the subdirectory of the document
+     * @param documentId the document ID of the document
+     * @return the distances from the document to the centroid of each training set within a Map
+     */
     public Map<String, Double> getCandidateDistances(String directoryPath, int documentId) {
         Map<String, Double> candidateDistances = new HashMap<>();
         Map<String, Double> weightVector = allWeightVectors.get(directoryPath).get(documentId);
 
         for (String currentDirectory : allIndexes.keySet()) {
-            // skip the root directory, since it contains all documents of all directories
+            // skip the root / disputed directories, since they are irrelevant when calculating training set distances
             if (!currentDirectory.endsWith("/disputed") && !currentDirectory.equals(rootDirectoryPath)) {
                 List<Double> currentCentroid = centroids.get(currentDirectory);
 
@@ -188,15 +233,31 @@ public class RocchioClassification implements Classification {
         return candidateDistances;
     }
 
+    /**
+     * Returns the list of centroid values of the specified subdirectory.
+     * @param directoryPath the path of the subdirectory
+     * @return the list of centroid values of the subdirectory
+     */
     public List<Double> getCentroid(String directoryPath) {
         return centroids.get(directoryPath);
     }
 
+    /**
+     * Returns the list of vocabulary terms of the specified subdirectory.
+     * @param directoryPath the path of the subdirectory
+     * @return the list of vocabulary terms of the subdirectory
+     */
     @Override
     public List<String> getVocabulary(String directoryPath) {
         return allIndexes.get(directoryPath).getVocabulary();
     }
 
+    /**
+     * Returns the list of normalized document weights of the specified subdirectory.
+     * @param directoryPath the path of the subdirectory
+     * @param documentId the document ID of the document
+     * @return the list of normalized document weights of the subdirectory
+     */
     @Override
     public List<Double> getVector(String directoryPath, int documentId) {
         return allWeightVectors.get(directoryPath).get(documentId).values().stream().toList();

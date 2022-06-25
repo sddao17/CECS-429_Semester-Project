@@ -1,6 +1,7 @@
 
 package application.classifications;
 
+import application.Application;
 import application.documents.DirectoryCorpus;
 import application.documents.Document;
 import application.documents.DocumentWeightScorer;
@@ -260,6 +261,6 @@ public class RocchioClassification implements TextClassification {
      */
     @Override
     public List<String> getVocabulary(String directoryPath) {
-        return allIndexes.get(directoryPath).getVocabulary();
+        return Application.getKGramIndexes().get(directoryPath + "/index/kGrams.bin").getVocabulary();
     }
 }

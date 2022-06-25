@@ -100,8 +100,7 @@ public class RocchioClassification implements Classification {
                     try (RandomAccessFile randomAccessor = new RandomAccessFile(directoryPath +
                             "/index/docWeights.bin", "rw")) {
                         double currentLd = DiskIndexReader.readLd(randomAccessor, documentId);
-                        currentVector.replaceAll(accumulator ->
-                                accumulator / currentLd);
+                        currentVector.replaceAll(accumulator -> accumulator / currentLd);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }

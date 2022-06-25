@@ -29,7 +29,6 @@ public class RocchioClassification implements Classification {
         allIndexes = inputIndexes;
         allWeightVectors = new HashMap<>();
         centroids = new HashMap<>();
-        allIndexes.get(rootDirectoryPath).getVocabulary();
 
         initializeVectors();
         calculateWeightVectors();

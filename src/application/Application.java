@@ -155,7 +155,7 @@ public class Application {
             boolean isRoot = (directoryPath.equals(currentDirectory));
 
             DirectoryCorpus corpus = DirectoryCorpus.loadDirectory(path, isRoot);
-            System.out.println("\nReading index from  `" + indexPaths.get("root") + "`...");
+            System.out.println("\nReading index from `" + indexPaths.get("root") + "`...");
 
             corpora.put(indexPaths.get("root"), corpus);
             // initialize the DiskPositionalIndex and k-grams using pre-constructed indexes on disk
@@ -176,7 +176,6 @@ public class Application {
 
             System.out.printf("""
                     Reading complete.
-                                    
                     Found %s documents.
                     Distinct k-grams: %s
                     """, corpus.getCorpusSize(),
@@ -249,7 +248,6 @@ public class Application {
         System.out.printf("""
                 Indexing complete.
                 Time elapsed: %s seconds
-                
                 Found %s documents.
                 Distinct k-grams: %s
                 """, timeElapsedInSeconds, corpus.getCorpusSize(),

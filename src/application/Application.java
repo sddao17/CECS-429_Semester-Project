@@ -487,10 +487,9 @@ public class Application {
             switch (input) {
                 // classify a document
                 case "1" -> {
-                    allDirectoryPaths.forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
+                    getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
                     System.out.print("Enter the directory's subfolder:\n >> ");
-                    String lastFolder = in.nextLine();
-                    String subfolder = currentDirectory + lastFolder;
+                    String subfolder = currentDirectory + in.nextLine();
                     IndexUtility.displayDocuments(corpora.get(subfolder));
 
                     System.out.print("Enter the document ID:\n >> ");
@@ -499,10 +498,17 @@ public class Application {
                     displayRocchioResults(rocchio, subfolder, documentID);
                 } // classify all disputed documents
                 case "2" -> {
-                    System.err.println("(not yet implemented)");
+                    getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
+                    System.out.print("Enter the directory's subfolder:\n >> ");
+                    String subfolder = currentDirectory + in.nextLine();
+
+                    for (Document document : corpora.get(subfolder).getDocuments()) {
+                        displayRocchioResults(rocchio, subfolder, document.getId());
+                    }
+
                 } // get a centroid vector
                 case "3" -> {
-                    allDirectoryPaths.forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
+                    getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
                     System.out.print("Enter the directory's subfolder:\n >> ");
                     String subfolder = currentDirectory + in.nextLine();
                     List<Double> centroid = rocchio.getCentroid(subfolder);
@@ -530,7 +536,7 @@ public class Application {
                 } // get a document weight vector
                 case "4" -> {
                     try {
-                        allDirectoryPaths.forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
+                        getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
                         System.out.print("Enter the directory's subfolder:\n >> ");
                         String subfolder = currentDirectory + in.nextLine();
                         IndexUtility.displayDocuments(corpora.get(subfolder));
@@ -564,7 +570,7 @@ public class Application {
                 } // get a vocabulary list
                 case "5" -> {
                     try {
-                        allDirectoryPaths.forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
+                        getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
                         System.out.print("Enter the directory's subfolder (skip for all):\n >> ");
                         String subfolder = in.nextLine();
 
@@ -596,18 +602,19 @@ public class Application {
 
     private static void displayRocchioResults(RocchioClassification rocchio, String subfolder, int documentID) {
         Map<String, Double> candidateDistances = rocchio.getCandidateDistances(subfolder, documentID);
-        String lastFolder = subfolder.substring(subfolder.lastIndexOf("/"));
 
+        System.out.println();
         for (Map.Entry<String, Double> entry : candidateDistances.entrySet()) {
             String currentFolder = entry.getKey().substring(entry.getKey().lastIndexOf("/"));
             double currentDistance = entry.getValue();
-            System.out.println("Dist from " + lastFolder + " to " + currentFolder + " is " + currentDistance);
+            System.out.println("Dist from " + corpora.get(subfolder).getDocument(documentID).getTitle() +
+                    " to " + currentFolder + " is " + currentDistance);
         }
 
         Map.Entry<String, Double> centroidDistance = rocchio.classifyDocument(subfolder, documentID);
-        lastFolder = centroidDistance.getKey().substring(centroidDistance.getKey().lastIndexOf("/"));
+        String lastFolder = centroidDistance.getKey().substring(centroidDistance.getKey().lastIndexOf("/"));
 
-        System.out.println("\nLowest distance for " +
+        System.out.println("Lowest distance for " +
                 corpora.get(subfolder).getDocument(documentID).getTitle() +" is to " + lastFolder + ".");
     }
 

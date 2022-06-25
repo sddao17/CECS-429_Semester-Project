@@ -43,7 +43,7 @@ public class Menu {
         System.out.printf("""
                 %nSelect an option:
                 1. Classify a document
-                2. Classify all disputed documents
+                2. Classify all documents
                 3. Get a centroid vector
                 4. Get a document weight vector
                 5. Get a vocabulary list

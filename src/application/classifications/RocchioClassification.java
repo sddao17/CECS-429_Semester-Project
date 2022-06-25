@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.*;
 
-public class RocchioClassification implements Classification {
+public class RocchioClassification implements TextClassification {
 
     private final String rootDirectoryPath;
     // for each directory folder, get their respective indexes / vocabularies and map them to their directory paths
@@ -49,7 +49,7 @@ public class RocchioClassification implements Classification {
         // get the vocabulary of all directories, effectively combining all distinct vocabulary terms
         List<String> vocabulary = allIndexes.get(rootDirectoryPath).getVocabulary();
 
-        // iterate through each corpus index
+        // iterate through each corpus index's directories
         for (String directoryPath : allIndexes.keySet()) {
             // skip the root directory since it combines all documents
             if (!directoryPath.equals(rootDirectoryPath)) {
@@ -180,8 +180,8 @@ public class RocchioClassification implements Classification {
 
     /**
      * Classifies the document using Rocchio Classification (according to the centroid its closest class).
-     * @param directoryPath the path of the subdirectory whose document will be classified
-     * @param documentId the document ID of the document to be classified
+     * @param directoryPath the path of the subdirectory to the document
+     * @param documentId the document ID of the document
      * @return the classification of the document's subdirectory as a String
      */
     @Override
@@ -198,7 +198,7 @@ public class RocchioClassification implements Classification {
     /**
      * Classifies each document within the set of documents within a subdirectory using Rocchio Classification
      * (according to the centroid its closest class).
-     * @param directoryPath the path of the subdirectory of the document
+     * @param directoryPath the path of the subdirectory to the document
      * @return the classification of the documents' subdirectory as a String
      */
     public List<Map.Entry<String, Double>> classifyDocuments(String directoryPath) {
@@ -214,7 +214,7 @@ public class RocchioClassification implements Classification {
 
     /**
      * Calculates the distances from the document to the centroid of each training set and includes them within a Map.
-     * @param directoryPath the path of the subdirectory of the document
+     * @param directoryPath the path of the subdirectory to the document
      * @param documentId the document ID of the document
      * @return the distances from the document to the centroid of each training set within a Map
      */
@@ -235,6 +235,16 @@ public class RocchioClassification implements Classification {
     }
 
     /**
+     * Returns the list of normalized document weights of the specified subdirectory.
+     * @param directoryPath the path of the subdirectory
+     * @param documentId the document ID of the document
+     * @return the list of normalized document weights of the subdirectory
+     */
+    public List<Double> getVector(String directoryPath, int documentId) {
+        return allWeightVectors.get(directoryPath).get(documentId).values().stream().toList();
+    }
+
+    /**
      * Returns the list of centroid values of the specified subdirectory.
      * @param directoryPath the path of the subdirectory
      * @return the list of centroid values of the subdirectory
@@ -244,23 +254,12 @@ public class RocchioClassification implements Classification {
     }
 
     /**
-     * Returns the list of vocabulary terms of the specified subdirectory.
-     * @param directoryPath the path of the subdirectory
-     * @return the list of vocabulary terms of the subdirectory
+     * Returns the list of vocabulary terms of the specified directory.
+     * @param directoryPath the path of the directory
+     * @return the list of vocabulary terms of the directory
      */
     @Override
     public List<String> getVocabulary(String directoryPath) {
         return allIndexes.get(directoryPath).getVocabulary();
-    }
-
-    /**
-     * Returns the list of normalized document weights of the specified subdirectory.
-     * @param directoryPath the path of the subdirectory
-     * @param documentId the document ID of the document
-     * @return the list of normalized document weights of the subdirectory
-     */
-    @Override
-    public List<Double> getVector(String directoryPath, int documentId) {
-        return allWeightVectors.get(directoryPath).get(documentId).values().stream().toList();
     }
 }

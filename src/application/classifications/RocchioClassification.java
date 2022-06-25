@@ -19,7 +19,7 @@ public class RocchioClassification implements Classification {
     private final Map<String, DirectoryCorpus> corpora;
     private final Map<String, Index<String, Posting>> allIndexes;
     // directory map of document ids with their term frequency vectors
-    private final Map<String, Map<Integer, List<Double>>> allWeightVectors;
+    private final Map<String, Map<Integer, Map<String, Double>>> allWeightVectors;
     private final Map<String, List<Double>> centroids;
 
     public RocchioClassification(String inputRootDirectory, Map<String, DirectoryCorpus> inputCorpora,
@@ -39,24 +39,27 @@ public class RocchioClassification implements Classification {
         List<String> vocabulary = allIndexes.get(rootDirectoryPath).getVocabulary();
 
         // iterate through each corpus index
-        for (Map.Entry<String, Index<String, Posting>> entry : allIndexes.entrySet()) {
-            String directoryPath = entry.getKey();
-
+        for (String directoryPath : allIndexes.keySet()) {
             // skip the root directory since it combines all documents
             if (!directoryPath.equals(rootDirectoryPath)) {
                 DirectoryCorpus currentCorpus = corpora.get(directoryPath);
 
                 // if the weight vector does not have an entry for the current directory path, add it with an empty map
-                allWeightVectors.putIfAbsent(directoryPath, new HashMap<>());
-                Map<Integer, List<Double>> currentWeightVector = allWeightVectors.get(directoryPath);
+                allWeightVectors.put(directoryPath, new HashMap<>());
+                Map<Integer, Map<String, Double>> currentWeightVector = allWeightVectors.get(directoryPath);
 
                 /* for each document in the current corpus, add its document ID with an empty list initialized
                   with zeros for each term in the vocabulary */
-                currentCorpus.getDocuments().forEach(document -> {
-                    List<Double> tftds = new ArrayList<>();
-                    vocabulary.forEach(term -> tftds.add(0.0));
-                    currentWeightVector.put(document.getId(), tftds);
-                });
+                for (Document document : currentCorpus.getDocuments()) {
+                    int documentId = document.getId();
+                    Map<String, Double> currentWeights = new HashMap<>();
+                    currentWeightVector.put(documentId, currentWeights);
+
+                    for (String term : vocabulary) {
+                        currentWeights.put(term, 0.0);
+                    }
+                }
+
 
                 // initialize the centroids with empty lists initialized with zeros for each term in the vocabulary
                 List<Double> zeros = new ArrayList<>();
@@ -75,7 +78,7 @@ public class RocchioClassification implements Classification {
             // skip the root directory, since it contains all documents of all directories
             if (!directoryPath.equals(rootDirectoryPath)) {
                 Index<String, Posting> currentIndex = entry.getValue();
-                Map<Integer, List<Double>> currentWeightVector = allWeightVectors.get(directoryPath);
+                Map<Integer, Map<String, Double>> currentWeightVector = allWeightVectors.get(directoryPath);
 
                 // iterate through the vocabulary for each index
                 for (String term : vocabulary) {
@@ -85,22 +88,23 @@ public class RocchioClassification implements Classification {
                         int documentId = currentPosting.getDocumentId();
                         int tftd = currentPosting.getPositions().size();
 
-                        double wdt = DocumentWeightScorer.calculateWdt(tftd);
                         // update the old accumulating w(d, t) values with the new ones
-                        double oldAccumulator = currentWeightVector.get(documentId).get(vocabulary.indexOf(term));
-                        currentWeightVector.get(documentId).set(vocabulary.indexOf(term), oldAccumulator + wdt);
+                        double wdt = DocumentWeightScorer.calculateWdt(tftd);
+                        double oldAccumulator = currentWeightVector.get(documentId).get(term);
+
+                        currentWeightVector.get(documentId).replace(term, oldAccumulator + wdt);
                     }
                 }
 
                 // divide each individual w(d, t) value by their respective L(d)
-                for (Map.Entry<Integer, List<Double>> vectorEntry : currentWeightVector.entrySet()) {
+                for (Map.Entry<Integer, Map<String, Double>> vectorEntry : currentWeightVector.entrySet()) {
                     int documentId = vectorEntry.getKey();
-                    List<Double> currentVector = vectorEntry.getValue();
+                    Map<String, Double> currentVector = vectorEntry.getValue();
 
                     try (RandomAccessFile randomAccessor = new RandomAccessFile(directoryPath +
                             "/index/docWeights.bin", "rw")) {
                         double currentLd = DiskIndexReader.readLd(randomAccessor, documentId);
-                        currentVector.replaceAll(accumulator -> accumulator / currentLd);
+                        currentVector.replaceAll((term, accumulator) -> accumulator / currentLd);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -114,20 +118,22 @@ public class RocchioClassification implements Classification {
             // skip the root directory, since it contains all documents of all directories
             if (!directoryPath.equals(rootDirectoryPath)) {
                 DirectoryCorpus currentCorpus = corpora.get(directoryPath);
-                Map<Integer, List<Double>> currentWeightVector = allWeightVectors.get(directoryPath);
+                Map<Integer, Map<String, Double>> currentWeightVector = allWeightVectors.get(directoryPath);
                 List<Double> currentCentroid = centroids.get(directoryPath);
 
                 // we only care about the vectors themselves, not the document IDs that they're mapped to
-                for (List<Double> currentVector : currentWeightVector.values()) {
-                    for (int i = 0; i < currentVector.size(); ++i) {
+                for (Map<String, Double> currentWeights : currentWeightVector.values()) {
+                    List<String> currentTerms = currentWeights.keySet().stream().sorted().toList();
+
+                    for (int i = 0; i < currentWeights.size(); ++i) {
                         double oldAccumulator = currentCentroid.get(i);
-                        double newWeight = currentVector.get(i);
+                        double newWeight = currentWeights.get(currentTerms.get(i));
 
                         currentCentroid.set(i, oldAccumulator + newWeight);
                     }
                 }
 
-                // divide each centroid values by the total number of documents in its class
+                // divide each centroid value by the total number of documents in its class
                 currentCentroid.replaceAll(value -> value / currentCorpus.getCorpusSize());
             }
         }
@@ -168,14 +174,14 @@ public class RocchioClassification implements Classification {
 
     public Map<String, Double> getCandidateDistances(String directoryPath, int documentId) {
         Map<String, Double> candidateDistances = new HashMap<>();
-        List<Double> weightVector = allWeightVectors.get(directoryPath).get(documentId);
+        Map<String, Double> weightVector = allWeightVectors.get(directoryPath).get(documentId);
 
         for (String currentDirectory : allIndexes.keySet()) {
             // skip the root directory, since it contains all documents of all directories
             if (!currentDirectory.endsWith("/disputed") && !currentDirectory.equals(rootDirectoryPath)) {
                 List<Double> currentCentroid = centroids.get(currentDirectory);
 
-                candidateDistances.put(currentDirectory, calculateDistance(weightVector, currentCentroid));
+                candidateDistances.put(currentDirectory, calculateDistance(weightVector.values().stream().toList(), currentCentroid));
             }
         }
 
@@ -193,6 +199,6 @@ public class RocchioClassification implements Classification {
 
     @Override
     public List<Double> getVector(String directoryPath, int documentId) {
-        return allWeightVectors.get(directoryPath).get(documentId);
+        return allWeightVectors.get(directoryPath).get(documentId).values().stream().toList();
     }
 }

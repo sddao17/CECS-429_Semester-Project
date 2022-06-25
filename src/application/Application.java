@@ -477,7 +477,7 @@ public class Application {
         long endTime = System.nanoTime();
         double timeElapsedInSeconds = (double) (endTime - startTime) / 1_000_000_000;
         System.out.println("Calculations complete." +
-                "\nTime elapsed: " + timeElapsedInSeconds);
+                "\nTime elapsed: " + timeElapsedInSeconds + " seconds");
 
         String input;
 
@@ -502,8 +502,12 @@ public class Application {
                     System.out.print("Enter the directory's subfolder:\n >> ");
                     String subfolder = currentDirectory + in.nextLine();
 
-                    for (Document document : corpora.get(subfolder).getDocuments()) {
-                        displayRocchioResults(rocchio, subfolder, document.getId());
+                    try {
+                        for (Document document : corpora.get(subfolder).getDocuments()) {
+                            displayRocchioResults(rocchio, subfolder, document.getId());
+                        }
+                    } catch (NullPointerException e) {
+                        System.out.println("The subfolder does not exist; please try again.");
                     }
 
                 } // get a centroid vector
@@ -588,18 +592,6 @@ public class Application {
         System.err.println("(not yet implemented)");
     }
 
-    private static void closeOpenFiles() {
-        // close all open file resources case-by-case
-        for (Closeable stream : closeables) {
-            try {
-                stream.close();
-            } catch (NullPointerException ignored) {
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
     private static void displayRocchioResults(RocchioClassification rocchio, String subfolder, int documentID) {
         Map<String, Double> candidateDistances = rocchio.getCandidateDistances(subfolder, documentID);
 
@@ -616,6 +608,18 @@ public class Application {
 
         System.out.println("Lowest distance for " +
                 corpora.get(subfolder).getDocument(documentID).getTitle() +" is to " + lastFolder + ".");
+    }
+
+    private static void closeOpenFiles() {
+        // close all open file resources case-by-case
+        for (Closeable stream : closeables) {
+            try {
+                stream.close();
+            } catch (NullPointerException ignored) {
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     public static Map<String, DirectoryCorpus> getCorpora() {

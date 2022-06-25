@@ -127,7 +127,7 @@ public class RocchioClassification implements Classification {
                     }
                 }
 
-                // divide each centroid value by the total number of documents in its class
+                // divide each centroid values by the total number of documents in its class
                 currentCentroid.replaceAll(value -> value / currentCorpus.getCorpusSize());
             }
         }

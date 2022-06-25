@@ -138,7 +138,7 @@ public class RocchioClassification implements Classification {
 
         // |x, y| = sqrt( sum of all ( (ys - xs)^2 ) )
         for (int i = 0; i < xs.size(); ++i) {
-            sum += Math.pow((xs.get(i) - ys.get(i)), 2);
+            sum += Math.pow((ys.get(i) - xs.get(i)), 2);
         }
 
         return Math.sqrt(sum);

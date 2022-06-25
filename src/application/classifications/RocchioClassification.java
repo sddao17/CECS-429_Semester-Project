@@ -110,9 +110,7 @@ public class RocchioClassification implements Classification {
     }
 
     public void calculateCentroids() {
-        for (Map.Entry<String, Index<String, Posting>> entry : allIndexes.entrySet()) {
-            String directoryPath = entry.getKey();
-
+        for (String directoryPath : allIndexes.keySet()) {
             // skip the root directory, since it contains all documents of all directories
             if (!directoryPath.equals(rootDirectoryPath)) {
                 DirectoryCorpus currentCorpus = corpora.get(directoryPath);

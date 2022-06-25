@@ -176,7 +176,7 @@ public class RocchioClassification implements Classification {
 
         for (String currentDirectory : allIndexes.keySet()) {
             // skip the root directory, since it contains all documents of all directories
-            if (!currentDirectory.equals(directoryPath) && !currentDirectory.equals(rootDirectoryPath)) {
+            if (!currentDirectory.endsWith("/disputed") && !currentDirectory.equals(rootDirectoryPath)) {
                 List<Double> currentCentroid = centroids.get(currentDirectory);
 
                 candidateDistances.put(currentDirectory, calculateDistance(weightVector, currentCentroid));

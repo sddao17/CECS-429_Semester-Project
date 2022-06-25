@@ -423,7 +423,7 @@ public class Application {
             String replacementType;
 
             /* verify that each term meets the threshold requirement for postings sizes;
-               if it does, suggest a correction, or if it doesn't, use the original query type, */
+               if it does, suggest a correction, or if it doesn't, use the original query type */
             if (dft > SPELLING_CORRECTION_THRESHOLD || currentToken.contains("*")) {
                 replacementType = currentToken;
                 currentQuery.add(currentToken);
@@ -496,7 +496,7 @@ public class Application {
                     int documentID = Integer.parseInt(in.nextLine());
 
                     displayRocchioResults(rocchio, subfolder, documentID);
-                } // classify all disputed documents
+                } // classify all documents
                 case "2" -> {
                     getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
                     System.out.print("Enter the directory's subfolder:\n >> ");
@@ -548,7 +548,7 @@ public class Application {
                         System.out.print("Enter the document ID:\n >> ");
                         int documentID = Integer.parseInt(in.nextLine());
 
-                        List<String> vocabulary = corpusIndexes.get(subfolder).getVocabulary();
+                        List<String> vocabulary = corpusIndexes.get(rootDirectoryPath).getVocabulary();
                         List<Double> weightVector = rocchio.getVector(subfolder, documentID);
                         int numOfResults;
 

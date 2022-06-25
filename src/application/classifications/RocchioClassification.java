@@ -25,7 +25,7 @@ public class RocchioClassification implements Classification {
     /**
      * Constructs a Rocchio classification instance of a root directory containing subdirectories.
      * Vectors are initialized with empty maps / lists for access when calculating weights and centroids.
-     * @param inputRootDirectory the root directory of all directories
+     * @param inputRootDirectory the root directory of all subdirectories
      * @param inputCorpora the corpora of all directories
      * @param inputIndexes the indexes of all directories
      */
@@ -161,7 +161,8 @@ public class RocchioClassification implements Classification {
     }
 
     /**
-     * Calculates the Euclidean distance between two sets of points.
+     * Calculates the Euclidean distance between two sets of points, where
+     * <code>|x, y| = sqrt( sum of all( (ys - xs)^2 ) )</code>.
      * @param xs the list of points represented as mathematical x's, ie. x1, x2, x3, ...
      * @param ys the list of points represented as mathematical y's, ie. y1, y2, y3, ...
      * @return the Euclidean distance between the two sets of points
@@ -169,7 +170,7 @@ public class RocchioClassification implements Classification {
     public static double calculateDistance(List<Double> xs, List<Double> ys) {
         double sum = 0;
 
-        // |x, y| = sqrt( sum of all ( (ys - xs)^2 ) )
+        // |x, y| = sqrt( sum of all( (ys - xs)^2 ) )
         for (int i = 0; i < xs.size(); ++i) {
             sum += Math.pow((ys.get(i) - xs.get(i)), 2);
         }

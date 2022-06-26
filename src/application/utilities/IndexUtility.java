@@ -28,15 +28,17 @@ public class IndexUtility {
     }
 
     public static List<String> getAllDirectories(String directoryPath) {
-        String basePath = directoryPath.substring(0, directoryPath.lastIndexOf("/"));
-        File[] directories = new File(directoryPath).listFiles(File::isDirectory);
-
-        if (directories == null) {
-            System.err.println("Index files were not found; please restart the program and build an index.");
-            System.exit(0);
-        }
-
+        String basePath;
+        File[] directories;
         List<String> allDirectoryPaths = new ArrayList<>(){};
+        try {
+            basePath = directoryPath.substring(0, directoryPath.lastIndexOf("/"));
+            directories = new File(directoryPath).listFiles(File::isDirectory);
+
+            if (directories == null) {
+                System.err.println("Index files were not found; please restart the program and build an index.");
+                System.exit(0);
+            }
 
         // get all non-index directories listed within the initial path
         for (File file : directories) {
@@ -45,6 +47,10 @@ public class IndexUtility {
             if (!relativePath.endsWith("/index")) {
                 allDirectoryPaths.add(relativePath);
             }
+        }
+        } catch (StringIndexOutOfBoundsException | NullPointerException e) {
+            System.err.println("Index files were not found; please restart the program and build an index.");
+            System.exit(0);
         }
         allDirectoryPaths.add(directoryPath);
 

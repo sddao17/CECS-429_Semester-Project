@@ -74,14 +74,10 @@ public class IndexUtility {
     }
 
     public static void displayDocuments(DirectoryCorpus corpus) {
-        try {
-            for (Document document : corpus.getDocuments()) {
-                int currentDocumentId = document.getId();
-                System.out.println("- " + corpus.getDocument(currentDocumentId).getTitle() +
-                        " (ID: " + currentDocumentId + ")");
-            }
-        } catch (NullPointerException e) {
-            System.out.println("The path does not exist; please try again.");
+        for (Document document : corpus.getDocuments()) {
+            int currentDocumentId = document.getId();
+            System.out.println("- " + corpus.getDocument(currentDocumentId).getTitle() +
+                    " (ID: " + currentDocumentId + ")");
         }
     }
 

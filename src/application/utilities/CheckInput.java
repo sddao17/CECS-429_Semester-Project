@@ -5,94 +5,48 @@ import java.util.Scanner;
 
 public class CheckInput {
 
-    public static String checkMenuInput2(Scanner in) {
-        String input;
-        boolean isValidInput = false;
+    /**
+     * Checks if the inputted value is an integer and
+     * within the specified range (ex: 1-10)
+     *
+     * @param low  lower bound of the range.
+     * @param high upper bound of the range.
+     * @return the valid input.
+     */
+    public static int checkIntRange(int low, int high) {
+        Scanner in = new Scanner(System.in);
+        int input = 0;
+        boolean valid = false;
 
-        // simple input check
-        do {
-            input = in.nextLine();
-
-            if (input.equals("1") || input.equals("2")) {
-                isValidInput = true;
+        while (!valid) {
+            if (in.hasNextInt()) {
+                input = in.nextInt();
+                if (input <= high && input >= low) {
+                    valid = true;
+                } else {
+                    System.out.print("Invalid range; please try again: ");
+                }
             } else {
+                in.next(); //clear invalid string
                 System.out.print("Invalid input; please try again: ");
             }
-        } while (!isValidInput);
-
+        }
         return input;
     }
 
-    public static String checkMenuInput3(Scanner in) {
-        String input;
-        boolean isValidInput = false;
+    public static int promptRocchioResults(Scanner in, int size) {
+        int numOfResults;
+        try {
+            System.out.print("Enter the number of results to be shown (skip for all):\n >> ");
+            numOfResults = Integer.parseInt(in.nextLine());
 
-        // simple input check
-        do {
-            input = in.nextLine();
-
-            if (input.equals("1") || input.equals("2") || input.equals("3")) {
-                isValidInput = true;
-            } else {
-                System.out.print("Invalid input; please try again: ");
+            // error handling: if the requested number of results exceeds the max, set it to the max
+            if (numOfResults > size) {
+                numOfResults = size;
             }
-        } while (!isValidInput);
-
-        return input;
-    }
-
-    public static String checkMenuInput4(Scanner in) {
-        String input;
-        boolean isValidInput = false;
-
-        // simple input check
-        do {
-            input = in.nextLine();
-
-            if (input.equals("1") || input.equals("2") || input.equals("3") || input.equals("4")) {
-                isValidInput = true;
-            } else {
-                System.out.print("Invalid input; please try again: ");
-            }
-        } while (!isValidInput);
-
-        return input;
-    }
-
-    public static String checkMenuInput5(Scanner in) {
-        String input;
-        boolean isValidInput = false;
-
-        // simple input check
-        do {
-            input = in.nextLine();
-
-            if (input.equals("1") || input.equals("2") || input.equals("3") || input.equals("4") || input.equals("5")) {
-                isValidInput = true;
-            } else {
-                System.out.print("Invalid input; please try again: ");
-            }
-        } while (!isValidInput);
-
-        return input;
-    }
-
-    public static String checkMenuInput6(Scanner in) {
-        String input;
-        boolean isValidInput = false;
-
-        // simple input check
-        do {
-            input = in.nextLine();
-
-            if (input.equals("1") || input.equals("2") || input.equals("3") || input.equals("4") || input.equals("5")
-                    || input.equals("0")) {
-                isValidInput = true;
-            } else {
-                System.out.print("Invalid input; please try again: ");
-            }
-        } while (!isValidInput);
-
-        return input;
+        } catch (NumberFormatException e) {
+            numOfResults = size;
+        }
+        return numOfResults;
     }
 }

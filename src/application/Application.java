@@ -7,6 +7,7 @@ import application.documents.*;
 import application.indexes.*;
 import application.queries.*;
 import application.text.*;
+import application.utilities.CheckInput;
 import application.utilities.Menu;
 import application.utilities.IndexUtility;
 
@@ -62,8 +63,7 @@ public class Application {
         Scanner in = new Scanner(System.in);
         closeables.add(in);
 
-        String input = Menu.showBuildOrQueryIndexMenu(in);
-
+        int input = Menu.showBuildOrQueryIndexMenu();
         /* 1. At startup, ask the user for the name of a directory that they would like to index,
           and construct a DirectoryCorpus from that directory. */
         String directoryString = promptCorpusDirectory(in);
@@ -72,30 +72,30 @@ public class Application {
 
         // depending on the user's input, either build the index from scratch or read from an on-disk index
         switch (input) {
-            case "1" -> initializeComponents(allDirectoryPaths);
-            case "2" -> readFromComponents(allDirectoryPaths);
+            case 1 -> initializeComponents(allDirectoryPaths);
+            case 2 -> readFromComponents(allDirectoryPaths);
             default -> throw new RuntimeException("Unexpected input: " + input);
         }
 
-        input = Menu.showQueryMenu(in);
-
+        input = Menu.showQueryMenu();
         String queryMode = switch (input) {
-            case "1" -> "boolean";
-            case "2" -> "ranked";
+            case 1 -> "boolean";
+            case 2 -> "ranked";
             default -> "";
         };
 
-        if (Integer.parseInt(input) < 3) {
+        if (input < 3) {
             startQueryLoop(in, queryMode);
         } else {
-            queryMode = Menu.showClassificationMenu(in);
-
-            switch (queryMode) {
-                case "1" -> startBayesianLoop(in, currentDirectory);
-                case "2" -> startRocchioLoop(in, currentDirectory);
-                case "3" -> startKNNLoop(in, currentDirectory);
+            input = Menu.showClassificationMenu();
+            switch (input) {
+                case 1 -> startBayesianLoop(in, currentDirectory);
+                case 2 -> startRocchioLoop(in, currentDirectory);
+                case 3 -> startKNNLoop(in, currentDirectory);
+                default -> throw new RuntimeException("Unexpected input: " + input);
             }
         }
+
         closeOpenFiles();
     }
 
@@ -477,25 +477,28 @@ public class Application {
         System.out.println("Calculations complete." +
                 "\nTime elapsed: " + timeElapsedInSeconds + " seconds");
 
-        String input;
+        int input;
 
         do {
-            input = Menu.showRocchioMenu(in);
+            input = Menu.showRocchioMenu();
 
             switch (input) {
                 // classify a document
-                case "1" -> {
+                case 1 -> {
                     getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
                     System.out.print("Enter the directory's subfolder:\n >> ");
                     String subfolder = currentDirectory + in.nextLine();
-                    IndexUtility.displayDocuments(corpora.get(subfolder));
 
-                    System.out.print("Enter the document ID:\n >> ");
-                    int documentID = Integer.parseInt(in.nextLine());
-
-                    displayRocchioResults(rocchio, subfolder, documentID);
+                    try {
+                        IndexUtility.displayDocuments(corpora.get(subfolder));
+                        System.out.print("Enter the document ID:\n >> ");
+                        int documentID = Integer.parseInt(in.nextLine());
+                        displayRocchioResults(rocchio, subfolder, documentID);
+                    } catch (NullPointerException e) {
+                        System.out.println("The path does not exist; please try again.");
+                    }
                 } // classify all documents
-                case "2" -> {
+                case 2 -> {
                     getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
                     System.out.print("Enter the directory's subfolder:\n >> ");
                     String subfolder = currentDirectory + in.nextLine();
@@ -509,24 +512,13 @@ public class Application {
                     }
 
                 } // get a centroid vector
-                case "3" -> {
+                case 3 -> {
                     getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
                     System.out.print("Enter the directory's subfolder:\n >> ");
                     String subfolder = currentDirectory + in.nextLine();
                     List<Double> centroid = rocchio.getCentroid(subfolder);
 
-                    int numOfResults;
-                    try {
-                        System.out.print("Enter the number of results to be shown (skip for all):\n >> ");
-                        numOfResults = Integer.parseInt(in.nextLine());
-
-                        // error handling: if the requested number of results exceeds the max, set it to the max
-                        if (numOfResults > centroid.size()) {
-                            numOfResults = centroid.size();
-                        }
-                    } catch (NumberFormatException e) {
-                        numOfResults = centroid.size();
-                    }
+                    int numOfResults = CheckInput.checkIntRange(0, centroid.size());
 
                     List<String> vocabulary = corpusIndexes.get(rootDirectoryPath).getVocabulary();
 
@@ -536,7 +528,7 @@ public class Application {
                                 (i < numOfResults - 1 ? "), " : ")\n"));
                     }
                 } // get a document weight vector
-                case "4" -> {
+                case 4 -> {
                     try {
                         getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
                         System.out.print("Enter the directory's subfolder:\n >> ");
@@ -548,29 +540,17 @@ public class Application {
 
                         List<String> vocabulary = corpusIndexes.get(rootDirectoryPath).getVocabulary();
                         List<Double> weightVector = rocchio.getVector(subfolder, documentID);
-                        int numOfResults;
-
-                        try {
-                            System.out.print("Enter the number of results to be shown (skip for all):\n >> ");
-                            numOfResults = Integer.parseInt(in.nextLine());
-
-                            // error handling: if the requested number of results exceeds the max, set it to the max
-                            if (numOfResults > vocabulary.size()) {
-                                numOfResults = vocabulary.size();
-                            }
-                        } catch (NumberFormatException e) {
-                            numOfResults = vocabulary.size();
-                        }
+                        int numOfResults = CheckInput.checkIntRange(0, vocabulary.size());
 
                         for (int i = 0; i < numOfResults; ++i) {
                             System.out.print("(" + vocabulary.get(i) + ": " + weightVector.get(i) +
                                     (i < numOfResults - 1 ? "), " : ")\n"));
                         }
-                    } catch (NullPointerException e) {
-                        System.out.println("That combination does not exist; please try again.");
+                    } catch (NullPointerException | NumberFormatException e) {
+                        System.out.println("Invalid input; please try again.");
                     }
                 } // get a vocabulary list
-                case "5" -> {
+                case 5 -> {
                     try {
                         getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
                         System.out.print("Enter the directory's subfolder (skip for all):\n >> ");
@@ -583,7 +563,7 @@ public class Application {
                     }
                 }
             }
-        } while (!input.equals("0"));
+        } while (input != 0);
     }
 
     private static void startKNNLoop(Scanner in, String rootDirectoryPath) {

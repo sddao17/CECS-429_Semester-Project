@@ -7,17 +7,17 @@ import java.util.Scanner;
 
 public class Menu {
 
-    public static String showBuildOrQueryIndexMenu(Scanner in) {
+    public static int showBuildOrQueryIndexMenu() {
         System.out.printf("""
                 %nSelect an option:
                 1. Build a new index
                 2. Query an on-disk index
                  >>\040""");
 
-        return CheckInput.checkMenuInput2(in);
+        return CheckInput.checkIntRange(0, 2);
     }
 
-    public static String showQueryMenu(Scanner in) {
+    public static int showQueryMenu() {
         System.out.printf("""
                 %nSelect a query method:
                 1. Boolean queries
@@ -25,10 +25,10 @@ public class Menu {
                 3. Classify documents
                  >>\040""");
 
-        return CheckInput.checkMenuInput3(in);
+        return CheckInput.checkIntRange(0, 3);
     }
 
-    public static String showClassificationMenu(Scanner in) {
+    public static int showClassificationMenu() {
         System.out.printf("""
                 %nSelect a classification method:
                 1. Bayesian
@@ -36,10 +36,10 @@ public class Menu {
                 3. kNN
                  >>\040""");
 
-        return CheckInput.checkMenuInput3(in);
+        return CheckInput.checkIntRange(0, 3);
     }
 
-    public static String showRocchioMenu(Scanner in) {
+    public static int showRocchioMenu() {
         System.out.printf("""
                 %nSelect an option:
                 1. Classify a document
@@ -50,7 +50,7 @@ public class Menu {
                 0. Quit
                  >>\040""");
 
-        return CheckInput.checkMenuInput6(in);
+        return CheckInput.checkIntRange(0, 5);
     }
 
     public static void showHelpMenu(int vocabPrintSize) {

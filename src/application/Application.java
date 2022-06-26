@@ -519,7 +519,7 @@ public class Application {
                     List<Double> centroid = rocchio.getCentroid(subfolder);
 
                     System.out.print("Enter the number of results to be shown (skip for all):\n >> ");
-                    int numOfResults = CheckInput.checkIntRange(0, centroid.size());
+                    int numOfResults = CheckInput.promptNumOfResults(in, centroid.size());
 
                     List<String> vocabulary = corpusIndexes.get(rootDirectoryPath).getVocabulary();
 
@@ -543,7 +543,7 @@ public class Application {
                         List<Double> weightVector = rocchio.getVector(subfolder, documentID);
 
                         System.out.print("Enter the number of results to be shown (skip for all):\n >> ");
-                        int numOfResults = CheckInput.promptRocchioResults(in, vocabulary.size());
+                        int numOfResults = CheckInput.promptNumOfResults(in, vocabulary.size());
 
                         for (int i = 0; i < numOfResults; ++i) {
                             System.out.print("(" + vocabulary.get(i) + ": " + weightVector.get(i) +

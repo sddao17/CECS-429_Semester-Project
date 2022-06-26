@@ -31,12 +31,12 @@ public class CheckInput {
                 System.out.print("Invalid input; please try again: ");
             }
         }
-        in.close();
         return input;
     }
 
-    public static int promptRocchioResults(Scanner in, int size) {
+    public static int promptNumOfResults(Scanner in, int size) {
         int numOfResults;
+
         try {
             numOfResults = Integer.parseInt(in.nextLine());
 

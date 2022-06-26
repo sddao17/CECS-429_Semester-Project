@@ -40,16 +40,16 @@ public class IndexUtility {
                 System.exit(0);
             }
 
-        // get all non-index directories listed within the initial path
-        for (File file : directories) {
-            String absolutePath = file.getAbsolutePath();
-            String relativePath = absolutePath.substring(absolutePath.indexOf(basePath));
-            if (!relativePath.endsWith("/index")) {
-                allDirectoryPaths.add(relativePath);
+            // get all non-index directories listed within the initial path
+            for (File file : directories) {
+                String absolutePath = file.getAbsolutePath();
+                String relativePath = absolutePath.substring(absolutePath.indexOf(basePath));
+                if (!relativePath.endsWith("/index")) {
+                    allDirectoryPaths.add(relativePath);
+                }
             }
-        }
-        } catch (StringIndexOutOfBoundsException | NullPointerException e) {
-            System.err.println("Index files were not found; please restart the program and build an index.");
+        } catch (StringIndexOutOfBoundsException e) {
+            System.err.println("Not a valid directory path; please restart the program and try again.");
             System.exit(0);
         }
         allDirectoryPaths.add(directoryPath);

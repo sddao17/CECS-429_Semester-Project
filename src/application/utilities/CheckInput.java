@@ -31,13 +31,13 @@ public class CheckInput {
                 System.out.print("Invalid input; please try again: ");
             }
         }
+        in.close();
         return input;
     }
 
     public static int promptRocchioResults(Scanner in, int size) {
         int numOfResults;
         try {
-            System.out.print("Enter the number of results to be shown (skip for all):\n >> ");
             numOfResults = Integer.parseInt(in.nextLine());
 
             // error handling: if the requested number of results exceeds the max, set it to the max

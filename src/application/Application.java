@@ -220,12 +220,12 @@ public class Application {
                     for (String term : terms) {
                         index.addTerm(term, document.getId(), currentPosition);
                         biwordIndex.addTerm(term, document.getId());
+
                         // build up L(d) for the current document
                         if (tftds.get(term) == null) {
                             tftds.put(term, 1);
                         } else {
-                            int oldTftd = tftds.get(term);
-                            tftds.replace(term, oldTftd + 1);
+                            tftds.replace(term, tftds.get(term) + 1);
                         }
                     }
                     // after each token addition, update the position count
@@ -518,6 +518,7 @@ public class Application {
                     String subfolder = currentDirectory + in.nextLine();
                     List<Double> centroid = rocchio.getCentroid(subfolder);
 
+                    System.out.print("Enter the number of results to be shown (skip for all):\n >> ");
                     int numOfResults = CheckInput.checkIntRange(0, centroid.size());
 
                     List<String> vocabulary = corpusIndexes.get(rootDirectoryPath).getVocabulary();
@@ -540,7 +541,9 @@ public class Application {
 
                         List<String> vocabulary = corpusIndexes.get(rootDirectoryPath).getVocabulary();
                         List<Double> weightVector = rocchio.getVector(subfolder, documentID);
-                        int numOfResults = CheckInput.checkIntRange(0, vocabulary.size());
+
+                        System.out.print("Enter the number of results to be shown (skip for all):\n >> ");
+                        int numOfResults = CheckInput.promptRocchioResults(in, vocabulary.size());
 
                         for (int i = 0; i < numOfResults; ++i) {
                             System.out.print("(" + vocabulary.get(i) + ": " + weightVector.get(i) +

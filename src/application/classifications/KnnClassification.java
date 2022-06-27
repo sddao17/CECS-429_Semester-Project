@@ -21,6 +21,8 @@ public class KnnClassification implements TextClassification {
     // directory map of document ids with their term frequency vectors
     private final Map<String, Map<Integer, Map<String, Double>>> allWeightVectors;
 
+    private String currDirectory;
+
     public KnnClassification(String inputRootDirectory, Map<String, DirectoryCorpus> inputCorpora,
                                  Map<String, Index<String, Posting>> inputIndexes) {
         rootDirectoryPath = inputRootDirectory;
@@ -115,6 +117,43 @@ public class KnnClassification implements TextClassification {
         }
     }
 
+    public Map<String, Double> getCandidateDistances(String directoryPath, int documentId,String currentDirectory) {
+        Map<String, Double> candidateDistances = new HashMap<>();
+        currDirectory = currentDirectory;
+        //get the disputed document in questions vector to calculate the distance
+        Map<String, Double> disputedVector = allWeightVectors.get(directoryPath).get(documentId);
+        DirectoryCorpus currentCorpus = corpora.get(directoryPath);
+
+        String subfolderHamilton = currentDirectory + "/hamilton";
+        String subfolderJay = currentDirectory + "/jay";
+        String subfolderMadison = currentDirectory + "/madison";
+
+
+                //candidateDistances.put(currentDirectory, calculateDistance(disputedVector.values().stream().toList(), disputedVector.values().stream().toList()));
+                for( Document doc : corpora.get(subfolderHamilton).getDocuments()){
+                    int docId = doc.getId();
+                    Map<String, Double> currVector = allWeightVectors.get(subfolderHamilton).get(docId);
+                    candidateDistances.put(subfolderHamilton, calculateDistance(disputedVector.values().stream().toList(), currVector.values().stream().toList()));
+                    //System.out.print(doc.getTitle()+  ": " + candidateDistances.get(subfolderHamilton) +"\n");
+                }
+
+                for( Document doc: corpora.get(subfolderJay).getDocuments()){
+                    int docId = doc.getId();
+                    Map<String, Double> currVector = allWeightVectors.get(subfolderJay).get(docId);
+                    candidateDistances.put(subfolderJay, calculateDistance(disputedVector.values().stream().toList(), currVector.values().stream().toList()));
+                    //System.out.print(doc.getTitle()+  ": " + candidateDistances.get(subfolderJay) +"\n");
+                }
+
+                for ( Document doc: corpora.get(subfolderMadison).getDocuments()){
+                    int docId = doc.getId();
+                    Map<String, Double> currVector = allWeightVectors.get(subfolderMadison).get(docId);
+                    candidateDistances.put(subfolderMadison, calculateDistance(disputedVector.values().stream().toList(), currVector.values().stream().toList()));
+                    //System.out.print(doc.getTitle()+  ": " + candidateDistances.get(subfolderMadison) +"\n");
+                }
+
+        return candidateDistances;
+    }
+
     /**
      * Calculates the Euclidean distance between two sets of points, where
      * <code>|x, y| = sqrt( sum of all( (ys - xs)^2 ) )</code>.
@@ -134,7 +173,13 @@ public class KnnClassification implements TextClassification {
     }
     @Override
     public Map.Entry<String, Double> classifyDocument(String directoryPath, int documentId) {
-        return null;
+        Map<String, Double> candidateDistances = getCandidateDistances(directoryPath, documentId, currDirectory);
+
+        // once all the distances are calculated, return the directory of the lowest distance
+        PriorityQueue<Map.Entry<String, Double>> priorityQueue = new PriorityQueue<>(Map.Entry.comparingByValue());
+        priorityQueue.addAll(candidateDistances.entrySet());
+
+        return priorityQueue.poll();
     }
 
     @Override
@@ -151,4 +196,8 @@ public class KnnClassification implements TextClassification {
     public List<Double> getVector(String directoryPath, int documentId) {
         return allWeightVectors.get(directoryPath).get(documentId).values().stream().toList();
     }
+
+
+
+
 }

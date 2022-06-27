@@ -574,7 +574,7 @@ public class Application {
         System.out.println("\nCalculating...");
         long startTime = System.nanoTime();
 
-        KnnClassification knn = new KnnClassification(rootDirectoryPath, corpora, corpusIndexes);
+        KnnClassification knn  = new KnnClassification(rootDirectoryPath, corpora, corpusIndexes);
 
         long endTime = System.nanoTime();
         double timeElapsedInSeconds = (double) (endTime - startTime) / 1_000_000_000;
@@ -594,10 +594,12 @@ public class Application {
                     String subfolder = currentDirectory + in.nextLine();
 
                     try {
+                        //System.out.print("Enter the k value:\n >> ");
+                        int kValue = 3;
                         IndexUtility.displayDocuments(corpora.get(subfolder));
                         System.out.print("Enter the document ID:\n >> ");
                         int documentID = Integer.parseInt(in.nextLine());
-                        //displayRocchioResults(knn, subfolder, documentID);
+                        displayKnnResults(knn, subfolder, documentID, kValue);
                     } catch (NullPointerException e) {
                         System.out.println("The path does not exist; please try again.");
                     }
@@ -606,16 +608,18 @@ public class Application {
                     getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
                     System.out.print("Enter the directory's subfolder:\n >> ");
                     String subfolder = currentDirectory + in.nextLine();
+                    //System.out.print("Enter the k value:\n >> ");
+                    int kValue = 3;
 
                     try {
                         for (Document document : corpora.get(subfolder).getDocuments()) {
-                            //displayRocchioResults(knn, subfolder, document.getId());
+                            displayKnnResults(knn, subfolder, document.getId(), kValue);
                         }
                     } catch (NullPointerException e) {
                         System.out.println("The subfolder does not exist; please try again.");
                     }
 
-                } // get a document weight vector
+                } // get a document vector
                 case 3 -> {
                     try {
                         getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
@@ -633,14 +637,13 @@ public class Application {
                         int numOfResults = CheckInput.promptNumOfResults(in, vocabulary.size());
 
                         for (int i = 0; i < numOfResults; ++i) {
-                            System.out.print("(" + weightVector.get(i) +
+                            System.out.print("(" + vocabulary.get(i) + ": " + weightVector.get(i) +
                                     (i < numOfResults - 1 ? "), " : ")\n"));
                         }
                     } catch (NullPointerException | NumberFormatException e) {
                         System.out.println("Invalid input; please try again.");
                     }
-                }
-                 // get the vocabulary list
+                } // get a vocabulary list
                 case 4 -> {
                     try {
                         getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
@@ -652,7 +655,7 @@ public class Application {
                     } catch (NullPointerException e) {
                         System.out.println("The subfolder does not exist; please try again.");
                     }
-                } // get a vocabulary list
+                }
             }
         } while (input != 0);
     }
@@ -687,7 +690,19 @@ public class Application {
                 corpora.get(subfolder).getDocument(documentID).getTitle() +" is to " + lastFolder + ".");
     }
 
-    public static void displayKnnResults(){
+    public static void displayKnnResults(KnnClassification knn , String subfolder, int documentID, int kValue){
+        Map<String, Double> candidateDistances = knn.getCandidateDistances(subfolder, documentID, currentDirectory);
+        int counter = 0;
+        System.out.println();
+        for (Map.Entry<String, Double> entry : candidateDistances.entrySet()){
+            while(!(counter >= kValue)){
+                String currentFolder = entry.getKey().substring(entry.getKey().lastIndexOf("/"));
+                double currDistance = entry.getValue();
+                System.out.println(corpora.get(subfolder).getDocument(documentID).getTitle() + ": " + currDistance);
+                counter += 1;
+            }
+        }
+
 
     }
 

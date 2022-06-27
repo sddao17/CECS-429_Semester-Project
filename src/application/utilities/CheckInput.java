@@ -41,9 +41,7 @@ public class CheckInput {
             numOfResults = Integer.parseInt(in.nextLine());
 
             // error handling: if the requested number of results exceeds the max, set it to the max
-            if (numOfResults > size) {
-                numOfResults = size;
-            }
+            numOfResults = Math.min(numOfResults, size);
         } catch (NumberFormatException e) {
             numOfResults = size;
         }

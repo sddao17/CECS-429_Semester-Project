@@ -41,6 +41,7 @@ public class Application {
     private static final Map<String, Index<String, Posting>> biwordIndexes = new HashMap<>();
     private static final Map<String, KGramIndex> kGramIndexes = new HashMap<>();
     private static final Map<String, List<Double>> lds = new HashMap<>();
+    private static DocumentWeightScorer documentScorer;
 
     public static boolean enabledLogs = false;
     public static final List<Closeable> closeables = new ArrayList<>(); // considers all cases of indexing
@@ -79,13 +80,13 @@ public class Application {
         }
 
         input = Menu.showQueryMenu();
-        String queryMode = switch (input) {
-            case 1 -> "boolean";
-            case 2 -> "ranked";
-            default -> "";
-        };
 
         if (input < 3) {
+            String queryMode = switch (input) {
+                case 1 -> "boolean";
+                case 2 -> "ranked";
+                default -> throw new RuntimeException("Unexpected input: " + input);
+            };
             startQueryLoop(in, queryMode);
         } else {
             input = Menu.showClassificationMenu();
@@ -167,6 +168,7 @@ public class Application {
                     new DiskBiwordIndex(DiskIndexReader.readBTree(indexPaths.get("biwordBTreeBin")),
                     indexPaths.get("biwordBTreeBin"), indexPaths.get("biwordBin")));
             kGramIndexes.put(indexPaths.get("kGramsBin"), DiskIndexReader.readKGrams(indexPaths.get("kGramsBin")));
+            documentScorer = new DocumentWeightScorer(currentDirectory + "/index/docWeights.bin");
 
             Index<String, Posting> corpusIndex = corpusIndexes.get(indexPaths.get("bTreeBin"));
             Index<String, Posting> biwordIndex = biwordIndexes.get(indexPaths.get("biwordBin"));
@@ -174,6 +176,7 @@ public class Application {
             // if we're reading from disk, then we know it is Closeable
             closeables.add((Closeable) corpusIndex);
             closeables.add((Closeable) biwordIndex);
+            closeables.add(documentScorer);
 
             System.out.printf("""
                     Reading complete.
@@ -377,8 +380,6 @@ public class Application {
     private static int displayRankedResults(String query) {
         DirectoryCorpus corpus = corpora.get(currentDirectory);
         Index<String, Posting> corpusIndex = corpusIndexes.get(currentDirectory);
-        DocumentWeightScorer documentScorer = new DocumentWeightScorer(currentDirectory + "/index/docWeights.bin");
-        closeables.add(documentScorer);
 
         documentScorer.storeTermAtATimeDocuments(corpusIndex, query);
         List<Map.Entry<Integer, Double>> rankedEntries = documentScorer.getRankedEntries(MAX_DISPLAYED_RANKED_ENTRIES);
@@ -660,18 +661,6 @@ public class Application {
         } while (input != 0);
     }
 
-    private static void closeOpenFiles() {
-        // close all open file resources case-by-case
-        for (Closeable stream : closeables) {
-            try {
-                stream.close();
-            } catch (NullPointerException ignored) {
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
     private static void displayRocchioResults(RocchioClassification rocchio, String subfolder, int documentID) {
         Map<String, Double> candidateDistances = rocchio.getCandidateDistances(subfolder, documentID);
 
@@ -687,7 +676,7 @@ public class Application {
         String lastFolder = centroidDistance.getKey().substring(centroidDistance.getKey().lastIndexOf("/"));
 
         System.out.println("Lowest distance for " +
-                corpora.get(subfolder).getDocument(documentID).getTitle() +" is to " + lastFolder + ".");
+                corpora.get(subfolder).getDocument(documentID).getTitle() + " is to " + lastFolder + ".");
     }
 
     public static void displayKnnResults(KnnClassification knn , String subfolder, int documentID, int kValue){
@@ -704,6 +693,17 @@ public class Application {
         }
 
 
+    }
+
+    private static void closeOpenFiles() {
+        // close all open file resources case-by-case
+        for (Closeable stream : closeables) {
+            try {
+                stream.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (NullPointerException ignored) {}
+        }
     }
 
     public static Map<String, DirectoryCorpus> getCorpora() {

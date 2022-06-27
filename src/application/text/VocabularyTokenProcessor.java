@@ -32,12 +32,12 @@ public class VocabularyTokenProcessor extends TokenProcessor {
         for (String currentToken : splitTerms) {
             // 4. Convert the token to lowercase.
             currentToken = convertToLowercase(currentToken);
-
             // 5. Stem the token using an implementation of the Porter2 stemmer.
             currentToken = stem(currentToken);
+
             // continue to remove any special characters from split terms
-            if (currentToken.length() > 0 && !(Character.isLetterOrDigit(currentToken.charAt((0))) &&
-                    Character.isLetterOrDigit(currentToken.charAt((currentToken.length() - 1))))) {
+            if (currentToken.length() > 0 && (isNotAlphanumeric(currentToken.charAt((0))) ||
+                    isNotAlphanumeric(currentToken.charAt((currentToken.length() - 1))))) {
                 terms.addAll(processToken(currentToken));
             } else if (currentToken.length() > 0) {
                 terms.add(currentToken);

@@ -1,7 +1,6 @@
 
 package application.classifications;
 
-import application.Application;
 import application.documents.DirectoryCorpus;
 import application.documents.Document;
 import application.documents.DocumentWeightScorer;
@@ -98,7 +97,7 @@ public class RocchioClassification implements TextClassification {
 
                 // iterate through the vocabulary for each index
                 for (String term : vocabulary) {
-                    List<Posting> postings = currentIndex.getPostings(term);
+                    List<Posting> postings = currentIndex.getPositionlessPostings(term);
 
                     // for each posting, calculate the w(d, t) values and accumulate them into our weight vectors
                     for (Posting currentPosting : postings) {
@@ -180,10 +179,10 @@ public class RocchioClassification implements TextClassification {
     }
 
     /**
-     * Classifies the document using Rocchio Classification (according to the centroid its closest class).
+     * Classifies the document using Rocchio Classification (according to the centroid of its closest class).
      * @param directoryPath the path of the subdirectory to the document
      * @param documentId the document ID of the document
-     * @return the classification of the document's subdirectory as a String
+     * @return the classification of the document in the form of <code>(subdirectory, distance)<code/>
      */
     @Override
     public Map.Entry<String, Double> classifyDocument(String directoryPath, int documentId) {
@@ -198,9 +197,9 @@ public class RocchioClassification implements TextClassification {
 
     /**
      * Classifies each document within the set of documents within a subdirectory using Rocchio Classification
-     * (according to the centroid its closest class).
+     * (according to the centroid of its closest class).
      * @param directoryPath the path of the subdirectory to the document
-     * @return the classification of the documents' subdirectory as a String
+     * @return the classification of the documents in the form of <code>List<(subdirectory, distance)><code/>
      */
     public List<Map.Entry<String, Double>> classifyDocuments(String directoryPath) {
         List<Map.Entry<String, Double>> classifications = new ArrayList<>();
@@ -261,6 +260,6 @@ public class RocchioClassification implements TextClassification {
      */
     @Override
     public List<String> getVocabulary(String directoryPath) {
-        return Application.getKGramIndexes().get(directoryPath + "/index/kGrams.bin").getVocabulary();
+        return allIndexes.get(directoryPath).getVocabulary();
     }
 }

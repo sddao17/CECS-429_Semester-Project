@@ -19,7 +19,6 @@ public class DiskIndexReader {
         try {
             DB database = DBMaker.openFile(pathToBTreeBin).deleteFilesAfterClose().closeOnExit().make();
             bTree = BTree.createInstance((DBStore) database);
-
         } catch (IOException | IOError e) {
             System.err.println("Index files were not found; please restart the program and build an index.");
             System.exit(0);
@@ -47,7 +46,6 @@ public class DiskIndexReader {
                 int currentBytePosition = dataStream.readInt();
                 bTree.insert(term.toString(), currentBytePosition, false);
             }
-
         } catch (IOException e) {
             System.err.println("Index files were not found; please restart the program and build an index.");
             System.exit(0);
@@ -112,7 +110,6 @@ public class DiskIndexReader {
 
                 kgramIndex.addDistinctKGram(kGram.toString());
             }
-
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -121,14 +118,13 @@ public class DiskIndexReader {
     }
 
 
-    public static double readLdFromBinFile(RandomAccessFile randomAccessor, int documentId) {
+    public static double readLd(RandomAccessFile randomAccessor, int documentId) {
         int bytePosition = documentId * Double.BYTES;
         double ld = 0;
 
         try {
             randomAccessor.seek(bytePosition);
             ld = randomAccessor.readDouble();
-
         } catch (IOException e) {
             e.printStackTrace();
         }

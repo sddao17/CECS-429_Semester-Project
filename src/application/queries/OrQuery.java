@@ -37,6 +37,23 @@ public class OrQuery implements QueryComponent {
 		return unions;
 	}
 
+	@Override
+	public List<Posting> getPositionlessPostings(Index<String, Posting> index, TokenProcessor processor) {
+		List<Posting> unions = new ArrayList<>();
+
+		/* Program the merge for an OrQuery, by gathering the postings of the composed QueryComponents and
+		  unionizing the resulting postings. */
+		for (QueryComponent mComponent : mComponents) {
+			// store current posting for readability
+			List<Posting> currentPostings = mComponent.getPositionlessPostings(index, processor);
+
+			// unionize the current unions with the new postings
+			unions = unionizePostings(unions, currentPostings);
+		}
+
+		return unions;
+	}
+
 	private List<Posting> unionizePostings(List<Posting> leftList, List<Posting> rightList) {
 		List<Posting> unions = new ArrayList<>();
 

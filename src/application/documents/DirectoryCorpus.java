@@ -29,6 +29,8 @@ public class DirectoryCorpus implements DocumentCorpus {
 
 	private final Path mDirectoryPath;
 
+	private boolean isRoot;
+
 	/**
 	 * Constructs a corpus over an absolute directory path.
 	 * Before calling GetDocuments(), you must register a FileDocumentFactory with the RegisterFileDocumentFactory
@@ -36,8 +38,9 @@ public class DirectoryCorpus implements DocumentCorpus {
 	 * method can simplify this initialization.
 	 * @see FileDocumentFactory
 	 */
-	public DirectoryCorpus(Path directoryPath) {
+	public DirectoryCorpus(Path directoryPath, boolean inputIsRoot) {
 		this(directoryPath, s->true);
+		isRoot = inputIsRoot;
 	}
 
 	/**
@@ -80,8 +83,8 @@ public class DirectoryCorpus implements DocumentCorpus {
 
 			public FileVisitResult preVisitDirectory(Path dir,
 													 BasicFileAttributes attrs) {
-				// make sure we only process the current working directory
-				if (mDirectoryPath.equals(dir)) {
+				// make sure we only process the current working directory if it isn't the root
+				if (mDirectoryPath.equals(dir) || isRoot) {
 					return FileVisitResult.CONTINUE;
 				}
 				return FileVisitResult.SKIP_SUBTREE;
@@ -153,8 +156,8 @@ public class DirectoryCorpus implements DocumentCorpus {
 	/**
 	 * Constructs a corpus over a directory of various types of documents.
 	 */
-	public static DirectoryCorpus loadDirectory(Path absolutePath) {
-		DirectoryCorpus corpus = new DirectoryCorpus(absolutePath);
+	public static DirectoryCorpus loadDirectory(Path absolutePath, boolean inputIsRoot) {
+		DirectoryCorpus corpus = new DirectoryCorpus(absolutePath, inputIsRoot);
 		corpus.registerFileDocumentFactory(".txt", TextFileDocument::loadTextFileDocument);
 		corpus.registerFileDocumentFactory(".json", JsonFileDocument::loadJsonFileDocument);
 		return corpus;
@@ -164,8 +167,8 @@ public class DirectoryCorpus implements DocumentCorpus {
 	 * Constructs a corpus over a directory of simple text documents.
 	 * @param fileExtension The extension of the text documents to load, e.g., ".txt".
 	 */
-	public static DirectoryCorpus loadTextDirectory(Path absolutePath, String fileExtension) {
-		DirectoryCorpus corpus = new DirectoryCorpus(absolutePath);
+	public static DirectoryCorpus loadTextDirectory(Path absolutePath, String fileExtension, boolean inputIsRoot) {
+		DirectoryCorpus corpus = new DirectoryCorpus(absolutePath, inputIsRoot);
 		corpus.registerFileDocumentFactory(fileExtension, TextFileDocument::loadTextFileDocument);
 		return corpus;
 	}
@@ -174,8 +177,8 @@ public class DirectoryCorpus implements DocumentCorpus {
 	 * Constructs a corpus over a directory of JSON documents.
 	 * @param fileExtension The extension of the text documents to load, e.g., ".json".
 	 */
-	public static DirectoryCorpus loadJsonDirectory(Path absolutePath, String fileExtension) {
-		DirectoryCorpus corpus = new DirectoryCorpus(absolutePath);
+	public static DirectoryCorpus loadJsonDirectory(Path absolutePath, String fileExtension, boolean inputIsRoot) {
+		DirectoryCorpus corpus = new DirectoryCorpus(absolutePath, inputIsRoot);
 		corpus.registerFileDocumentFactory(fileExtension, JsonFileDocument::loadJsonFileDocument);
 		return corpus;
 	}

@@ -13,8 +13,7 @@ public class DiskPositionalIndex implements Index<String, Posting>, Closeable {
     private final BTree<String, Integer> bTree;
     private RandomAccessFile randomAccessPosting;   // keep the Posting file open for getPosting() calls
 
-    public DiskPositionalIndex(BTree<String, Integer> inputBTree, String newPathToBTreeBin,
-                               String newPathToPostingsBin) {
+    public DiskPositionalIndex(BTree<String, Integer> inputBTree, String newPathToBTreeBin, String newPathToPostingsBin) {
         bTree = inputBTree;
         pathToBTreeBin = newPathToBTreeBin;
 

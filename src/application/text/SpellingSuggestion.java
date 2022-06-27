@@ -9,7 +9,7 @@ import application.indexes.Posting;
 import java.util.*;
 
 /**
- * Suggests a suitable correction to a given token given the k-grams of existing vocabulary type
+ * Suggests a suitable correction to a given token given the k-grams of existing vocabulary types
  * using Jaccard coefficients and the Levenshtein edit distance algorithm.
  */
 public class SpellingSuggestion {
@@ -33,13 +33,6 @@ public class SpellingSuggestion {
             jaccardCoeffThreshold += (1.0 - JACCARD_COEFF_THRESHOLD) / (1 + Math.log(token.length()));
         }
 
-        if (Application.enabledLogs) {
-            System.out.println("--------------------------------------------------------------------------------" +
-                    "\n`" + token + "`" +
-                    "\nK-gram overlap ratio: " + kGramOverlapThreshold +
-                    "\nJaccard coefficient: " + jaccardCoeffThreshold);
-        }
-
         List<String> candidates = getCandidates(token, kGramOverlapThreshold, jaccardCoeffThreshold);
 
         // if there are no candidates, simply return the original token
@@ -47,17 +40,29 @@ public class SpellingSuggestion {
             return token;
         }
 
+        if (Application.enabledLogs) {
+            System.out.println("--------------------------------------------------------------------------------" +
+                    "\n`" + token + "`" +
+                    "\nK-gram overlap ratio: " + kGramOverlapThreshold +
+                    "\nJaccard coefficient: " + jaccardCoeffThreshold +
+                    "\n\nCandidate types: " + candidates + "\n");
+        }
+
         Map<String, Integer> candidateEdits = getCandidateEdits(candidates, token);
         List<String> finalCandidates = getFinalCandidates(candidateEdits);
+
+        if (Application.enabledLogs) {
+            candidateEdits.forEach(
+                    (candidate, edit) ->
+                            System.out.println("(originalType, candidate, edits) ---> (" +
+                                    token + ", " + candidate + ", " + edit + ")"));
+            System.out.println("\nFinal types: " + finalCandidates);
+        }
+
         String finalReplacement = getFinalReplacement(corpusIndex, finalCandidates, token);
 
         if (Application.enabledLogs) {
-            System.out.println("Candidate types: " + candidates + "\n");
-            candidateEdits.forEach(
-                    (candidate, edit) ->
-                            System.out.println("(candidate, edits) ---> (" + candidate + ", " + edit + ")"));
-            System.out.println("\nFinal types: " + finalCandidates +
-                    "\nFinal replacement: `" + finalReplacement + "`" +
+            System.out.println("\nFinal replacement: `" + finalReplacement + "`" +
                     "\n--------------------------------------------------------------------------------");
         }
 
@@ -80,7 +85,8 @@ public class SpellingSuggestion {
 
             /* 1. Select all vocabulary types that have k-grams in common with the misspelled term,
               as described in lecture. */
-            if (meetsOverlapThreshold(tokenKGrams, vocabularyTokenKGrams, kGramOverlapThreshold)) {
+            if (!vocabularyType.equals(token) &&
+                    meetsOverlapThreshold(tokenKGrams, vocabularyTokenKGrams, kGramOverlapThreshold)) {
                 // 2. Calculate the Jaccard coefficient for each type in the selection.
                 double jaccardCoeff = calculateJaccardCoeff(tokenKGrams, vocabularyTokenKGrams);
 
@@ -111,13 +117,13 @@ public class SpellingSuggestion {
         priorityQueue.addAll(candidateEdits.entrySet());
 
         List<String> finalCandidates = new ArrayList<>();
-        int max = Integer.MAX_VALUE;
+        int min = Integer.MAX_VALUE;
 
         // 4a. Select the type with the lowest edit distance.
-        while (priorityQueue.peek() != null && priorityQueue.peek().getValue() <= max) {
+        while (priorityQueue.peek() != null && priorityQueue.peek().getValue() <= min) {
             Map.Entry<String, Integer> entry = priorityQueue.poll();
             finalCandidates.add(entry.getKey());
-            max = entry.getValue();
+            min = entry.getValue();
         }
 
         return finalCandidates;
@@ -137,6 +143,10 @@ public class SpellingSuggestion {
             String candidateStemmed = stemmer.stem(currentCandidate);
             int dft = corpusIndex.getPositionlessPostings(candidateStemmed).size();
 
+            if (Application.enabledLogs) {
+                System.out.println("---> `" + currentCandidate + "` ---> df(t): " + dft);
+            }
+
             if (dft > max) {
                 finalReplacement = currentCandidate;
                 max = dft;
@@ -150,7 +160,6 @@ public class SpellingSuggestion {
                                          double kGramOverlapThreshold) {
         // add the intersection k-grams
         List<String> intersections = intersectKGrams(originalKGrams, candidateKGrams);
-
         // check if the k-gram overlap meets the threshold
         double kGramOverlap = (double) intersections.size() / originalKGrams.size();
 
@@ -165,7 +174,7 @@ public class SpellingSuggestion {
         return (double) intersections.size() / unions.size();
     }
 
-    public static List<String> intersectKGrams(List<String> leftList, List<String> rightList) {
+    public List<String> intersectKGrams(List<String> leftList, List<String> rightList) {
         List<String> intersections = new ArrayList<>();
 
         int leftIndex = 0;
@@ -192,7 +201,7 @@ public class SpellingSuggestion {
         return intersections;
     }
 
-    public static List<String> unionizeKGrams(List<String> leftList, List<String> rightList) {
+    public List<String> unionizeKGrams(List<String> leftList, List<String> rightList) {
         List<String> unions = new ArrayList<>();
 
         int leftIndex = 0;
@@ -229,7 +238,13 @@ public class SpellingSuggestion {
         return unions;
     }
 
-    public static int calculateLevenshteinDistance(String leftToken, String rightToken) {
+    /**
+     * Calculates the lowest edit distance of two tokens using dynamic programming.
+     * @param leftToken the left token to compare, representing the characters of `i` in the algorithm
+     * @param rightToken the right token to compare, representing the characters of `j` in the algorithm
+     * @return the lowest edit distance of the tokens
+     */
+    public int calculateLevenshteinDistance(String leftToken, String rightToken) {
         /* dynamic programming algorithm from lecture material:
           d(i, j) =
           { i, if j = 0
@@ -237,120 +252,109 @@ public class SpellingSuggestion {
           { min( (d(i - 1, j) + 1, d(i, j - 1) + 1, d(i - 1, j - 1) + (u(i) =/= v(j)) )
 
           Ex: leftToken = fries, rightToken = fryz
-               (j) f  r  y  z
-              +--------------
-          (i) | 0  1  2  3  4
-           f  | 1  0  1  2  3
-           r  | 2  1  0  1  2
-           i  | 3  2  1  1  2
-           e  | 4  3  2  2  2
-           s  | 5  4  3  3  3 < levenshtein edit distance = 3 */
+            (j) f  r  y  z
+          (i) ------------
+           f  | 0  1  2  3
+           r  | 1  0  1  2
+           i  | 2  1  1  2
+           e  | 3  2  2  2
+           s  | 4  3  3  3 < levenshtein edit distance = 3 */
         // index pointers to the last character of the left /right token
-        int i = leftToken.length() - 1;
-        int j = rightToken.length() - 1;
+        int i = leftToken.length();
+        int j = rightToken.length();
 
-        if (i < 0 && j >= 0) {
-            return j + 1;
-        } else if (j < 0 && i >= 0) {
-            return i + 1;
-        } else if (i < 0) {
+        if (i == 0 && j > 0) {
+            return j;
+        } else if (j == 0 && i > 0) {
+            return i;
+        } else if (i == 0) {
             return 0;
         }
 
-        return calculateEdits(leftToken, rightToken, i, j);
+        // memoization - store values of visited table cells
+        int[][] visitedMemo = new int[i][j];
+        for (int[] row : visitedMemo) {
+            Arrays.fill(row, -1);
+        }
+
+        int finalEdit = calculateEdits(leftToken, rightToken, i - 1, j - 1, visitedMemo);
+
+        if (Application.enabledLogs) {
+            visitedMemo[i - 1][j - 1] = finalEdit;
+            System.out.println("(" + leftToken + ", " + rightToken + ")\n" +
+                    getGridAsString(visitedMemo, leftToken, rightToken));
+        }
+
+        return finalEdit;
     }
 
-    public static int calculateEdits(String leftToken, String rightToken, int i, int j) {
+    public int calculateEdits(String leftToken, String rightToken, int i, int j, int[][] visitedMemo) {
         // top edit distance is just the value of the previous top value + 1, if it exists
-        int topEdit = ( (i - 1 >= 0) ? calculateEdits(leftToken, rightToken, i - 1, j) + 1 : Integer.MAX_VALUE );
+        int topEdit;
+        if (i - 1 >= 0) {
+            if (visitedMemo[i - 1][j] > -1) {
+                topEdit = visitedMemo[i - 1][j];
+            } else {
+                topEdit = calculateEdits(leftToken, rightToken, i - 1, j, visitedMemo) + 1;
+                visitedMemo[i - 1][j] = topEdit;
+            }
+        } else {
+            topEdit = Integer.MAX_VALUE;
+        }
+
         // left edit distance is just the value of the previous left value + 1, if it exists
-        int leftEdit = ( (j - 1 >= 0) ? calculateEdits(leftToken, rightToken, i, j - 1) + 1: Integer.MAX_VALUE );
+        int leftEdit;
+        if (j - 1 >= 0) {
+            if (visitedMemo[i][j - 1] > -1) {
+                leftEdit = visitedMemo[i][j - 1];
+            } else {
+                leftEdit = calculateEdits(leftToken, rightToken, i, j - 1, visitedMemo) + 1;
+                visitedMemo[i][j - 1] = leftEdit;
+            }
+        } else {
+            leftEdit = Integer.MAX_VALUE;
+        }
+
         /* diagonal edit distance = 0 if both index pointers are at the start of their tokens, or it = the previous
           diagonal edit distance if it exists, or it is not considered if the diagonal would be out of bounds otherwise;
           we additionally add + 1 if the current characters don't match */
         int previousDiagonal;
-
         if (i == 0 && j == 0) {
             previousDiagonal = 0;
         } else if (i - 1 >= 0 && j - 1 >= 0) {
-            previousDiagonal = calculateEdits(leftToken, rightToken, i - 1, j - 1);
+            previousDiagonal = calculateEdits(leftToken, rightToken, i - 1, j - 1, visitedMemo);
         } else {
             previousDiagonal = Integer.MAX_VALUE - 1;
         }
 
         int diagonalEdit = previousDiagonal + ( (leftToken.charAt(i) != rightToken.charAt(j)) ? 1 : 0 );
 
-        //System.out.println("i = " + i + ", j = " + j + "\n" + topEdit + ", " + leftEdit + ", " + diagonalEdit);
         return Math.min(Math.min(topEdit, leftEdit), diagonalEdit);
     }
 
-    /*
-    // testing purposes only
-    public static void main(String[] args) {
-        // testing jaccard coefficients
-        List<String> leftList = new ArrayList<>(){{
-            add("data");
-            add("is");
-            add("the");
-            add("new");
-            add("oil");
-            add("of");
-            add("digital");
-            add("economy");
-        }};
-
-        List<String> rightList = new ArrayList<>(){{
-            add("data");
-            add("is");
-            add("a");
-            add("new");
-            add("oil");
-        }};
-
-        // remember - O(n) intersections / unions involved sorted lists!
-        Collections.sort(leftList);
-        Collections.sort(rightList);
-
-        List<String> intersections = intersectKGrams(leftList, rightList);
-        List<String> unions = unionizeKGrams(leftList,rightList);
-
-        System.out.println("Intersection: " + intersections +
-                "\nUnion: " + unions +
-                "\nJC = " + intersections.size() + " / " + unions.size() +
-                "\n   = " + calculateJaccardCoeff(leftList, rightList));
-
-        // testing levenshtein edit distance
-        leftList = new ArrayList<>(){{
-            //add("mavs");
-            //add("spurs");
-            //add("lakers");
-            //add("cavs");
-            //add("fries");
-            add("aboard");
-            //add("indubitably");
-            //add("");
-            //add("");
-        }};
-
-        rightList = new ArrayList<>(){{
-            //add("rockets");
-            //add("pacers");
-            //add("warriors");
-            //add("celtics");
-            //add("fryz");
-            add("bort");
-            //add("");
-            //add("frighteningly");
-            //add("");
-        }};
-
-        for (int i = 0; i < leftList.size(); ++i) {
-            String leftToken = leftList.get(i);
-            String rightToken = rightList.get(i);
-
-            System.out.println("Levenshtein edit distance for (" + leftToken + ", " + rightToken + ") = " +
-                    calculateLevenshteinDistance(leftToken, rightToken));
-        }
-    }
+    /**
+     * Returns the integer grid as a String.
+     * @param inputGrid the provided 2D array of integers
+     * @return the 2D array as a String
      */
+    private String getGridAsString(int[][] inputGrid, String leftToken, String rightToken) {
+        StringBuilder gridToString = new StringBuilder();
+
+        gridToString.append("  (j)");
+        for (int i = 0; i < rightToken.length(); ++i) {
+            gridToString.append("  ").append(rightToken.charAt(i));
+        }
+        gridToString.append("\n(i) -").append("---".repeat(rightToken.length()));
+        int leftTokenIndex = 0;
+
+        // add each integer from the grid to the string
+        for (int[] row : inputGrid) {
+            gridToString.append("\n ").append(leftToken.charAt(leftTokenIndex)).append("  | ");
+            ++leftTokenIndex;
+            for (int column : row)
+                gridToString.append(String.format("%2s", column)).append(" ");
+        }
+
+        return gridToString.append("\n").toString();
+    }
 }

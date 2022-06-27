@@ -5,21 +5,24 @@ import application.documents.DirectoryCorpus;
 import application.documents.DocumentCorpus;
 import application.indexes.Index;
 import application.indexes.Posting;
+import application.utilities.IndexUtility;
 import org.junit.Test;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static application.Application.indexCorpus;
 import static org.junit.Assert.assertTrue;
 
 public class IndexTest {
     // run test corpus through our index
-    Path directoryPath = Path.of("./corpus/kanye-test");
-    DocumentCorpus testCorpus = DirectoryCorpus.loadDirectory(directoryPath);
-    Index<String, Posting> index = indexCorpus(testCorpus);
+    String directoryPath = "./corpus/kanye-test";
+    Map<String, String> indexPaths = IndexUtility.createIndexPathsMap(directoryPath);
+    DocumentCorpus testCorpus = DirectoryCorpus.loadDirectory(Path.of(directoryPath), false);
+    Index<String, Posting> index = indexCorpus(testCorpus, indexPaths);
     //inverted index by hand
     HashMap<String, List<Posting>> indexMap = new HashMap<>() {
         {

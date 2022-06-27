@@ -4,10 +4,13 @@ package application.documents;
 import application.Application;
 import application.indexes.DiskIndexReader;
 import application.indexes.Index;
+import application.indexes.KGramIndex;
 import application.indexes.Posting;
+import application.queries.WildcardLiteral;
 import application.text.VocabularyTokenProcessor;
 
 import java.io.Closeable;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.*;
@@ -20,16 +23,27 @@ public class DocumentWeightScorer implements Closeable {
     private static RandomAccessFile randomAccessor;
     private final Map<Integer, Double> finalAccumulators;
 
-    public DocumentWeightScorer() {
+    public DocumentWeightScorer(String inputFilePath) {
         finalAccumulators = new HashMap<>();
+
+        try {
+            randomAccessor = new RandomAccessFile(inputFilePath, "rw");
+        } catch (FileNotFoundException e) {
+            System.err.println("The `docWeights.bin` file could not be found.");
+        }
     }
 
     public void storeTermAtATimeDocuments(Index<String, Posting> index, String query) {
         VocabularyTokenProcessor processor = new VocabularyTokenProcessor();
         String[] splitQuery = query.split(" ");
         List<String> queryTerms = new ArrayList<>();
+        finalAccumulators.clear();
 
-            for (String token : splitQuery) {
+        for (String token : splitQuery) {
+            // if the token has a wildcard, allow all vocabulary types that match the pattern to accumulate points
+            if (token.contains("*")) {
+                accumulateWildcards(index, token);
+            } else {
                 List<String> splitTerms = processor.processToken(token);
 
                 // error handling - handle empty / fully non-alphanumeric tokens
@@ -37,12 +51,35 @@ public class DocumentWeightScorer implements Closeable {
                     queryTerms.add(splitTerms.get(0));
                 }
             }
+        }
+
+        accumulateTermAtATime(index, queryTerms);
+        normalizeAccumulators();
+    }
+
+    private void accumulateWildcards(Index<String, Posting> index, String wildcard) {
+        KGramIndex kGramIndex = Application.getKGramIndexes().get(Application.getCurrentDirectory() + "/index/kGrams.bin");
+
+        for (String type : kGramIndex.getVocabulary()) {
+            if (type.matches(WildcardLiteral.wildcardToRegex(wildcard))) {
+                VocabularyTokenProcessor processor = new VocabularyTokenProcessor();
+                List<String> terms = processor.processToken(type);
+
+                if (terms.size() > 0) {
+                    accumulateTermAtATime(index, new ArrayList<>(){{add(terms.get(0));}});
+                }
+            }
+        }
+    }
+
+    private void accumulateTermAtATime(Index<String, Posting> index, List<String> queryTerms) {
+        DirectoryCorpus corpus = Application.getCorpora().get(Application.getCurrentDirectory());
 
         // implement the "term at a time" algorithm from lecture;
         // 1. For each term t in the query:
         for (String term : queryTerms) {
             // N = total number of documents in the corpus
-            int n = Application.getCorpus().getCorpusSize();
+            int n = corpus.getCorpusSize();
             List<Posting> postings = index.getPositionlessPostings(term);
             // df(t) = number of documents the term has appeared in
             int dft = postings.size();
@@ -69,21 +106,9 @@ public class DocumentWeightScorer implements Closeable {
                 System.out.println("--------------------------------------------------------------------------------");
             }
         }
-
-        // iterate through all entries
-        for (Map.Entry<Integer, Double> entry : finalAccumulators.entrySet()) {
-            int currentDocumentId = entry.getKey();
-            double currentAd = entry.getValue();
-
-            // 2. For each non-zero A(d), divide A(d) by L(d), where L(d) is read from the `docWeights.bin` file.
-            if (currentAd > 0) {
-                double ld = DiskIndexReader.readLdFromBinFile(randomAccessor, currentDocumentId);
-                finalAccumulators.replace(currentDocumentId, currentAd / ld);
-            }
-        }
     }
 
-    public void acquireAccumulator(Posting posting, double wqt) {
+    private void acquireAccumulator(Posting posting, double wqt) {
         int documentId = posting.getDocumentId();
         int tftd = posting.getPositions().size();
 
@@ -92,11 +117,12 @@ public class DocumentWeightScorer implements Closeable {
 
         // debugging log
         if (Application.enabledLogs) {
+            DirectoryCorpus corpus = Application.getCorpora().get(Application.getCurrentDirectory());
             System.out.println(
-                    Application.getCorpus().getDocument(posting.getDocumentId()).getTitle() + " (ID: " + documentId + ")" +
-                            "\n---> Tf(t, d) -- " + tftd +
+                    corpus.getDocument(documentId).getTitle() + " (ID: " + documentId + ")" +
+                            "\n---> tf(t, d) -- " + tftd +
                             "\n---> w(d, t) -- " + wdt +
-                            "\n---> L(d) -- " + DiskIndexReader.readLdFromBinFile(randomAccessor, documentId));
+                            "\n---> L(d) -- " + DiskIndexReader.readLd(randomAccessor, documentId));
         }
 
         // 1 (b, iii). Increase A(d) by wd,t × wq,t.
@@ -110,11 +136,23 @@ public class DocumentWeightScorer implements Closeable {
         }
     }
 
+    private void normalizeAccumulators() {
+        // iterate through all entries
+        for (Map.Entry<Integer, Double> entry : finalAccumulators.entrySet()) {
+            int currentDocumentId = entry.getKey();
+            double currentAd = entry.getValue();
+
+            // 2. For each non-zero A(d), divide A(d) by L(d), where L(d) is read from the `docWeights.bin` file.
+            if (currentAd > 0) {
+                double ld = DiskIndexReader.readLd(randomAccessor, currentDocumentId);
+                finalAccumulators.replace(currentDocumentId, currentAd / ld);
+            }
+        }
+    }
+
     public List<Map.Entry<Integer, Double>> getRankedEntries(int k) {
         // error handling: if there are less document IDs than what is requested, instead use the existing size
-        if (k > finalAccumulators.size()) {
-            k = finalAccumulators.size();
-        }
+        k = Math.min(k, finalAccumulators.size());
 
         List<Map.Entry<Integer, Double>> rankedEntries = new ArrayList<>();
         /* 3. Select and return the top K = 10 documents by largest A(d) value.
@@ -140,11 +178,11 @@ public class DocumentWeightScorer implements Closeable {
         return (Math.log(1 + ((double) n / dft)));
     }
 
-    public static double calculateLd(Map<String, Integer> tftds) {
+    public static double calculateLd(List<Integer> tftds) {
         double sum = 0;
 
         // L(d) = sqrt( sum of all(w(d, t)^2) )
-        for (Integer tftd : tftds.values()) {
+        for (Integer tftd : tftds) {
             double wdt = calculateWdt(tftd);
             sum += Math.pow(wdt, 2);
         }
@@ -152,19 +190,10 @@ public class DocumentWeightScorer implements Closeable {
         return Math.sqrt(sum);
     }
 
-    public static void setRandomAccessor(String pathToDocWeightsBin) {
-        try {
-            randomAccessor = new RandomAccessFile(pathToDocWeightsBin, "rw");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     @Override
     public void close() {
         try {
             randomAccessor.close();
-
         } catch (IOException e) {
             e.printStackTrace();
         }

@@ -1,3 +1,4 @@
+
 package application.indexes;
 
 import org.apache.jdbm.*;
@@ -6,15 +7,15 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DiskBiWordIndex implements Index<String, Posting>, Closeable {
+public class DiskBiwordIndex implements Index<String, Posting>, Closeable {
 
     private final String pathToBTreeBin;    // the String path to the B+ Tree mappings of terms -> byte positions
     private final BTree<String, Integer> bTree;
     private RandomAccessFile randomAccessPosting;   // keep the Posting file open for getPosting() calls
 
-    public DiskBiWordIndex(String newPathToBTreeBin, String newPathToPostingsBin) {
+    public DiskBiwordIndex(BTree<String, Integer> inputBTree, String newPathToBTreeBin, String newPathToPostingsBin) {
+        bTree = inputBTree;
         pathToBTreeBin = newPathToBTreeBin;
-        bTree = DiskIndexReader.readBTree(newPathToBTreeBin);
 
         try {
             // be able to read from the postings file and extract the index data
@@ -24,7 +25,6 @@ public class DiskBiWordIndex implements Index<String, Posting>, Closeable {
             System.exit(0);
         }
     }
-
 
     /**
      * Returns a list of postings including positions.
@@ -46,20 +46,11 @@ public class DiskBiWordIndex implements Index<String, Posting>, Closeable {
 
             // iterate through all postings for the term
             for (int i = 0; i < postingsSize; ++i) {
-                ArrayList<Integer> positions = new ArrayList<>();
                 // first document ID is as-is; the rest are gaps
                 int currentDocumentId = randomAccessPosting.readInt() + latestDocumentId;
                 latestDocumentId = currentDocumentId - latestDocumentId;
-                //int positionsSize = randomAccessPosting.readInt();
-                //int latestPosition = 0;
 
-                //for (int j = 0; j < positionsSize; ++j) {
-                    // first position is as-is; the rest are gaps
-                   // int currentPosition = randomAccessPosting.readInt() + latestPosition;
-                   // positions.add(currentPosition);
-                    //latestPosition = currentPosition - latestPosition;
-                //}
-                Posting newPosting = new Posting(currentDocumentId, null);
+                Posting newPosting = new Posting(currentDocumentId, new ArrayList<>());
                 resultPostings.add(newPosting);
             }
 
@@ -93,20 +84,11 @@ public class DiskBiWordIndex implements Index<String, Posting>, Closeable {
 
             // iterate through all postings for the term
             for (int i = 0; i < postingsSize; ++i) {
-                ArrayList<Integer> positions = new ArrayList<>();
                 // first document ID is as-is; the rest are gaps
                 int currentDocumentId = randomAccessPosting.readInt() + latestDocumentId;
                 latestDocumentId = currentDocumentId - latestDocumentId;
-                int positionsSize = randomAccessPosting.readInt();
-                // skip the other position bytes
-                randomAccessPosting.skipBytes(positionsSize * Integer.BYTES);
 
-                // add empty positions
-                for (int j = 0; j < positionsSize; ++j) {
-                    positions.add(0);
-                }
-
-                Posting newPosting = new Posting(currentDocumentId, positions);
+                Posting newPosting = new Posting(currentDocumentId, new ArrayList<>());
                 resultPostings.add(newPosting);
             }
 

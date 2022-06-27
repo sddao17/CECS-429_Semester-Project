@@ -33,20 +33,24 @@ public class PhraseLiteral implements QueryComponent {
 
 	@Override
 	public List<Posting> getPostings(Index<String, Posting> index, TokenProcessor processor) {
+		List<Posting> resultPostings;
 		/* Program this method. Retrieve the postings for the individual terms in the phrase,
 		  and positional merge them together. */
 		// if the phrase only contains one component, simply return its postings
 		if (mComponents.size() == 1) {
-			return mComponents.get(0).getPostings(index, processor);
+			resultPostings = mComponents.get(0).getPostings(index, processor);
 		}
-		else if(mComponents.size() == 2 ) {
-			Index<String, Posting> biwordIndex = Application.getBiwordIndex();
-			return biwordIndex.getPostings(processor.processToken(mComponents.get(0).toString()).get(0) + " " +
-					processor.processToken(mComponents.get(1).toString()).get(0));
-		} else {
+		// biword indexes do not support wildcards
+		else if (mComponents.size() == 2 && !(mComponents.get(0) instanceof WildcardLiteral) &&
+				!(mComponents.get(1) instanceof WildcardLiteral)) {
+			Index<String, Posting> biwordIndex = Application.getBiwordIndexes()
+					.get(Application.getCurrentDirectory() + "/index/biwordBTree.bin");
 
-		/* store posting-position1-position2 tuples where all the terms are sequentially in +1 positional order,
-		  beginning with the postings of the first term */
+			resultPostings = biwordIndex.getPostings(processor.processToken(mComponents.get(0).toString()).get(0) +
+					" " + processor.processToken(mComponents.get(1).toString()).get(0));
+		} else {
+			/* store docID-position1-position2 tuples where all the terms are sequentially in +1 positional order,
+		  	  beginning with the postings of the first term */
 			// int[0], int[1], int[2] --> doc id, position1 (int), position2 (int)
 			List<int[]> positionalIntersects = new ArrayList<>();
 			int firstTermIntersects = 0;
@@ -70,16 +74,70 @@ public class PhraseLiteral implements QueryComponent {
 				leftPostings = rightPostings;
 			}
 
-			List<Posting> resultPostings = findFinalIntersects(positionalIntersects, firstTermIntersects, numOfIntersections);
+			resultPostings = findFinalIntersects(positionalIntersects, firstTermIntersects, numOfIntersections);
 
 			if (Application.enabledLogs) {
 				System.out.println("--------------------------------------------------------------------------------" +
 						"\nPhrase literals: " + mComponents + " -- " + resultPostings.size() + " posting(s)" +
 						"\n--------------------------------------------------------------------------------");
 			}
-
-			return resultPostings;
 		}
+		return resultPostings;
+	}
+
+	@Override
+	public List<Posting> getPositionlessPostings(Index<String, Posting> index, TokenProcessor processor) {
+		List<Posting> resultPostings;
+		/* Program this method. Retrieve the postings for the individual terms in the phrase,
+		  and positional merge them together. */
+		// if the phrase only contains one component, simply return its postings
+		if (mComponents.size() == 1) {
+			return mComponents.get(0).getPositionlessPostings(index, processor);
+		}
+		// biword indexes do not support wildcards
+		else if (mComponents.size() == 2 && !(mComponents.get(0) instanceof WildcardLiteral) &&
+				!(mComponents.get(1) instanceof WildcardLiteral)) {
+			Index<String, Posting> biwordIndex = Application.getBiwordIndexes()
+					.get(Application.getCurrentDirectory() + "/index/biword.bin");
+
+			resultPostings = biwordIndex.getPositionlessPostings(
+					processor.processToken(mComponents.get(0).toString()).get(0) + " " +
+					processor.processToken(mComponents.get(1).toString()).get(0));
+		} else {
+			/* store posting-position1-position2 tuples where all the terms are sequentially in +1 positional order,
+		  	  beginning with the postings of the first term */
+			// int[0], int[1], int[2] --> doc id, position1 (int), position2 (int)
+			List<int[]> positionalIntersects = new ArrayList<>();
+			int firstTermIntersects = 0;
+			int numOfIntersections = 0;
+			List<Posting> leftPostings = mComponents.get(0).getPositionlessPostings(index, processor);
+
+			// start positional intersecting with postings two at a time
+			for (int i = 1; i < mComponents.size(); ++i) {
+				// store the current postings for readability
+				List<Posting> rightPostings = mComponents.get(i).getPositionlessPostings(index, processor);
+
+				// positional intersect our current intersections list with the next postings list
+				positionalIntersects.addAll(positionalIntersect(leftPostings, rightPostings));
+
+				// mark the position of where the first terms' positional intersections end
+				if (i == 1) {
+					firstTermIntersects = positionalIntersects.size();
+				}
+
+				++numOfIntersections;
+				leftPostings = rightPostings;
+			}
+
+			resultPostings = findFinalIntersects(positionalIntersects, firstTermIntersects, numOfIntersections);
+
+			if (Application.enabledLogs) {
+				System.out.println("--------------------------------------------------------------------------------" +
+						"\nPhrase literals: " + mComponents + " -- " + resultPostings.size() + " posting(s)" +
+						"\n--------------------------------------------------------------------------------");
+			}
+		}
+		return resultPostings;
 	}
 
 	private ArrayList<int[]> positionalIntersect(List<Posting> leftList, List<Posting> rightList) {

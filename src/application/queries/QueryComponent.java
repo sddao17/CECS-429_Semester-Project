@@ -15,4 +15,9 @@ public interface QueryComponent {
      * Retrieves a list of postings for the query component, using an Index as the source.
      */
     List<Posting> getPostings(Index<String, Posting> index, TokenProcessor processor);
+
+    /**
+     * Retrieves a list of positionless postings for the query component, using an Index as the source.
+     */
+    List<Posting> getPositionlessPostings(Index<String, Posting> index, TokenProcessor processor);
 }

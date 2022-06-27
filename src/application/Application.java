@@ -2,12 +2,15 @@
 package application;
 
 import application.UI.CorpusSelection;
+import application.classifications.KnnClassification;
+import application.classifications.RocchioClassification;
 import application.documents.*;
 import application.indexes.*;
 import application.queries.*;
 import application.text.*;
+import application.utilities.CheckInput;
 import application.utilities.Menu;
-import application.utilities.PostingUtility;
+import application.utilities.IndexUtility;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -27,16 +30,18 @@ public class Application {
 
     private static final int VOCABULARY_PRINT_SIZE = 1_000; // number of vocabulary terms to print
     private static final int MAX_DISPLAYED_RANKED_ENTRIES = 10;  // the maximum number of ranked entries to display
-    private static final int SPELLING_CORRECTION_THRESHOLD = 5; // the trigger to suggest spelling corrections
+    private static final int SPELLING_CORRECTION_THRESHOLD = 10; // the posting size trigger to suggest corrections
 
     private static CorpusSelection cSelect;
-    private static DirectoryCorpus corpus;  // we need only one of each corpus and index active at a time,
-    private static Index<String, Posting> corpusIndex;  // and multiple methods need access to them
-    private static KGramIndex kGramIndex = new KGramIndex();
-    private static BiwordIndex biwordIndex = new BiwordIndex();
+    private static String currentDirectory; // the user's current directory to use for queries, initially set to root
+    private static List<String> allDirectoryPaths = new ArrayList<>();
 
-    private static Index<String, Posting> biWordTreeIndex;
-    private static final List<Double> lds = new ArrayList<>();    // the values representing document weights
+    private static final Map<String, DirectoryCorpus> corpora = new HashMap<>();
+    private static final Map<String, Index<String, Posting>> corpusIndexes = new HashMap<>();
+    private static final Map<String, Index<String, Posting>> biwordIndexes = new HashMap<>();
+    private static final Map<String, KGramIndex> kGramIndexes = new HashMap<>();
+    private static final Map<String, List<Double>> lds = new HashMap<>();
+    private static DocumentWeightScorer documentScorer;
 
     public static boolean enabledLogs = false;
     public static final List<Closeable> closeables = new ArrayList<>(); // considers all cases of indexing
@@ -45,112 +50,153 @@ public class Application {
         System.out.printf("""
                 %nCopy/paste for testing:
                 ./corpus/parks
-                ./corpus/parks-test
+                ./corpus/federalist-papers
+                ./corpus/combined-test
                 ./corpus/kanye-test
-                ./corpus/moby-dick%n""");
+                ./corpus/moby-dick
+                ./corpus/parks-test%n""");
         startApplication();
 
         //cSelect = new CorpusSelection();
         //cSelect.CorpusSelectionUI();
     }
 
-    private static void startApplication() {
+    public static void startApplication() {
         Scanner in = new Scanner(System.in);
         closeables.add(in);
 
-        String input = Menu.showBuildOrQueryIndexMenu(in);
-
+        int input = Menu.showBuildOrQueryIndexMenu();
         /* 1. At startup, ask the user for the name of a directory that they would like to index,
           and construct a DirectoryCorpus from that directory. */
         String directoryString = promptCorpusDirectory(in);
-        Map<String, String> indexPaths = PostingUtility.createIndexPathsMap(directoryString);
+        currentDirectory = directoryString;
+        allDirectoryPaths = IndexUtility.getAllDirectories(directoryString);
 
         // depending on the user's input, either build the index from scratch or read from an on-disk index
         switch (input) {
-            case "1" -> initializeComponents(indexPaths);
-            case "2" -> readFromComponents(indexPaths);
+            case 1 -> initializeComponents(allDirectoryPaths);
+            case 2 -> readFromComponents(allDirectoryPaths);
+            default -> throw new RuntimeException("Unexpected input: " + input);
         }
 
-        input = Menu.showBooleanOrRankedMenu(in);
+        input = Menu.showQueryMenu();
 
-        String queryMode = switch (input) {
-            case "1" -> "boolean";
-            case "2" -> "ranked";
-            default -> throw new RuntimeException("Unexpected input: " + input);
-        };
+        if (input < 3) {
+            String queryMode = switch (input) {
+                case 1 -> "boolean";
+                case 2 -> "ranked";
+                default -> throw new RuntimeException("Unexpected input: " + input);
+            };
+            startQueryLoop(in, queryMode);
+        } else {
+            input = Menu.showClassificationMenu();
+            switch (input) {
+                case 1 -> startBayesianLoop(in, currentDirectory);
+                case 2 -> startRocchioLoop(in, currentDirectory);
+                case 3 -> startKNNLoop(in, currentDirectory);
+                default -> throw new RuntimeException("Unexpected input: " + input);
+            }
+        }
 
-        startQueryLoop(in, queryMode);
         closeOpenFiles();
     }
 
     private static String promptCorpusDirectory(Scanner in) {
         System.out.print("\nEnter the path of the directory corpus:\n >> ");
-        String directoryString = in.nextLine();
-        corpus = DirectoryCorpus.loadDirectory(Path.of(directoryString));
-
-        return directoryString;
+        return in.nextLine();
     }
 
-    private static void initializeComponents(Map<String, String> indexPaths) {
-        corpusIndex = indexCorpus(corpus);
+    private static void initializeComponents(List<String> allDirectoryPaths) {
+        for (String directoryPath : allDirectoryPaths) {
+            Map<String, String> indexPaths = IndexUtility.createIndexPathsMap(directoryPath);
+            Path path = Path.of(directoryPath);
+            boolean isRoot = (directoryPath.equals(currentDirectory));
 
-        DiskIndexWriter.createIndexDirectory(indexPaths.get("indexDirectory"));
-        System.out.println("\nWriting files to index directory...");
+            DirectoryCorpus corpus = DirectoryCorpus.loadDirectory(path, isRoot);
+            Index<String, Posting> corpusIndex = indexCorpus(corpus, indexPaths);
+            Index<String, Posting> biwordIndex = biwordIndexes.get(indexPaths.get("biwordBin"));
+            KGramIndex kGramIndex = kGramIndexes.get(indexPaths.get("kGramsBin"));
 
-        // write the documents weights to disk
-        DiskIndexWriter.writeLds(indexPaths.get("docWeightsBin"), lds);
-        System.out.println("Document weights written to `" + indexPaths.get("docWeightsBin") + "` successfully.");
+            corpora.put(indexPaths.get("root"), corpus);
+            corpusIndexes.put(indexPaths.get("root"), corpusIndex);
 
-        // write the postings using the corpus index to disk
-        List<Integer> bytePositions = DiskIndexWriter.writeIndex(indexPaths.get("postingsBin"), corpusIndex);
-        System.out.println("Postings written to `" + indexPaths.get("postingsBin") + "` successfully.");
+            DiskIndexWriter.createIndexDirectory(indexPaths.get("indexDirectory"));
+            System.out.println("\nWriting files to index directory...");
 
-        // write the B+ tree mappings of term -> byte positions to disk
-        DiskIndexWriter.writeBTree(indexPaths.get("bTreeBin"), corpusIndex.getVocabulary(), bytePositions);
-        System.out.println("B+ Tree written to `" + indexPaths.get("bTreeBin") + "` successfully.");
+            // write the documents weights to disk
+            DiskIndexWriter.writeLds(indexPaths.get("docWeightsBin"), lds.get(indexPaths.get("docWeightsBin")));
+            System.out.println("Document weights written to `" + indexPaths.get("docWeightsBin") + "` successfully.");
 
-        // write the k-grams to disk
-        DiskIndexWriter.writeKGrams(indexPaths.get("kGramsBin"), kGramIndex);
-        System.out.println("K-Grams written to `" + indexPaths.get("kGramsBin") + "` successfully.");
+            // write the postings using the corpus index to disk
+            List<Integer> positionalBytePositions = DiskIndexWriter.writeIndex(indexPaths.get("postingsBin"), corpusIndex);
+            System.out.println("Postings written to `" + indexPaths.get("postingsBin") + "` successfully.");
 
-        List<Integer> bytePositions1 = DiskIndexWriter.writeBiword(indexPaths.get("biwordBin"), biwordIndex);
-        System.out.println("Biword index written to `" + indexPaths.get("biwordBin") + "` successfully.");
+            // write the B+ tree mappings of term -> byte positions to disk
+            DiskIndexWriter.writeBTree(indexPaths.get("bTreeBin"), corpusIndex.getVocabulary(), positionalBytePositions);
+            System.out.println("B+ Tree written to `" + indexPaths.get("bTreeBin") + "` successfully.");
 
-        DiskIndexWriter.writeBTree(indexPaths.get("biwordBTreeBin"), biwordIndex.getVocabulary(), bytePositions1);
-        System.out.println("Biword B+ tree written to `" + indexPaths.get("biwordBTreeBin") + "` successfully.");
+            List<Integer> biwordBytePositions = DiskIndexWriter.writeBiword(indexPaths.get("biwordBin"), biwordIndex);
+            System.out.println("Biword index written to `" + indexPaths.get("biwordBin") + " successfully.");
+
+            DiskIndexWriter.writeBTree(indexPaths.get("biwordBTreeBin"), biwordIndex.getVocabulary(), biwordBytePositions);
+            System.out.println("Biword B+ tree written to `" + indexPaths.get("biwordBTreeBin") + "` successfully.");
+
+            // write the k-grams to disk
+            DiskIndexWriter.writeKGrams(indexPaths.get("kGramsBin"), kGramIndex);
+            System.out.println("K-Grams written to `" + indexPaths.get("kGramsBin") + "` successfully.");
+        }
 
         // after writing the components to disk, we can terminate the program
         System.exit(0);
     }
 
-    private static void readFromComponents(Map<String, String> indexPaths) {
-        System.out.println("\nReading from the on-disk index...");
+    private static void readFromComponents(List<String> allDirectoryPaths) {
+        for (String directoryPath : allDirectoryPaths) {
+            Map<String, String> indexPaths = IndexUtility.createIndexPathsMap(directoryPath);
+            Path path = Path.of(directoryPath);
+            boolean isRoot = (directoryPath.equals(currentDirectory));
 
-        // initialize the DiskPositionalIndex and k-grams using pre-constructed indexes on disk
-        corpusIndex = new DiskPositionalIndex(DiskIndexReader.readBTree(indexPaths.get("bTreeBin")),
-                indexPaths.get("bTreeBin"), indexPaths.get("postingsBin"));
-        biWordTreeIndex = new BiwordIndex();
-        kGramIndex = DiskIndexReader.readKGrams(indexPaths.get("kGramsBin"));
-        DocumentWeightScorer.setRandomAccessor(indexPaths.get("docWeightsBin"));
+            DirectoryCorpus corpus = DirectoryCorpus.loadDirectory(path, isRoot);
+            System.out.println("\nReading index from `" + indexPaths.get("root") + "`...");
 
-        // if we're reading from disk using DiskPositionalIndex, then we know it is Closeable
-        closeables.add((Closeable) corpusIndex);
+            corpora.put(indexPaths.get("root"), corpus);
+            // initialize the DiskPositionalIndex and k-grams using pre-constructed indexes on disk
+            corpusIndexes.put(indexPaths.get("root"),
+                    new DiskPositionalIndex(DiskIndexReader.readBTree(indexPaths.get("bTreeBin")),
+                    indexPaths.get("bTreeBin"), indexPaths.get("postingsBin")));
+            biwordIndexes.put(indexPaths.get("biwordBTreeBin"),
+                    new DiskBiwordIndex(DiskIndexReader.readBTree(indexPaths.get("biwordBTreeBin")),
+                    indexPaths.get("biwordBTreeBin"), indexPaths.get("biwordBin")));
+            kGramIndexes.put(indexPaths.get("kGramsBin"), DiskIndexReader.readKGrams(indexPaths.get("kGramsBin")));
+            documentScorer = new DocumentWeightScorer(currentDirectory + "/index/docWeights.bin");
 
-        System.out.printf("""
-                Reading complete.
-                
-                Found %s documents.
-                Distinct k-grams: %s
-                """, corpus.getCorpusSize(), kGramIndex.getDistinctKGrams().size());
+            Index<String, Posting> corpusIndex = corpusIndexes.get(indexPaths.get("bTreeBin"));
+            Index<String, Posting> biwordIndex = biwordIndexes.get(indexPaths.get("biwordBin"));
+
+            // if we're reading from disk, then we know it is Closeable
+            closeables.add((Closeable) corpusIndex);
+            closeables.add((Closeable) biwordIndex);
+            closeables.add(documentScorer);
+
+            System.out.printf("""
+                    Reading complete.
+                    Found %s documents.
+                    Distinct k-grams: %s
+                    """, corpus.getCorpusSize(),
+                    kGramIndexes.get(indexPaths.get("kGramsBin")).getDistinctKGrams().size());
+        }
     }
 
-    public static Index<String, Posting> indexCorpus(DocumentCorpus corpus) {
+    public static Index<String, Posting> indexCorpus(DocumentCorpus corpus, Map<String, String> indexPaths) {
         /* 2. Index all documents in the corpus to build a positional inverted index.
           Print to the screen how long (in seconds) this process takes. */
-        System.out.println("\nIndexing...");
+        System.out.println("\nIndexing `" + indexPaths.get("root") + "`...");
         long startTime = System.nanoTime();
 
         PositionalInvertedIndex index = new PositionalInvertedIndex();
+        BiwordIndex biwordIndex = new BiwordIndex();
+        KGramIndex kGramIndex = new KGramIndex();
+        List<Double> currentLds = new ArrayList<>();
         VocabularyTokenProcessor vocabProcessor = new VocabularyTokenProcessor();
         WildcardTokenProcessor wildcardProcessor = new WildcardTokenProcessor();
 
@@ -178,12 +224,12 @@ public class Application {
                     for (String term : terms) {
                         index.addTerm(term, document.getId(), currentPosition);
                         biwordIndex.addTerm(term, document.getId());
+
                         // build up L(d) for the current document
                         if (tftds.get(term) == null) {
                             tftds.put(term, 1);
                         } else {
-                            int oldTftd = tftds.get(term);
-                            tftds.replace(term, oldTftd + 1);
+                            tftds.replace(term, tftds.get(term) + 1);
                         }
                     }
                     // after each token addition, update the position count
@@ -195,18 +241,21 @@ public class Application {
             }
 
             // after processing all tokens into terms, calculate L(d) for the document and add it to our list
-            lds.add(DocumentWeightScorer.calculateLd(tftds));
+            currentLds.add(DocumentWeightScorer.calculateLd(new ArrayList<>(tftds.values())));
         }
+        kGramIndexes.put(indexPaths.get("kGramsBin"), kGramIndex);
+        biwordIndexes.put(indexPaths.get("biwordBin"), biwordIndex);
+        lds.put(indexPaths.get("docWeightsBin"), currentLds);
 
         long endTime = System.nanoTime();
         double timeElapsedInSeconds = (double) (endTime - startTime) / 1_000_000_000;
         System.out.printf("""
                 Indexing complete.
                 Time elapsed: %s seconds
-                
                 Found %s documents.
                 Distinct k-grams: %s
-                """, timeElapsedInSeconds, corpus.getCorpusSize(), kGramIndex.getDistinctKGrams().size());
+                """, timeElapsedInSeconds, corpus.getCorpusSize(),
+                kGramIndexes.get(indexPaths.get("kGramsBin")).getDistinctKGrams().size());
 
         return index;
     }
@@ -215,10 +264,16 @@ public class Application {
         String query;
 
         do {
+            /* unless the user otherwise specifies, the default corpus and indexes will be set to those associated
+              with the root directory; else, it will be set to the new current directory */
+            DirectoryCorpus corpus = corpora.get(currentDirectory);
+            Index<String, Posting> corpusIndex = corpusIndexes.get(currentDirectory);
+            KGramIndex kGramIndex = kGramIndexes.get(currentDirectory + "/index/kGrams.bin");
+
             // 3a. Ask for a search query.
-            System.out.print("\nEnter the query (`:?` to list commands):\n >> ");
+            System.out.print("\nEnter the query (`:?` for help):\n >> ");
             query = in.nextLine();
-            String[] splitQuery = query.split(" ");
+            String[] splitQuery = query.toLowerCase().split(" ");
 
             // skip empty input
             if (splitQuery.length > 0) {
@@ -226,16 +281,21 @@ public class Application {
                 String parameter = "";
                 if (splitQuery.length > 1) {
                     parameter = splitQuery[1];
-                }
-                // check if the user enabled printing logs to console
-                if (splitQuery[splitQuery.length - 1].equals("--log")) {
-                    enabledLogs = true;
-                    query = query.substring(0, query.lastIndexOf(" --log"));
+
+                    // check if the user enabled printing logs to console
+                    if (splitQuery[splitQuery.length - 1].equals("--log")) {
+                        enabledLogs = true;
+                        query = query.substring(0, query.lastIndexOf(" --log"));
+                    }
                 }
 
                 // 3(a, i). If it is a special query, perform that action.
                 switch (potentialCommand) {
-                    case ":index" -> initializeComponents(PostingUtility.createIndexPathsMap(parameter));
+                    case ":set" -> {
+                        currentDirectory = parameter;
+                        System.out.println("Corpus set to `" + parameter + "`.");
+                    }
+                    case ":index" -> initializeComponents(IndexUtility.getAllDirectories(parameter));
                     case ":stem" -> {
                         TokenStemmer stemmer = new TokenStemmer();
                         System.out.println(parameter + " -> " + stemmer.processToken(parameter).get(0));
@@ -258,29 +318,34 @@ public class Application {
 
                         for (int i = 0; i < vocabularyPrintSize; ++i) {
                             String currentType = vocabulary.get(i);
-                            System.out.println(currentType + " -> " + kGramIndex.getPostings(currentType));
+                            System.out.println(currentType + " -> " + kGramIndex.getPositionlessPostings(currentType));
                         }
                         if (vocabulary.size() > VOCABULARY_PRINT_SIZE) {
                             System.out.println("...");
                         }
                         System.out.println("Found " + vocabulary.size() + " types.");
                     }
-                    case ":?" -> Menu.showCommandMenu(VOCABULARY_PRINT_SIZE);
+                    case ":?" -> Menu.showHelpMenu(VOCABULARY_PRINT_SIZE);
                     case ":q", "" -> {}
                     default -> {
-                        int numOfResults;
-                        switch (queryMode) {
-                            case "boolean" -> numOfResults = displayBooleanResults(query);
-                            case "ranked" -> numOfResults = displayRankedResults(query);
-                            default -> numOfResults = 0;
-                        }
+                        try {
+                            int numOfResults;
+                            switch (queryMode) {
+                                case "boolean" -> numOfResults = displayBooleanResults(query);
+                                case "ranked" -> numOfResults = displayRankedResults(query);
+                                default -> throw new RuntimeException("Unexpected input: " + queryMode);
+                            }
 
-                        /* if a term does not meet the posting size threshold,
-                          suggest a modified query including a spelling suggestion */
-                        boolean corrected = trySpellingSuggestion(in, query, queryMode);
+                            /* if a term does not meet the posting size threshold,
+                              suggest a modified query including a spelling suggestion */
+                            boolean corrected = trySpellingSuggestion(in, query, queryMode);
 
-                        if (numOfResults > 0 || corrected) {
-                            PostingUtility.promptForDocumentContent(in, corpus);
+                            if (numOfResults > 0 || corrected) {
+                                IndexUtility.promptForDocumentContent(in, corpus);
+                            }
+                        } catch (NullPointerException e) {
+                            System.err.println("The current corpus directory is not valid; " +
+                                    "change it via the `:set` command.");
                         }
                     }
                 }
@@ -290,24 +355,31 @@ public class Application {
     }
 
     private static int displayBooleanResults(String query) {
+        DirectoryCorpus corpus = corpora.get(currentDirectory);
+        Index<String, Posting> corpusIndex = corpusIndexes.get(currentDirectory);
+        List<Posting> resultPostings;
         // 3(a, ii). If it isn't a special query, then parse the query and retrieve its postings.
         BooleanQueryParser parser = new BooleanQueryParser();
         QueryComponent parsedQuery = parser.parseQuery(query);
-        TokenProcessor processor = new VocabularyTokenProcessor();
+        TokenProcessor processor;
 
-        List<Posting> resultPostings = parsedQuery.getPostings(corpusIndex, processor);
-        // in case the query contains wildcards, only display each unique posting once
-        if (parsedQuery instanceof WildcardLiteral) {
-            resultPostings = PostingUtility.getDistinctPostings(resultPostings);
+        if (parsedQuery instanceof PhraseLiteral) {
+            processor = new QueryTokenProcessor();
+            resultPostings = parsedQuery.getPostings(corpusIndex, processor);
+        } else {
+            processor = new VocabularyTokenProcessor();
+            resultPostings = parsedQuery.getPositionlessPostings(corpusIndex, processor);
         }
-        PostingUtility.displayPostings(corpus, resultPostings);
 
+        // in case the query contains wildcards, only display each unique posting once
+        resultPostings = IndexUtility.getDistinctPostings(resultPostings);
+        IndexUtility.displayPostings(corpus, resultPostings);
         return resultPostings.size();
     }
 
     private static int displayRankedResults(String query) {
-        DocumentWeightScorer documentScorer = new DocumentWeightScorer();
-        closeables.add(documentScorer);
+        DirectoryCorpus corpus = corpora.get(currentDirectory);
+        Index<String, Posting> corpusIndex = corpusIndexes.get(currentDirectory);
 
         documentScorer.storeTermAtATimeDocuments(corpusIndex, query);
         List<Map.Entry<Integer, Double>> rankedEntries = documentScorer.getRankedEntries(MAX_DISPLAYED_RANKED_ENTRIES);
@@ -329,22 +401,35 @@ public class Application {
     }
 
     public static boolean trySpellingSuggestion(Scanner in, String query, String queryMode) {
+        Index<String, Posting> corpusIndex = corpusIndexes.get(currentDirectory);
+        KGramIndex kGramIndex = kGramIndexes.get(currentDirectory + "/index/kGrams.bin");
+
         SpellingSuggestion spellingCheck = new SpellingSuggestion(corpusIndex, kGramIndex);
-        String[] splitQuery = query.split(" ");
+        String[] splitQuery = query.replace(" + ", " ").split(" ");
         StringBuilder newQuery = new StringBuilder();
+        List<String> currentQuery = new ArrayList<>();
+        boolean meetsThreshold = false;
 
         for (int i = 0; i < splitQuery.length; ++i) {
             VocabularyTokenProcessor processor = new VocabularyTokenProcessor();
             String currentToken = splitQuery[i];
-            int dft = corpusIndex.getPositionlessPostings(processor.processToken(currentToken).get(0)).size();
+            List<String> terms = processor.processToken(currentToken);
+            int dft = 0;
+
+            if (terms.size() > 0) {
+                dft = corpusIndex.getPositionlessPostings(terms.get(0)).size();
+            }
+
             String replacementType;
 
             /* verify that each term meets the threshold requirement for postings sizes;
-              if it does, use the original query type, or if it doesn't, suggest a correction */
-            if (dft > SPELLING_CORRECTION_THRESHOLD) {
+               if it does, suggest a correction, or if it doesn't, use the original query type */
+            if (dft > SPELLING_CORRECTION_THRESHOLD || currentToken.contains("*")) {
                 replacementType = currentToken;
+                currentQuery.add(currentToken);
             } else {
                 replacementType = spellingCheck.suggestCorrection(currentToken);
+                meetsThreshold = true;
             }
 
             newQuery.append(replacementType);
@@ -353,25 +438,246 @@ public class Application {
             }
         }
 
-        // only proceed if the original query did not need modifications
-        if (!newQuery.toString().equals(query)) {
+        // only proceed if we made a suggestion to the original query
+        if (meetsThreshold && !newQuery.toString().equals(query) && !query.contains(" + ")) {
+            if (currentQuery.size() > 0) {
+                System.out.print("Results shown for `");
+                for (int i = 0; i < currentQuery.size(); ++i) {
+                    String currentType = currentQuery.get(i);
+                    System.out.print(((i < currentQuery.size() - 1) ? currentType + " " : currentType + "`.\n"));
+                }
+            }
+
             System.out.print("Did you mean `" + newQuery + "`? (`y` to proceed)\n >> ");
             query = in.nextLine();
 
             if (query.equals("y")) {
                 System.out.println("Showing results for `" + newQuery + "`:");
-
                 switch (queryMode) {
                     case "boolean" -> displayBooleanResults(newQuery.toString());
                     case "ranked" -> displayRankedResults(newQuery.toString());
                     default -> throw new RuntimeException("Unexpected input: " + query);
                 }
                 return true;
-            } else {
-                return false;
             }
         }
         return false;
+    }
+
+    private static void startBayesianLoop(Scanner in, String rootDirectoryPath) {
+        System.err.println("(not yet implemented)");
+    }
+
+    private static void startRocchioLoop(Scanner in, String rootDirectoryPath) {
+        System.out.println("\nCalculating...");
+        long startTime = System.nanoTime();
+
+        RocchioClassification rocchio = new RocchioClassification(rootDirectoryPath, corpora, corpusIndexes);
+
+        long endTime = System.nanoTime();
+        double timeElapsedInSeconds = (double) (endTime - startTime) / 1_000_000_000;
+        System.out.println("Calculations complete." +
+                "\nTime elapsed: " + timeElapsedInSeconds + " seconds");
+
+        int input;
+
+        do {
+            input = Menu.showRocchioMenu();
+
+            switch (input) {
+                // classify a document
+                case 1 -> {
+                    getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
+                    System.out.print("Enter the directory's subfolder:\n >> ");
+                    String subfolder = currentDirectory + in.nextLine();
+
+                    try {
+                        IndexUtility.displayDocuments(corpora.get(subfolder));
+                        System.out.print("Enter the document ID:\n >> ");
+                        int documentID = Integer.parseInt(in.nextLine());
+                        displayRocchioResults(rocchio, subfolder, documentID);
+                    } catch (NullPointerException e) {
+                        System.out.println("The path does not exist; please try again.");
+                    }
+                } // classify all documents
+                case 2 -> {
+                    getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
+                    System.out.print("Enter the directory's subfolder:\n >> ");
+                    String subfolder = currentDirectory + in.nextLine();
+
+                    try {
+                        for (Document document : corpora.get(subfolder).getDocuments()) {
+                            displayRocchioResults(rocchio, subfolder, document.getId());
+                        }
+                    } catch (NullPointerException e) {
+                        System.out.println("The subfolder does not exist; please try again.");
+                    }
+
+                } // get a centroid vector
+                case 3 -> {
+                    getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
+                    System.out.print("Enter the directory's subfolder:\n >> ");
+                    String subfolder = currentDirectory + in.nextLine();
+                    List<Double> centroid = rocchio.getCentroid(subfolder);
+
+                    System.out.print("Enter the number of results to be shown (skip for all):\n >> ");
+                    int numOfResults = CheckInput.promptNumOfResults(in, centroid.size());
+
+                    List<String> vocabulary = corpusIndexes.get(rootDirectoryPath).getVocabulary();
+
+                    DecimalFormat df = new DecimalFormat("###.#########");
+                    for (int i = 0; i < numOfResults; ++i) {
+                        System.out.print("(" + vocabulary.get(i) + ": " + df.format(centroid.get(i)) +
+                                (i < numOfResults - 1 ? "), " : ")\n"));
+                    }
+                } // get a document weight vector
+                case 4 -> {
+                    try {
+                        getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
+                        System.out.print("Enter the directory's subfolder:\n >> ");
+                        String subfolder = currentDirectory + in.nextLine();
+                        IndexUtility.displayDocuments(corpora.get(subfolder));
+
+                        System.out.print("Enter the document ID:\n >> ");
+                        int documentID = Integer.parseInt(in.nextLine());
+
+                        List<String> vocabulary = corpusIndexes.get(rootDirectoryPath).getVocabulary();
+                        List<Double> weightVector = rocchio.getVector(subfolder, documentID);
+
+                        System.out.print("Enter the number of results to be shown (skip for all):\n >> ");
+                        int numOfResults = CheckInput.promptNumOfResults(in, vocabulary.size());
+
+                        for (int i = 0; i < numOfResults; ++i) {
+                            System.out.print("(" + vocabulary.get(i) + ": " + weightVector.get(i) +
+                                    (i < numOfResults - 1 ? "), " : ")\n"));
+                        }
+                    } catch (NullPointerException | NumberFormatException e) {
+                        System.out.println("Invalid input; please try again.");
+                    }
+                } // get a vocabulary list
+                case 5 -> {
+                    try {
+                        getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
+                        System.out.print("Enter the directory's subfolder (skip for all):\n >> ");
+                        String subfolder = in.nextLine();
+
+                        rocchio.getVocabulary(currentDirectory + subfolder).forEach(term -> System.out.print(term + " "));
+                        System.out.println();
+                    } catch (NullPointerException e) {
+                        System.out.println("The subfolder does not exist; please try again.");
+                    }
+                }
+            }
+        } while (input != 0);
+    }
+
+    private static void startKNNLoop(Scanner in, String rootDirectoryPath) {
+        System.out.println("\nCalculating...");
+        long startTime = System.nanoTime();
+
+        KnnClassification knn = new KnnClassification(rootDirectoryPath, corpora, corpusIndexes);
+
+        long endTime = System.nanoTime();
+        double timeElapsedInSeconds = (double) (endTime - startTime) / 1_000_000_000;
+        System.out.println("Calculations complete." +
+                "\nTime elapsed: " + timeElapsedInSeconds + " seconds");
+
+        int input;
+
+        do {
+            input = Menu.showKnnMenu();
+
+            switch (input) {
+                // classify a document
+                case 1 -> {
+                    getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
+                    System.out.print("Enter the directory's subfolder:\n >> ");
+                    String subfolder = currentDirectory + in.nextLine();
+
+                    try {
+                        IndexUtility.displayDocuments(corpora.get(subfolder));
+                        System.out.print("Enter the document ID:\n >> ");
+                        int documentID = Integer.parseInt(in.nextLine());
+                        //displayRocchioResults(knn, subfolder, documentID);
+                    } catch (NullPointerException e) {
+                        System.out.println("The path does not exist; please try again.");
+                    }
+                } // classify all documents
+                case 2 -> {
+                    getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
+                    System.out.print("Enter the directory's subfolder:\n >> ");
+                    String subfolder = currentDirectory + in.nextLine();
+
+                    try {
+                        for (Document document : corpora.get(subfolder).getDocuments()) {
+                            //displayRocchioResults(knn, subfolder, document.getId());
+                        }
+                    } catch (NullPointerException e) {
+                        System.out.println("The subfolder does not exist; please try again.");
+                    }
+
+                } // get a document weight vector
+                case 3 -> {
+                    try {
+                        getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
+                        System.out.print("Enter the directory's subfolder:\n >> ");
+                        String subfolder = currentDirectory + in.nextLine();
+                        IndexUtility.displayDocuments(corpora.get(subfolder));
+
+                        System.out.print("Enter the document ID:\n >> ");
+                        int documentID = Integer.parseInt(in.nextLine());
+
+                        List<String> vocabulary = corpusIndexes.get(rootDirectoryPath).getVocabulary();
+                        List<Double> weightVector = knn.getVector(subfolder, documentID);
+
+                        System.out.print("Enter the number of results to be shown (skip for all):\n >> ");
+                        int numOfResults = CheckInput.promptNumOfResults(in, vocabulary.size());
+
+                        for (int i = 0; i < numOfResults; ++i) {
+                            System.out.print("(" + weightVector.get(i) +
+                                    (i < numOfResults - 1 ? "), " : ")\n"));
+                        }
+                    } catch (NullPointerException | NumberFormatException e) {
+                        System.out.println("Invalid input; please try again.");
+                    }
+                }
+                 // get the vocabulary list
+                case 4 -> {
+                    try {
+                        getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
+                        System.out.print("Enter the directory's subfolder (skip for all):\n >> ");
+                        String subfolder = in.nextLine();
+
+                        knn.getVocabulary(currentDirectory + subfolder).forEach(term -> System.out.print(term + " "));
+                        System.out.println();
+                    } catch (NullPointerException e) {
+                        System.out.println("The subfolder does not exist; please try again.");
+                    }
+                } // get a vocabulary list
+            }
+        } while (input != 0);
+    }
+
+    private static void displayRocchioResults(RocchioClassification rocchio, String subfolder, int documentID) {
+        Map<String, Double> candidateDistances = rocchio.getCandidateDistances(subfolder, documentID);
+
+        System.out.println();
+        for (Map.Entry<String, Double> entry : candidateDistances.entrySet()) {
+            String currentFolder = entry.getKey().substring(entry.getKey().lastIndexOf("/"));
+            double currentDistance = entry.getValue();
+            System.out.println("Dist from " + corpora.get(subfolder).getDocument(documentID).getTitle() +
+                    " to " + currentFolder + " is " + currentDistance + ".");
+        }
+
+        Map.Entry<String, Double> centroidDistance = rocchio.classifyDocument(subfolder, documentID);
+        String lastFolder = centroidDistance.getKey().substring(centroidDistance.getKey().lastIndexOf("/"));
+
+        System.out.println("Lowest distance for " +
+                corpora.get(subfolder).getDocument(documentID).getTitle() + " is to " + lastFolder + ".");
+    }
+
+    public static void displayKnnResults(){
+
     }
 
     private static void closeOpenFiles() {
@@ -379,22 +685,29 @@ public class Application {
         for (Closeable stream : closeables) {
             try {
                 stream.close();
-
             } catch (IOException e) {
                 e.printStackTrace();
-            }
+            } catch (NullPointerException ignored) {}
         }
     }
 
-    public static DirectoryCorpus getCorpus() {
-        return corpus;
+    public static Map<String, DirectoryCorpus> getCorpora() {
+        return corpora;
     }
 
-    public static Index<String, Posting> getBiwordIndex() {
-        return biWordTreeIndex;
+    public static Map<String, Index<String, Posting>> getBiwordIndexes() {
+        return biwordIndexes;
     }
 
-    public static Index<String, String> getKGramIndex() {
-        return kGramIndex;
+    public static Map<String, KGramIndex> getKGramIndexes() {
+        return kGramIndexes;
+    }
+
+    public static String getCurrentDirectory() {
+        return currentDirectory;
+    }
+
+    public static List<String> getAllDirectoryPaths() {
+        return allDirectoryPaths.stream().sorted().toList();
     }
 }

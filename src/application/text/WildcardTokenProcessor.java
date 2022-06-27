@@ -64,7 +64,7 @@ public class WildcardTokenProcessor extends TokenProcessor {
         return token.substring(startIndex, endIndex + 1);
     }
 
-    private boolean isNotAlphanumeric(char character) {
+    public boolean isNotAlphanumeric(char character) {
         return !(Character.isLetterOrDigit(character) | character == '*');
     }
 }

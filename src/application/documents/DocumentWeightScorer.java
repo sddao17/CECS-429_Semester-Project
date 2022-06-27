@@ -37,6 +37,7 @@ public class DocumentWeightScorer implements Closeable {
         VocabularyTokenProcessor processor = new VocabularyTokenProcessor();
         String[] splitQuery = query.split(" ");
         List<String> queryTerms = new ArrayList<>();
+        finalAccumulators.clear();
 
         for (String token : splitQuery) {
             // if the token has a wildcard, allow all vocabulary types that match the pattern to accumulate points
@@ -151,9 +152,7 @@ public class DocumentWeightScorer implements Closeable {
 
     public List<Map.Entry<Integer, Double>> getRankedEntries(int k) {
         // error handling: if there are less document IDs than what is requested, instead use the existing size
-        if (k > finalAccumulators.size()) {
-            k = finalAccumulators.size();
-        }
+        k = Math.min(k, finalAccumulators.size());
 
         List<Map.Entry<Integer, Double>> rankedEntries = new ArrayList<>();
         /* 3. Select and return the top K = 10 documents by largest A(d) value.

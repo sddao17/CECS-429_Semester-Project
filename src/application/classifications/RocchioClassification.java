@@ -261,6 +261,6 @@ public class RocchioClassification implements TextClassification {
      */
     @Override
     public List<String> getVocabulary(String directoryPath) {
-        return Application.getKGramIndexes().get(directoryPath + "/index/kGrams.bin").getVocabulary();
+        return allIndexes.get(directoryPath).getVocabulary();
     }
 }

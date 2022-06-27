@@ -80,13 +80,13 @@ public class Application {
         }
 
         input = Menu.showQueryMenu();
-        String queryMode = switch (input) {
-            case 1 -> "boolean";
-            case 2 -> "ranked";
-            default -> "";
-        };
 
         if (input < 3) {
+            String queryMode = switch (input) {
+                case 1 -> "boolean";
+                case 2 -> "ranked";
+                default -> "";
+            };
             startQueryLoop(in, queryMode);
         } else {
             input = Menu.showClassificationMenu();
@@ -658,18 +658,6 @@ public class Application {
         } while (input != 0);
     }
 
-    private static void closeOpenFiles() {
-        // close all open file resources case-by-case
-        for (Closeable stream : closeables) {
-            try {
-                stream.close();
-            } catch (NullPointerException ignored) {
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
     private static void displayRocchioResults(RocchioClassification rocchio, String subfolder, int documentID) {
         Map<String, Double> candidateDistances = rocchio.getCandidateDistances(subfolder, documentID);
 
@@ -685,11 +673,22 @@ public class Application {
         String lastFolder = centroidDistance.getKey().substring(centroidDistance.getKey().lastIndexOf("/"));
 
         System.out.println("Lowest distance for " +
-                corpora.get(subfolder).getDocument(documentID).getTitle() +" is to " + lastFolder + ".");
+                corpora.get(subfolder).getDocument(documentID).getTitle() + " is to " + lastFolder + ".");
     }
 
     public static void displayKnnResults(){
 
+    }
+
+    private static void closeOpenFiles() {
+        // close all open file resources case-by-case
+        for (Closeable stream : closeables) {
+            try {
+                stream.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (NullPointerException ignored) {}
+        }
     }
 
     public static Map<String, DirectoryCorpus> getCorpora() {

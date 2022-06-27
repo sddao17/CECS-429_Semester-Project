@@ -3,8 +3,6 @@ package application.utilities;
 
 import application.Application;
 
-import java.util.Scanner;
-
 public class Menu {
 
     public static int showBuildOrQueryIndexMenu() {

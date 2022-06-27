@@ -85,7 +85,7 @@ public class Application {
             String queryMode = switch (input) {
                 case 1 -> "boolean";
                 case 2 -> "ranked";
-                default -> "";
+                default -> throw new RuntimeException("Unexpected input: " + input);
             };
             startQueryLoop(in, queryMode);
         } else {

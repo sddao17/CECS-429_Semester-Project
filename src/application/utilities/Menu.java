@@ -53,6 +53,19 @@ public class Menu {
         return CheckInput.checkIntRange(0, 5);
     }
 
+    public static int showKnnMenu() {
+        System.out.printf("""
+                %nSelect an option:
+                1. Classify a document
+                2. Classify all documents
+                3. Get document vector
+                4. Get a vocabulary list
+                0. Quit
+                 >>\040""");
+
+        return CheckInput.checkIntRange(0, 5);
+    }
+
     public static void showHelpMenu(int vocabPrintSize) {
         if (Application.getAllDirectoryPaths().size() > 1) {
             System.out.printf("""

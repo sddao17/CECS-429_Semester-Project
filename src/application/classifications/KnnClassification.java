@@ -1,6 +1,7 @@
 
 package application.classifications;
 
+import application.Application;
 import application.documents.DirectoryCorpus;
 import application.documents.Document;
 import application.documents.DocumentWeightScorer;
@@ -138,6 +139,16 @@ public class KnnClassification implements TextClassification {
 
     @Override
     public List<String> getVocabulary(String directoryPath) {
-        return null;
+        return Application.getKGramIndexes().get(directoryPath + "/index/kGrams.bin").getVocabulary();
+    }
+
+    /**
+     * Returns the list of normalized document weights of the specified subdirectory.
+     * @param directoryPath the path of the subdirectory
+     * @param documentId the document ID of the document
+     * @return the list of normalized document weights of the subdirectory
+     */
+    public List<Double> getVector(String directoryPath, int documentId) {
+        return allWeightVectors.get(directoryPath).get(documentId).values().stream().toList();
     }
 }

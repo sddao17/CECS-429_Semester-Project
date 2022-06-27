@@ -11,6 +11,8 @@ import application.text.*;
 import application.utilities.CheckInput;
 import application.utilities.Menu;
 import application.utilities.IndexUtility;
+import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -35,6 +37,7 @@ public class Application {
     private static CorpusSelection cSelect;
     private static String currentDirectory; // the user's current directory to use for queries, initially set to root
     private static List<String> allDirectoryPaths = new ArrayList<>();
+    private static final boolean ASC = true;
 
     private static final Map<String, DirectoryCorpus> corpora = new HashMap<>();
     private static final Map<String, Index<String, Posting>> corpusIndexes = new HashMap<>();
@@ -680,15 +683,36 @@ public class Application {
     }
 
     public static void displayKnnResults(KnnClassification knn , String subfolder, int documentID, int kValue){
-        Map<String, Double> candidateDistances = knn.getCandidateDistances(subfolder, documentID, currentDirectory);
         int counter = 0;
+        int numList = 0;
+        Map<String, Double> candidateDistances = knn.getCandidateDistances(subfolder, documentID, currentDirectory);
+        //List<Double> euclidianDistances = candidateDistances.get().value();
+        Collection<Double> values = candidateDistances.values();
+        // Creating an ArrayList of values
+        ArrayList<Double> listOfValues = new ArrayList<>(values);
+        Collections.sort(listOfValues);
+        System.out.println(listOfValues);
+
+
+
         System.out.println();
+        System.out.println( " nearest to: \n");
         for (Map.Entry<String, Double> entry : candidateDistances.entrySet()){
             while(!(counter >= kValue)){
-                String currentFolder = entry.getKey().substring(entry.getKey().lastIndexOf("/"));
-                double currDistance = entry.getValue();
+                //String currentFolder = entry.getKey().substring(entry.getKey().lastIndexOf("/"));
+                //double currDistance = entry.getValue();
                 //System.out.println(corpora.get(subfolder).getDocument(documentID).getTitle() + ": " + currDistance);
+                //System.out.print(candidateDistances.getKey());
+
+                Double value = listOfValues.get(counter);
+                //System.out.println(value);
+                String key = getKeyByValue(candidateDistances, value);
+                //System.out.println(key);
+                //System.out.print(listOfValues.get(counter) + "\n");
+                System.out.println((numList += 1) + ": " + key + " (" + value + ") " );
+
                 counter += 1;
+
             }
         }
 
@@ -704,6 +728,15 @@ public class Application {
                 e.printStackTrace();
             } catch (NullPointerException ignored) {}
         }
+    }
+
+    public static <K, V> K getKeyByValue(Map<K, V> map, V value) {
+        for (Entry<K, V> entry : map.entrySet()) {
+            if (Objects.equals(value, entry.getValue())) {
+                return entry.getKey();
+            }
+        }
+        return null;
     }
 
     public static Map<String, DirectoryCorpus> getCorpora() {

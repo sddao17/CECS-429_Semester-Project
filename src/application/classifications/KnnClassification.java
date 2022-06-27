@@ -122,7 +122,7 @@ public class KnnClassification implements TextClassification {
         currDirectory = currentDirectory;
         //get the disputed document in questions vector to calculate the distance
         Map<String, Double> disputedVector = allWeightVectors.get(directoryPath).get(documentId);
-        DirectoryCorpus currentCorpus = corpora.get(directoryPath);
+        //DirectoryCorpus currentCorpus = corpora.get(directoryPath);
 
         String subfolderHamilton = currentDirectory + "/hamilton";
         String subfolderJay = currentDirectory + "/jay";
@@ -133,22 +133,24 @@ public class KnnClassification implements TextClassification {
                 for( Document doc : corpora.get(subfolderHamilton).getDocuments()){
                     int docId = doc.getId();
                     Map<String, Double> currVector = allWeightVectors.get(subfolderHamilton).get(docId);
-                    candidateDistances.put(subfolderHamilton, calculateDistance(disputedVector.values().stream().toList(), currVector.values().stream().toList()));
-                    //System.out.print(doc.getTitle()+  ": " + candidateDistances.get(subfolderHamilton) +"\n");
+                    Double distance = calculateDistance(disputedVector.values().stream().toList(), currVector.values().stream().toList());
+                    candidateDistances.put(doc.getTitle(), distance);
+
+                    //System.out.print(doc.getTitle()+  ": " + candidateDistances.get(doc.getTitle()) +"\n");
                 }
 
                 for( Document doc: corpora.get(subfolderJay).getDocuments()){
                     int docId = doc.getId();
                     Map<String, Double> currVector = allWeightVectors.get(subfolderJay).get(docId);
-                    candidateDistances.put(subfolderJay, calculateDistance(disputedVector.values().stream().toList(), currVector.values().stream().toList()));
-                    //System.out.print(doc.getTitle()+  ": " + candidateDistances.get(subfolderJay) +"\n");
+                    candidateDistances.put(doc.getTitle(), calculateDistance(disputedVector.values().stream().toList(), currVector.values().stream().toList()));
+                    //System.out.print(doc.getTitle()+  ": " + candidateDistances.get(doc.getTitle()) +"\n");
                 }
 
                 for ( Document doc: corpora.get(subfolderMadison).getDocuments()){
                     int docId = doc.getId();
                     Map<String, Double> currVector = allWeightVectors.get(subfolderMadison).get(docId);
-                    candidateDistances.put(subfolderMadison, calculateDistance(disputedVector.values().stream().toList(), currVector.values().stream().toList()));
-                    //System.out.print(doc.getTitle()+  ": " + candidateDistances.get(subfolderMadison) +"\n");
+                    candidateDistances.put(doc.getTitle(), calculateDistance(disputedVector.values().stream().toList(), currVector.values().stream().toList()));
+                   //System.out.print(doc.getTitle()+  ": " + candidateDistances.get(doc.getTitle()) +"\n");
                 }
 
         return candidateDistances;
@@ -181,6 +183,7 @@ public class KnnClassification implements TextClassification {
 
         return priorityQueue.poll();
     }
+
 
     @Override
     public List<String> getVocabulary(String directoryPath) {

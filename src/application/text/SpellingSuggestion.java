@@ -14,8 +14,8 @@ import java.util.*;
  */
 public class SpellingSuggestion {
 
-    private static final double K_GRAM_OVERLAP_THRESHOLD = 0.2;
-    private static final double JACCARD_COEFF_THRESHOLD = 0.3;
+    private static final double K_GRAM_OVERLAP_THRESHOLD = 0.3;
+    private static final double JACCARD_COEFF_THRESHOLD = 0.4;
     private final Index<String, Posting> corpusIndex;
     private final Index<String, String> kGramIndex;
 
@@ -260,27 +260,27 @@ public class SpellingSuggestion {
            e  | 3  2  2  2
            s  | 4  3  3  3 < levenshtein edit distance = 3 */
         // index pointers to the last character of the left /right token
-        int i = leftToken.length() - 1;
-        int j = rightToken.length() - 1;
+        int i = leftToken.length();
+        int j = rightToken.length();
 
-        if (i < 0 && j >= 0) {
-            return j + 1;
-        } else if (j < 0 && i >= 0) {
-            return i + 1;
-        } else if (i < 0) {
+        if (i == 0 && j > 0) {
+            return j;
+        } else if (j == 0 && i > 0) {
+            return i;
+        } else if (i == 0) {
             return 0;
         }
 
         // memoization - store values of visited table cells
-        int[][] visitedMemo = new int[i + 1][j + 1];
+        int[][] visitedMemo = new int[i][j];
         for (int[] row : visitedMemo) {
             Arrays.fill(row, -1);
         }
 
-        int finalEdit = calculateEdits(leftToken, rightToken, i, j, visitedMemo);
+        int finalEdit = calculateEdits(leftToken, rightToken, i - 1, j - 1, visitedMemo);
 
         if (Application.enabledLogs) {
-            visitedMemo[i][j] = finalEdit;
+            visitedMemo[i - 1][j - 1] = finalEdit;
             System.out.println("(" + leftToken + ", " + rightToken + ")\n" +
                     getGridAsString(visitedMemo, leftToken, rightToken));
         }

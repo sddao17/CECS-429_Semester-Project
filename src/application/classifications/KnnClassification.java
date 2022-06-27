@@ -1,3 +1,4 @@
+
 package application.classifications;
 
 import application.documents.DirectoryCorpus;
@@ -11,7 +12,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.*;
 
-public class KnnClassification implements Classification {
+public class KnnClassification implements TextClassification {
     private final String rootDirectoryPath;
     // for each directory folder, get their respective indexes / vocabularies and map them to their directory paths
     private final Map<String, DirectoryCorpus> corpora;
@@ -137,11 +138,6 @@ public class KnnClassification implements Classification {
 
     @Override
     public List<String> getVocabulary(String directoryPath) {
-        return null;
-    }
-
-    @Override
-    public List<Double> getVector(String directoryPath, int documentId) {
         return null;
     }
 }

@@ -595,11 +595,11 @@ public class Application {
                     String subfolder = currentDirectory + in.nextLine();
 
                     try {
-                        //System.out.print("Enter the k value:\n >> ");
-                        int kValue = 3;
                         IndexUtility.displayDocuments(corpora.get(subfolder));
                         System.out.print("Enter the document ID:\n >> ");
                         int documentID = Integer.parseInt(in.nextLine());
+                        System.out.print("Enter the k value:\n >> ");
+                        int kValue = Integer.parseInt(in.nextLine());
                         displayKnnResults(knn, subfolder, documentID, kValue);
                     } catch (NullPointerException e) {
                         System.out.println("The path does not exist; please try again.");
@@ -609,8 +609,8 @@ public class Application {
                     getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
                     System.out.print("Enter the directory's subfolder:\n >> ");
                     String subfolder = currentDirectory + in.nextLine();
-                    //System.out.print("Enter the k value:\n >> ");
-                    int kValue = 3;
+                    System.out.print("Enter the k value:\n >> ");
+                    int kValue = Integer.parseInt(in.nextLine());
 
                     try {
                         for (Document document : corpora.get(subfolder).getDocuments()) {
@@ -687,7 +687,7 @@ public class Application {
             while(!(counter >= kValue)){
                 String currentFolder = entry.getKey().substring(entry.getKey().lastIndexOf("/"));
                 double currDistance = entry.getValue();
-                System.out.println(corpora.get(subfolder).getDocument(documentID).getTitle() + ": " + currDistance);
+                //System.out.println(corpora.get(subfolder).getDocument(documentID).getTitle() + ": " + currDistance);
                 counter += 1;
             }
         }

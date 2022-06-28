@@ -603,6 +603,7 @@ public class Application {
                         int documentID = Integer.parseInt(in.nextLine());
                         System.out.print("Enter the k value:\n >> ");
                         int kValue = Integer.parseInt(in.nextLine());
+                        System.out.println( corpora.get(subfolder).getDocument(documentID).getTitle()+ " nearest to: ");
                         displayKnnResults(knn, subfolder, documentID, kValue);
                     } catch (NullPointerException e) {
                         System.out.println("The path does not exist; please try again.");
@@ -617,7 +618,9 @@ public class Application {
 
                     try {
                         for (Document document : corpora.get(subfolder).getDocuments()) {
+                            System.out.println(document.getTitle()+ " nearest to: ");
                             displayKnnResults(knn, subfolder, document.getId(), kValue);
+                            System.out.println("");
                         }
                     } catch (NullPointerException e) {
                         System.out.println("The subfolder does not exist; please try again.");
@@ -691,12 +694,10 @@ public class Application {
         // Creating an ArrayList of values
         ArrayList<Double> listOfValues = new ArrayList<>(values);
         Collections.sort(listOfValues);
-        System.out.println(listOfValues);
 
 
 
-        System.out.println();
-        System.out.println( " nearest to: \n");
+        //System.out.println( " nearest to: \n");
         for (Map.Entry<String, Double> entry : candidateDistances.entrySet()){
             while(!(counter >= kValue)){
                 //String currentFolder = entry.getKey().substring(entry.getKey().lastIndexOf("/"));

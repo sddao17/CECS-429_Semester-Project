@@ -196,23 +196,6 @@ public class RocchioClassification implements TextClassification {
     }
 
     /**
-     * Classifies each document within the set of documents within a subdirectory using Rocchio Classification
-     * (according to the centroid of its closest class).
-     * @param directoryPath the path of the subdirectory to the document
-     * @return the classification of the documents in the form of <code>List<(subdirectory, distance)><code/>
-     */
-    public List<Map.Entry<String, Double>> classifyDocuments(String directoryPath) {
-        List<Map.Entry<String, Double>> classifications = new ArrayList<>();
-        DirectoryCorpus corpus = corpora.get(directoryPath);
-
-        for (Document document : corpus.getDocuments()) {
-            classifications.add(classifyDocument(directoryPath, document.getId()));
-        }
-
-        return classifications;
-    }
-
-    /**
      * Calculates the distances from the document to the centroid of each training set and includes them within a Map.
      * @param directoryPath the path of the subdirectory to the document
      * @param documentId the document ID of the document

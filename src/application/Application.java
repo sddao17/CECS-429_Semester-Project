@@ -250,6 +250,11 @@ public class Application {
 
         // form the sets of discriminating terms `T*` of all subdirectories
         BayesianClassification naiveBayes = new BayesianClassification(currentDirectory, corpora, corpusIndexes);
+        List<Map.Entry<String, Double>> rankedEntries = naiveBayes.getOrderedMutualInfo();
+        for (int i = 0; i < 10; ++i) {
+            Map.Entry<String, Double> entry = rankedEntries.get(i);
+            System.out.println(entry.getKey() + " -> " + entry.getValue());
+        }
 
         long endTime = System.nanoTime();
         double timeElapsedInSeconds = (double) (endTime - startTime) / 1_000_000_000;
@@ -473,6 +478,11 @@ public class Application {
         long startTime = System.nanoTime();
 
         BayesianClassification naiveBayes = new BayesianClassification(rootDirectoryPath, corpora, corpusIndexes);
+        List<Map.Entry<String, Double>> rankedEntries = naiveBayes.getOrderedMutualInfo();
+        for (int i = 0; i < 10; ++i) {
+            Map.Entry<String, Double> entry = rankedEntries.get(i);
+            System.out.println(entry.getKey() + " -> " + entry.getValue());
+        }
 
         long endTime = System.nanoTime();
         double timeElapsedInSeconds = (double) (endTime - startTime) / 1_000_000_000;
@@ -748,7 +758,7 @@ public class Application {
     }
 
     private static void displayBayesianResults(BayesianClassification rocchio, String subfolder, int documentID) {
-        Map<String, Double> candidateDistances = rocchio.getCandidateDistances(subfolder, documentID);
+        Map<String, Double> candidateDistances = new HashMap<>();
 
         System.out.println();
         for (Map.Entry<String, Double> entry : candidateDistances.entrySet()) {

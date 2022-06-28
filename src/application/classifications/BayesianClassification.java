@@ -2,14 +2,9 @@
 package application.classifications;
 
 import application.documents.DirectoryCorpus;
-import application.documents.Document;
-import application.documents.DocumentWeightScorer;
-import application.indexes.DiskIndexReader;
 import application.indexes.Index;
 import application.indexes.Posting;
 
-import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.util.*;
 
 public class BayesianClassification implements TextClassification {
@@ -20,6 +15,7 @@ public class BayesianClassification implements TextClassification {
     private final Map<String, Index<String, Posting>> allIndexes;
     // directory map of document ids with their term frequency vectors
     private final Map<String, Map<String, int[][]>> vocabularyTables;
+    private final Map<String, Double> mutualInfo;
 
     /**
      * Constructs a Rocchio classification instance of a root directory containing subdirectories.
@@ -34,9 +30,11 @@ public class BayesianClassification implements TextClassification {
         corpora = inputCorpora;
         allIndexes = inputIndexes;
         vocabularyTables = new HashMap<>();
+        mutualInfo = new HashMap<>();
 
         initializeVectors();
-        calculateWeightVectors();
+        calculateVocabTables();
+        storeMutualInfo();
     }
 
     /**
@@ -68,44 +66,77 @@ public class BayesianClassification implements TextClassification {
      * weight. Skips calculating the document weights for the root directory since it is irrelevant to our information
      * need, and allows us to avoid making unnecessary calculations.
      */
-    private void calculateWeightVectors() {
+    private void calculateVocabTables() {
         List<String> vocabulary = allIndexes.get(rootDirectoryPath).getVocabulary();
 
         for (Map.Entry<String, Index<String, Posting>> entry : allIndexes.entrySet()) {
             String directoryPath = entry.getKey();
 
             // skip the root directory, since it contains all documents of all directories
-            if (!directoryPath.equals(rootDirectoryPath)) {
-                Index<String, Posting> currentIndex = entry.getValue();
+            if (!directoryPath.equals(rootDirectoryPath) && !directoryPath.endsWith("/disputed")) {
                 Map<String, int[][]> currentTermTable = vocabularyTables.get(directoryPath);
 
                 // iterate through the vocabulary for each index
                 for (String term : vocabulary) {
-                    List<Posting> postings = currentIndex.getPositionlessPostings(term);
-
-
+                    insertTableValues(currentTermTable, directoryPath, term);
                 }
             }
         }
     }
 
-    /**
-     * Calculates the Euclidean distance between two sets of points, where
-     * <code>|x, y| = sqrt( sum of all( (ys - xs)^2 ) )</code>.
-     * @param xs the list of points represented as mathematical x's, ie. x1, x2, x3, ...
-     * @param ys the list of points represented as mathematical y's, ie. y1, y2, y3, ...
-     * @return the Euclidean distance between the two sets of points
-     */
-    public static double calculateDistance(List<Double> xs, List<Double> ys) {
-        double sum = 0;
+    private void insertTableValues(Map<String, int[][]> termTable, String currentDirectory, String term) {
+        for (Map.Entry<String, Index<String, Posting>> entry : allIndexes.entrySet()) {
+            String directoryPath = entry.getKey();
 
-        // |x, y| = sqrt( sum of all( (ys - xs)^2 ) )
-        for (int i = 0; i < xs.size(); ++i) {
-            sum += Math.pow((ys.get(i) - xs.get(i)), 2);
+            // skip the root directory, since it contains all documents of all directories
+            if (!directoryPath.equals(rootDirectoryPath) && !directoryPath.endsWith("/disputed")) {
+                Index<String, Posting> currentIndex = entry.getValue();
+                DirectoryCorpus currentCorpus = corpora.get(directoryPath);
+                List<Posting> postings = currentIndex.getPositionlessPostings(term);
+
+                // if checking within the same class, update Nx1 values; update N1x values otherwise
+                if (directoryPath.equals(currentDirectory)) {
+                    // setting N11
+                    termTable.get(term)[1][1] = postings.size();
+                    // setting N01
+                    termTable.get(term)[0][1] = currentCorpus.getCorpusSize() - postings.size();
+                } else {
+                    // updating N10
+                    termTable.get(term)[1][0] += postings.size();
+                    // updating N00
+                    termTable.get(term)[0][0] += currentCorpus.getCorpusSize() - postings.size();
+                }
+                //System.out.println(term + " " + termTable.get(term)[1][1] + " " + termTable.get(term)[0][1] + " " +
+                //        termTable.get(term)[1][0] + " " + termTable.get(term)[0][0]);
+            }
+        }
+    }
+
+    private void storeMutualInfo() {
+        for (Map.Entry<String, Map<String, int[][]>> entry : vocabularyTables.entrySet()) {
+            Map<String, int[][]> currentVocabTable = entry.getValue();
+            List<String> terms = currentVocabTable.keySet().stream().toList();
+
+            for (String term : terms) {
+                int[][] table = currentVocabTable.get(term);
+                double result = calculateMutualInfo(table[1][1], table[0][1],table[1][0], table[0][0]);
+                if (Double.isNaN(result)) {
+                    result = 0;
+                }
+
+                double oldValue = 0.0;
+                if (mutualInfo.containsKey(term)) {
+                    oldValue = mutualInfo.get(term);
+                }
+                mutualInfo.put(term, oldValue + result);
+            }
         }
 
-        return Math.sqrt(sum);
+        // average out the vectors
+        mutualInfo.replaceAll((term, value) -> value /= corpora.size() - 2);
     }
+
+
 
     /**
      * Classifies the document using Rocchio Classification (according to the centroid of its closest class).
@@ -115,42 +146,13 @@ public class BayesianClassification implements TextClassification {
      */
     @Override
     public Map.Entry<String, Double> classifyDocument(String directoryPath, int documentId) {
-        Map<String, Double> candidateDistances = getCandidateDistances(directoryPath, documentId);
+        Map<String, Double> candidateDistances = new HashMap<>();
 
         // once all the distances are calculated, return the directory of the lowest distance
         PriorityQueue<Map.Entry<String, Double>> priorityQueue = new PriorityQueue<>(Map.Entry.comparingByValue());
         priorityQueue.addAll(candidateDistances.entrySet());
 
         return priorityQueue.poll();
-    }
-
-    /**
-     * Classifies each document within the set of documents within a subdirectory using Rocchio Classification
-     * (according to the centroid of its closest class).
-     * @param directoryPath the path of the subdirectory to the document
-     * @return the classification of the documents in the form of <code>List<(subdirectory, distance)><code/>
-     */
-    public List<Map.Entry<String, Double>> classifyDocuments(String directoryPath) {
-        List<Map.Entry<String, Double>> classifications = new ArrayList<>();
-        DirectoryCorpus corpus = corpora.get(directoryPath);
-
-        for (Document document : corpus.getDocuments()) {
-            classifications.add(classifyDocument(directoryPath, document.getId()));
-        }
-
-        return classifications;
-    }
-
-    /**
-     * Calculates the distances from the document to the centroid of each training set and includes them within a Map.
-     * @param directoryPath the path of the subdirectory to the document
-     * @param documentId the document ID of the document
-     * @return the distances from the document to the centroid of each training set within a Map
-     */
-    public Map<String, Double> getCandidateDistances(String directoryPath, int documentId) {
-        Map<String, Double> candidateDistances = new HashMap<>();
-
-        return candidateDistances;
     }
 
     /**
@@ -163,16 +165,17 @@ public class BayesianClassification implements TextClassification {
         return allIndexes.get(directoryPath).getVocabulary();
     }
 
-    private void getDiscriminatingTerms() {
-        Map<String, Map<String, int[][]>> vocabularyTables = new HashMap<>();
+    public List<Map.Entry<String, Double>> getOrderedMutualInfo() {
+        PriorityQueue<Map.Entry<String, Double>> priorityQueue = new PriorityQueue<>(
+                Map.Entry.comparingByValue(Comparator.reverseOrder()));
+        priorityQueue.addAll(mutualInfo.entrySet());
+        List<Map.Entry<String, Double>> rankedEntries = new ArrayList<>();
 
+        for (int i = 0; i < mutualInfo.size(); ++i) {
+            rankedEntries.add(priorityQueue.poll());
+        }
 
-    }
-
-    public Map<String, Double> getMutualInfoMap() {
-
-
-        return new HashMap<>();
+        return rankedEntries;
     }
 
     /**

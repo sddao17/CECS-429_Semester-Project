@@ -24,7 +24,7 @@ public class KnnClassification implements TextClassification {
     private String currDirectory;
 
     public KnnClassification(String inputRootDirectory, Map<String, DirectoryCorpus> inputCorpora,
-                                 Map<String, Index<String, Posting>> inputIndexes) {
+                             Map<String, Index<String, Posting>> inputIndexes) {
         rootDirectoryPath = inputRootDirectory;
         corpora = inputCorpora;
         allIndexes = inputIndexes;
@@ -129,29 +129,29 @@ public class KnnClassification implements TextClassification {
         String subfolderMadison = currentDirectory + "/madison";
 
 
-                //candidateDistances.put(currentDirectory, calculateDistance(disputedVector.values().stream().toList(), disputedVector.values().stream().toList()));
-                for( Document doc : corpora.get(subfolderHamilton).getDocuments()){
-                    int docId = doc.getId();
-                    Map<String, Double> currVector = allWeightVectors.get(subfolderHamilton).get(docId);
-                    Double distance = calculateDistance(disputedVector.values().stream().toList(), currVector.values().stream().toList());
-                    candidateDistances.put(doc.getTitle(), distance);
+        //candidateDistances.put(currentDirectory, calculateDistance(disputedVector.values().stream().toList(), disputedVector.values().stream().toList()));
+        for( Document doc : corpora.get(subfolderHamilton).getDocuments()){
+            int docId = doc.getId();
+            Map<String, Double> currVector = allWeightVectors.get(subfolderHamilton).get(docId);
+            Double distance = calculateDistance(disputedVector.values().stream().toList(), currVector.values().stream().toList());
+            candidateDistances.put(doc.getTitle(), distance);
 
-                    //System.out.print(doc.getTitle()+  ": " + candidateDistances.get(doc.getTitle()) +"\n");
-                }
+            //System.out.print(doc.getTitle()+  ": " + candidateDistances.get(doc.getTitle()) +"\n");
+        }
 
-                for( Document doc: corpora.get(subfolderJay).getDocuments()){
-                    int docId = doc.getId();
-                    Map<String, Double> currVector = allWeightVectors.get(subfolderJay).get(docId);
-                    candidateDistances.put(doc.getTitle(), calculateDistance(disputedVector.values().stream().toList(), currVector.values().stream().toList()));
-                    //System.out.print(doc.getTitle()+  ": " + candidateDistances.get(doc.getTitle()) +"\n");
-                }
+        for( Document doc: corpora.get(subfolderJay).getDocuments()){
+            int docId = doc.getId();
+            Map<String, Double> currVector = allWeightVectors.get(subfolderJay).get(docId);
+            candidateDistances.put(doc.getTitle(), calculateDistance(disputedVector.values().stream().toList(), currVector.values().stream().toList()));
+            //System.out.print(doc.getTitle()+  ": " + candidateDistances.get(doc.getTitle()) +"\n");
+        }
 
-                for ( Document doc: corpora.get(subfolderMadison).getDocuments()){
-                    int docId = doc.getId();
-                    Map<String, Double> currVector = allWeightVectors.get(subfolderMadison).get(docId);
-                    candidateDistances.put(doc.getTitle(), calculateDistance(disputedVector.values().stream().toList(), currVector.values().stream().toList()));
-                   //System.out.print(doc.getTitle()+  ": " + candidateDistances.get(doc.getTitle()) +"\n");
-                }
+        for ( Document doc: corpora.get(subfolderMadison).getDocuments()){
+            int docId = doc.getId();
+            Map<String, Double> currVector = allWeightVectors.get(subfolderMadison).get(docId);
+            candidateDistances.put(doc.getTitle(), calculateDistance(disputedVector.values().stream().toList(), currVector.values().stream().toList()));
+            //System.out.print(doc.getTitle()+  ": " + candidateDistances.get(doc.getTitle()) +"\n");
+        }
 
         return candidateDistances;
     }

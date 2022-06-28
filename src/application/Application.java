@@ -32,7 +32,9 @@ public class Application {
 
     private static final int VOCABULARY_PRINT_SIZE = 1_000; // number of vocabulary terms to print
     private static final int MAX_DISPLAYED_RANKED_ENTRIES = 10;  // the maximum number of ranked entries to display
-    private static final int SPELLING_CORRECTION_THRESHOLD = 10; // the posting size trigger to suggest corrections
+    private static final int SPELLING_CORRECTION_THRESHOLD = 10;// the posting size trigger to suggest corrections
+    private static int counter;
+    private static int numList;
 
     private static CorpusSelection cSelect;
     private static String currentDirectory; // the user's current directory to use for queries, initially set to root
@@ -44,10 +46,14 @@ public class Application {
     private static final Map<String, Index<String, Posting>> biwordIndexes = new HashMap<>();
     private static final Map<String, KGramIndex> kGramIndexes = new HashMap<>();
     private static final Map<String, List<Double>> lds = new HashMap<>();
+    private static  Map<String, Integer> closestPoints = new HashMap<>();
     private static DocumentWeightScorer documentScorer;
 
     public static boolean enabledLogs = false;
     public static final List<Closeable> closeables = new ArrayList<>(); // considers all cases of indexing
+    public static List<String> hamiltonDocs = new ArrayList<>();
+    public static List<String> jayDocs = new ArrayList<>();
+    public static List<String> madisonDocs = new ArrayList<>();
 
     public static void main(String[] args) {
         System.out.printf("""
@@ -166,10 +172,10 @@ public class Application {
             // initialize the DiskPositionalIndex and k-grams using pre-constructed indexes on disk
             corpusIndexes.put(indexPaths.get("root"),
                     new DiskPositionalIndex(DiskIndexReader.readBTree(indexPaths.get("bTreeBin")),
-                    indexPaths.get("bTreeBin"), indexPaths.get("postingsBin")));
+                            indexPaths.get("bTreeBin"), indexPaths.get("postingsBin")));
             biwordIndexes.put(indexPaths.get("biwordBTreeBin"),
                     new DiskBiwordIndex(DiskIndexReader.readBTree(indexPaths.get("biwordBTreeBin")),
-                    indexPaths.get("biwordBTreeBin"), indexPaths.get("biwordBin")));
+                            indexPaths.get("biwordBTreeBin"), indexPaths.get("biwordBin")));
             kGramIndexes.put(indexPaths.get("kGramsBin"), DiskIndexReader.readKGrams(indexPaths.get("kGramsBin")));
             documentScorer = new DocumentWeightScorer(currentDirectory + "/index/docWeights.bin");
 
@@ -686,35 +692,46 @@ public class Application {
     }
 
     public static void displayKnnResults(KnnClassification knn , String subfolder, int documentID, int kValue){
-        int counter = 0;
-        int numList = 0;
+        counter = 0;
+        numList = 0;
         Map<String, Double> candidateDistances = knn.getCandidateDistances(subfolder, documentID, currentDirectory);
-        //List<Double> euclidianDistances = candidateDistances.get().value();
         Collection<Double> values = candidateDistances.values();
         // Creating an ArrayList of values
         ArrayList<Double> listOfValues = new ArrayList<>(values);
         Collections.sort(listOfValues);
+        initializeClosetPoints();
+        initializeAuthoredDocs();
 
-
-
-        //System.out.println( " nearest to: \n");
         for (Map.Entry<String, Double> entry : candidateDistances.entrySet()){
             while(!(counter >= kValue)){
-                //String currentFolder = entry.getKey().substring(entry.getKey().lastIndexOf("/"));
-                //double currDistance = entry.getValue();
-                //System.out.println(corpora.get(subfolder).getDocument(documentID).getTitle() + ": " + currDistance);
-                //System.out.print(candidateDistances.getKey());
-
                 Double value = listOfValues.get(counter);
-                //System.out.println(value);
                 String key = getKeyByValue(candidateDistances, value);
-                //System.out.println(key);
-                //System.out.print(listOfValues.get(counter) + "\n");
                 System.out.println((numList += 1) + ": " + key + " (" + value + ") " );
-
                 counter += 1;
 
+                if(hamiltonDocs.contains(key)){
+                    int pointCount = closestPoints.get("Hamilton");
+                    closestPoints.put("Hamilton", pointCount + 1 );
+                }
+                else if(jayDocs.contains(key)){
+                    int pointCount = closestPoints.get("Jay");
+                    closestPoints.put("Jay", pointCount + 1 );
+                }
+                else{
+                    int pointCount = closestPoints.get("Madison");
+                    closestPoints.put("Madison", pointCount + 1 );
+                }
             }
+        }
+
+        if(closestPoints.get("Hamilton") > closestPoints.get("Madison") && closestPoints.get("Hamilton") > closestPoints.get("Jay") ){
+            System.out.println("Document was written by Hamilton");
+        }
+        if(closestPoints.get("Madison") > closestPoints.get("Hamilton") && closestPoints.get("Madison") > closestPoints.get("Jay") ){
+            System.out.println("Document was written by Madison");
+        }
+        if(closestPoints.get("Jay") > closestPoints.get("Madison") && closestPoints.get("Jay") > closestPoints.get("Hamilton") ){
+            System.out.println("Document was written by Jay");
         }
 
 
@@ -738,6 +755,29 @@ public class Application {
             }
         }
         return null;
+    }
+
+    //initializes hashmap to keep totals of which author has the closet points to the disputed doc
+    public static void initializeClosetPoints(){
+        closestPoints.put("Madison", 0);
+        closestPoints.put("Hamilton", 0);
+        closestPoints.put("Jay", 0);
+    }
+
+    public static void initializeAuthoredDocs(){
+        String subfolderHamilton = currentDirectory + "/hamilton";
+        String subfolderJay = currentDirectory + "/jay";
+        String subfolderMadison = currentDirectory + "/madison";
+
+        for (Document doc: corpora.get(subfolderHamilton).getDocuments()){
+            hamiltonDocs.add(doc.getTitle());
+        }
+        for (Document doc: corpora.get(subfolderJay).getDocuments()){
+            jayDocs.add(doc.getTitle());
+        }
+        for (Document doc: corpora.get(subfolderMadison).getDocuments()){
+            madisonDocs.add(doc.getTitle());
+        }
     }
 
     public static Map<String, DirectoryCorpus> getCorpora() {

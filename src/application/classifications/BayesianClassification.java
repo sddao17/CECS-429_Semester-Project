@@ -15,7 +15,7 @@ public class BayesianClassification implements TextClassification {
     private final Map<String, Index<String, Posting>> allIndexes;
     // directory map of document ids with their term frequency vectors
     private final Map<String, Map<String, int[][]>> vocabularyTables;
-    private final Map<String, Double> mutualInfo;
+    private final Map<String, Map<String, Double>> mutualInfo;
 
     /**
      * Constructs a Rocchio classification instance of a root directory containing subdirectories.
@@ -114,29 +114,38 @@ public class BayesianClassification implements TextClassification {
 
     private void storeMutualInfo() {
         for (Map.Entry<String, Map<String, int[][]>> entry : vocabularyTables.entrySet()) {
+            String directoryPath = entry.getKey();
             Map<String, int[][]> currentVocabTable = entry.getValue();
             List<String> terms = currentVocabTable.keySet().stream().toList();
+            mutualInfo.put(directoryPath, new HashMap<>());
 
             for (String term : terms) {
+                Map<String, Double> currentVector = mutualInfo.get(directoryPath);
                 int[][] table = currentVocabTable.get(term);
                 double result = calculateMutualInfo(table[1][1], table[0][1],table[1][0], table[0][0]);
                 if (Double.isNaN(result)) {
                     result = 0;
                 }
 
-                double oldValue = 0.0;
-                if (mutualInfo.containsKey(term)) {
-                    oldValue = mutualInfo.get(term);
-                }
-                mutualInfo.put(term, oldValue + result);
+                currentVector.put(term, result);
             }
         }
-
-        // average out the vectors
-        mutualInfo.replaceAll((term, value) -> value /= corpora.size() - 2);
     }
 
+    public List<Map.Entry<String, Double>> getOrderedMutualInfo(String directoryPath) {
+        Map<String, Double> currentEntry = mutualInfo.get(directoryPath);
 
+        PriorityQueue<Map.Entry<String, Double>> priorityQueue = new PriorityQueue<>(
+                Map.Entry.comparingByValue(Comparator.reverseOrder()));
+        priorityQueue.addAll(currentEntry.entrySet());
+        List<Map.Entry<String, Double>> rankedEntries = new ArrayList<>();
+
+        for (int i = 0; i < currentEntry.size(); ++i) {
+            rankedEntries.add(priorityQueue.poll());
+        }
+
+        return rankedEntries;
+    }
 
     /**
      * Classifies the document using Rocchio Classification (according to the centroid of its closest class).
@@ -163,19 +172,6 @@ public class BayesianClassification implements TextClassification {
     @Override
     public List<String> getVocabulary(String directoryPath) {
         return allIndexes.get(directoryPath).getVocabulary();
-    }
-
-    public List<Map.Entry<String, Double>> getOrderedMutualInfo() {
-        PriorityQueue<Map.Entry<String, Double>> priorityQueue = new PriorityQueue<>(
-                Map.Entry.comparingByValue(Comparator.reverseOrder()));
-        priorityQueue.addAll(mutualInfo.entrySet());
-        List<Map.Entry<String, Double>> rankedEntries = new ArrayList<>();
-
-        for (int i = 0; i < mutualInfo.size(); ++i) {
-            rankedEntries.add(priorityQueue.poll());
-        }
-
-        return rankedEntries;
     }
 
     /**

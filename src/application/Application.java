@@ -250,11 +250,13 @@ public class Application {
 
         // form the sets of discriminating terms `T*` of all subdirectories
         BayesianClassification naiveBayes = new BayesianClassification(currentDirectory, corpora, corpusIndexes);
+        /*
         List<Map.Entry<String, Double>> rankedEntries = naiveBayes.getOrderedMutualInfo();
         for (int i = 0; i < 10; ++i) {
             Map.Entry<String, Double> entry = rankedEntries.get(i);
             System.out.println(entry.getKey() + " -> " + entry.getValue());
         }
+         */
 
         long endTime = System.nanoTime();
         double timeElapsedInSeconds = (double) (endTime - startTime) / 1_000_000_000;
@@ -478,10 +480,16 @@ public class Application {
         long startTime = System.nanoTime();
 
         BayesianClassification naiveBayes = new BayesianClassification(rootDirectoryPath, corpora, corpusIndexes);
-        List<Map.Entry<String, Double>> rankedEntries = naiveBayes.getOrderedMutualInfo();
-        for (int i = 0; i < 10; ++i) {
-            Map.Entry<String, Double> entry = rankedEntries.get(i);
-            System.out.println(entry.getKey() + " -> " + entry.getValue());
+        for (String directoryPath : corpora.keySet()) {
+            if (!directoryPath.equals(rootDirectoryPath) && !directoryPath.endsWith("/disputed")) {
+                List<Map.Entry<String, Double>> rankedEntries = naiveBayes.getOrderedMutualInfo(directoryPath);
+
+                System.out.println("\n" + directoryPath + ":");
+                for (int i = 0; i < 10; ++i) {
+                    Map.Entry<String, Double> entry = rankedEntries.get(i);
+                    System.out.println(entry.getKey() + " -> " + entry.getValue());
+                }
+            }
         }
 
         long endTime = System.nanoTime();

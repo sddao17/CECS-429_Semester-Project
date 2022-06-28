@@ -2,6 +2,7 @@
 package application;
 
 import application.UI.CorpusSelection;
+import application.classifications.BayesianClassification;
 import application.classifications.KnnClassification;
 import application.classifications.RocchioClassification;
 import application.documents.*;
@@ -465,7 +466,92 @@ public class Application {
     }
 
     private static void startBayesianLoop(Scanner in, String rootDirectoryPath) {
-        System.err.println("(not yet implemented)");
+        System.out.println("\nCalculating...");
+        long startTime = System.nanoTime();
+
+        BayesianClassification naiveBayes = new BayesianClassification(rootDirectoryPath, corpora, corpusIndexes);
+
+        long endTime = System.nanoTime();
+        double timeElapsedInSeconds = (double) (endTime - startTime) / 1_000_000_000;
+        System.out.println("Calculations complete." +
+                "\nTime elapsed: " + timeElapsedInSeconds + " seconds");
+
+        int input;
+
+        do {
+            input = Menu.showRocchioMenu();
+
+            switch (input) {
+                // classify a document
+                case 1 -> {
+                    getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
+                    System.out.print("Enter the directory's subfolder:\n >> ");
+                    String subfolder = currentDirectory + in.nextLine();
+
+                    try {
+                        IndexUtility.displayDocuments(corpora.get(subfolder));
+                        System.out.print("Enter the document ID:\n >> ");
+                        int documentID = Integer.parseInt(in.nextLine());
+                        displayBayesianResults(naiveBayes, subfolder, documentID);
+                    } catch (NullPointerException e) {
+                        System.out.println("The path does not exist; please try again.");
+                    }
+                } // classify all documents
+                case 2 -> {
+                    getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
+                    System.out.print("Enter the directory's subfolder:\n >> ");
+                    String subfolder = currentDirectory + in.nextLine();
+
+                    try {
+                        for (Document document : corpora.get(subfolder).getDocuments()) {
+                            displayBayesianResults(naiveBayes, subfolder, document.getId());
+                        }
+                    } catch (NullPointerException e) {
+                        System.out.println("The subfolder does not exist; please try again.");
+                    }
+
+                } // get a centroid vector
+                case 3 -> {
+
+                } // get a document weight vector
+                case 4 -> {
+                    try {
+                        getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
+                        System.out.print("Enter the directory's subfolder:\n >> ");
+                        String subfolder = currentDirectory + in.nextLine();
+                        IndexUtility.displayDocuments(corpora.get(subfolder));
+
+                        System.out.print("Enter the document ID:\n >> ");
+                        int documentID = Integer.parseInt(in.nextLine());
+
+                        List<String> vocabulary = corpusIndexes.get(rootDirectoryPath).getVocabulary();
+                        List<Double> weightVector = naiveBayes.getVector(subfolder, documentID);
+
+                        System.out.print("Enter the number of results to be shown (skip for all):\n >> ");
+                        int numOfResults = CheckInput.promptNumOfResults(in, vocabulary.size());
+
+                        for (int i = 0; i < numOfResults; ++i) {
+                            System.out.print("(" + vocabulary.get(i) + ": " + weightVector.get(i) +
+                                    (i < numOfResults - 1 ? "), " : ")\n"));
+                        }
+                    } catch (NullPointerException | NumberFormatException e) {
+                        System.out.println("Invalid input; please try again.");
+                    }
+                } // get a vocabulary list
+                case 5 -> {
+                    try {
+                        getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
+                        System.out.print("Enter the directory's subfolder (skip for all):\n >> ");
+                        String subfolder = in.nextLine();
+
+                        naiveBayes.getVocabulary(currentDirectory + subfolder).forEach(term -> System.out.print(term + " "));
+                        System.out.println();
+                    } catch (NullPointerException e) {
+                        System.out.println("The subfolder does not exist; please try again.");
+                    }
+                }
+            }
+        } while (input != 0);
     }
 
     private static void startRocchioLoop(Scanner in, String rootDirectoryPath) {
@@ -656,6 +742,24 @@ public class Application {
                 } // get a vocabulary list
             }
         } while (input != 0);
+    }
+
+    private static void displayBayesianResults(BayesianClassification rocchio, String subfolder, int documentID) {
+        Map<String, Double> candidateDistances = rocchio.getCandidateDistances(subfolder, documentID);
+
+        System.out.println();
+        for (Map.Entry<String, Double> entry : candidateDistances.entrySet()) {
+            String currentFolder = entry.getKey().substring(entry.getKey().lastIndexOf("/"));
+            double currentDistance = entry.getValue();
+            System.out.println("Dist from " + corpora.get(subfolder).getDocument(documentID).getTitle() +
+                    " to " + currentFolder + " is " + currentDistance + ".");
+        }
+
+        Map.Entry<String, Double> centroidDistance = rocchio.classifyDocument(subfolder, documentID);
+        String lastFolder = centroidDistance.getKey().substring(centroidDistance.getKey().lastIndexOf("/"));
+
+        System.out.println("Lowest distance for " +
+                corpora.get(subfolder).getDocument(documentID).getTitle() + " is to " + lastFolder + ".");
     }
 
     private static void displayRocchioResults(RocchioClassification rocchio, String subfolder, int documentID) {

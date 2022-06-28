@@ -11,6 +11,12 @@ import application.indexes.Posting;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.text.DecimalFormat;
+import java.text.FieldPosition;
+import java.text.NumberFormat;
+import java.text.ParsePosition;
 import java.util.*;
 
 public class KnnClassification implements TextClassification {
@@ -122,35 +128,33 @@ public class KnnClassification implements TextClassification {
         currDirectory = currentDirectory;
         //get the disputed document in questions vector to calculate the distance
         Map<String, Double> disputedVector = allWeightVectors.get(directoryPath).get(documentId);
-        //DirectoryCorpus currentCorpus = corpora.get(directoryPath);
-
         String subfolderHamilton = currentDirectory + "/hamilton";
         String subfolderJay = currentDirectory + "/jay";
         String subfolderMadison = currentDirectory + "/madison";
-
 
         //candidateDistances.put(currentDirectory, calculateDistance(disputedVector.values().stream().toList(), disputedVector.values().stream().toList()));
         for( Document doc : corpora.get(subfolderHamilton).getDocuments()){
             int docId = doc.getId();
             Map<String, Double> currVector = allWeightVectors.get(subfolderHamilton).get(docId);
             Double distance = calculateDistance(disputedVector.values().stream().toList(), currVector.values().stream().toList());
-            candidateDistances.put(doc.getTitle(), distance);
-
-            //System.out.print(doc.getTitle()+  ": " + candidateDistances.get(doc.getTitle()) +"\n");
+            Double finalVal = Math.round(distance * 1000000.0) / 1000000.0;
+            candidateDistances.put(doc.getTitle(), finalVal);
         }
 
         for( Document doc: corpora.get(subfolderJay).getDocuments()){
             int docId = doc.getId();
             Map<String, Double> currVector = allWeightVectors.get(subfolderJay).get(docId);
-            candidateDistances.put(doc.getTitle(), calculateDistance(disputedVector.values().stream().toList(), currVector.values().stream().toList()));
-            //System.out.print(doc.getTitle()+  ": " + candidateDistances.get(doc.getTitle()) +"\n");
+            Double distance = calculateDistance(disputedVector.values().stream().toList(), currVector.values().stream().toList());
+            Double finalVal = Math.round(distance * 1000000.0) / 1000000.0;
+            candidateDistances.put(doc.getTitle(), finalVal);
         }
 
         for ( Document doc: corpora.get(subfolderMadison).getDocuments()){
             int docId = doc.getId();
             Map<String, Double> currVector = allWeightVectors.get(subfolderMadison).get(docId);
-            candidateDistances.put(doc.getTitle(), calculateDistance(disputedVector.values().stream().toList(), currVector.values().stream().toList()));
-            //System.out.print(doc.getTitle()+  ": " + candidateDistances.get(doc.getTitle()) +"\n");
+            Double distance = calculateDistance(disputedVector.values().stream().toList(), currVector.values().stream().toList());
+            Double finalVal = Math.round(distance * 1000000.0) / 1000000.0;
+            candidateDistances.put(doc.getTitle(), finalVal);
         }
 
         return candidateDistances;

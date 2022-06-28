@@ -19,8 +19,7 @@ public class BayesianClassification implements TextClassification {
     private final Map<String, DirectoryCorpus> corpora;
     private final Map<String, Index<String, Posting>> allIndexes;
     // directory map of document ids with their term frequency vectors
-    private final Map<String, Map<Integer, Map<String, Double>>> allWeightVectors;
-    private final Map<String, List<Double>> centroids;
+    private final Map<String, Map<String, int[][]>> vocabularyTables;
 
     /**
      * Constructs a Rocchio classification instance of a root directory containing subdirectories.
@@ -34,12 +33,10 @@ public class BayesianClassification implements TextClassification {
         rootDirectoryPath = inputRootDirectory;
         corpora = inputCorpora;
         allIndexes = inputIndexes;
-        allWeightVectors = new HashMap<>();
-        centroids = new HashMap<>();
+        vocabularyTables = new HashMap<>();
 
         initializeVectors();
         calculateWeightVectors();
-        calculateCentroids();
     }
 
     /**
@@ -53,28 +50,15 @@ public class BayesianClassification implements TextClassification {
         for (String directoryPath : allIndexes.keySet()) {
             // skip the root directory since it combines all documents
             if (!directoryPath.equals(rootDirectoryPath)) {
-                DirectoryCorpus currentCorpus = corpora.get(directoryPath);
+                // if the map does not have an entry for the current directory path, add it with an empty map
+                vocabularyTables.putIfAbsent(directoryPath, new HashMap<>());
+                Map<String, int[][]> currentTermTable = vocabularyTables.get(directoryPath);
 
-                // if the weight vector does not have an entry for the current directory path, add it with an empty map
-                allWeightVectors.putIfAbsent(directoryPath, new HashMap<>());
-                Map<Integer, Map<String, Double>> currentWeightVector = allWeightVectors.get(directoryPath);
-
-                /* for each document in the current corpus, add its document ID with an empty list initialized
-                  with zeros for each term in the vocabulary */
-                for (Document document : currentCorpus.getDocuments()) {
-                    int documentId = document.getId();
-                    Map<String, Double> currentWeights = new LinkedHashMap<>();
-                    currentWeightVector.put(documentId, currentWeights);
-
-                    for (String term : vocabulary) {
-                        currentWeights.put(term, 0.0);
-                    }
+                /* for each term in the vocabulary, add the term mapped to an initialized 2x2 grid representing
+                  n11, n10, n01, and n00 for feature selection */
+                for (String term : vocabulary) {
+                    currentTermTable.putIfAbsent(term, new int[2][2]);
                 }
-
-                // initialize the centroids with empty lists initialized with zeros for each term in the vocabulary
-                List<Double> zeros = new ArrayList<>();
-                vocabulary.forEach(term -> zeros.add(0.0));
-                centroids.put(directoryPath, zeros);
             }
         }
     }
@@ -93,69 +77,14 @@ public class BayesianClassification implements TextClassification {
             // skip the root directory, since it contains all documents of all directories
             if (!directoryPath.equals(rootDirectoryPath)) {
                 Index<String, Posting> currentIndex = entry.getValue();
-                Map<Integer, Map<String, Double>> currentWeightVector = allWeightVectors.get(directoryPath);
+                Map<String, int[][]> currentTermTable = vocabularyTables.get(directoryPath);
 
                 // iterate through the vocabulary for each index
                 for (String term : vocabulary) {
                     List<Posting> postings = currentIndex.getPositionlessPostings(term);
 
-                    // for each posting, calculate the w(d, t) values and accumulate them into our weight vectors
-                    for (Posting currentPosting : postings) {
-                        int documentId = currentPosting.getDocumentId();
-                        int tftd = currentPosting.getPositions().size();
 
-                        // update the old accumulating w(d, t) values with the new ones
-                        double wdt = DocumentWeightScorer.calculateWdt(tftd);
-                        double oldAccumulator = currentWeightVector.get(documentId).get(term);
-
-                        currentWeightVector.get(documentId).replace(term, oldAccumulator + wdt);
-                    }
                 }
-
-                // divide each individual w(d, t) value by their respective L(d)
-                for (Map.Entry<Integer, Map<String, Double>> vectorEntry : currentWeightVector.entrySet()) {
-                    int documentId = vectorEntry.getKey();
-                    Map<String, Double> currentVector = vectorEntry.getValue();
-
-                    try (RandomAccessFile randomAccessor = new RandomAccessFile(directoryPath +
-                            "/index/docWeights.bin", "rw")) {
-                        double currentLd = DiskIndexReader.readLd(randomAccessor, documentId);
-
-                        currentVector.replaceAll((term, accumulator) -> accumulator / currentLd);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Calculates the centroids of each training set within the root directory, excluding the root directory itself.
-     */
-    private void calculateCentroids() {
-        for (String directoryPath : allIndexes.keySet()) {
-            // skip the root directory, since it contains all documents of all directories
-            if (!directoryPath.equals(rootDirectoryPath)) {
-                DirectoryCorpus currentCorpus = corpora.get(directoryPath);
-                Map<Integer, Map<String, Double>> currentWeightVector = allWeightVectors.get(directoryPath);
-                List<Double> currentCentroid = centroids.get(directoryPath);
-
-                // we only care about the vectors themselves, not the document IDs that they're mapped to
-                for (Map<String, Double> currentWeights : currentWeightVector.values()) {
-                    List<String> currentTerms = currentWeights.keySet().stream().toList();
-
-                    // accumulate each weight vector into our centroid
-                    for (int i = 0; i < currentWeights.size(); ++i) {
-                        double oldAccumulator = currentCentroid.get(i);
-                        double newWeight = currentWeights.get(currentTerms.get(i));
-
-                        currentCentroid.set(i, oldAccumulator + newWeight);
-                    }
-                }
-
-                // divide each centroid value by the total number of documents in its class
-                currentCentroid.replaceAll(value -> value / currentCorpus.getCorpusSize());
             }
         }
     }
@@ -220,37 +149,8 @@ public class BayesianClassification implements TextClassification {
      */
     public Map<String, Double> getCandidateDistances(String directoryPath, int documentId) {
         Map<String, Double> candidateDistances = new HashMap<>();
-        Map<String, Double> weightVector = allWeightVectors.get(directoryPath).get(documentId);
-
-        for (String currentDirectory : allIndexes.keySet()) {
-            // skip the root / disputed directories, since they are irrelevant when calculating training set distances
-            if (!currentDirectory.endsWith("/disputed") && !currentDirectory.equals(rootDirectoryPath)) {
-                List<Double> currentCentroid = centroids.get(currentDirectory);
-
-                candidateDistances.put(currentDirectory, calculateDistance(weightVector.values().stream().toList(), currentCentroid));
-            }
-        }
 
         return candidateDistances;
-    }
-
-    /**
-     * Returns the list of normalized document weights of the specified subdirectory.
-     * @param directoryPath the path of the subdirectory
-     * @param documentId the document ID of the document
-     * @return the list of normalized document weights of the subdirectory
-     */
-    public List<Double> getVector(String directoryPath, int documentId) {
-        return allWeightVectors.get(directoryPath).get(documentId).values().stream().toList();
-    }
-
-    /**
-     * Returns the list of centroid values of the specified subdirectory.
-     * @param directoryPath the path of the subdirectory
-     * @return the list of centroid values of the subdirectory
-     */
-    public List<Double> getCentroid(String directoryPath) {
-        return centroids.get(directoryPath);
     }
 
     /**
@@ -261,6 +161,18 @@ public class BayesianClassification implements TextClassification {
     @Override
     public List<String> getVocabulary(String directoryPath) {
         return allIndexes.get(directoryPath).getVocabulary();
+    }
+
+    private void getDiscriminatingTerms() {
+        Map<String, Map<String, int[][]>> vocabularyTables = new HashMap<>();
+
+
+    }
+
+    public Map<String, Double> getMutualInfoMap() {
+
+
+        return new HashMap<>();
     }
 
     /**

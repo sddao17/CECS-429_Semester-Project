@@ -10,7 +10,7 @@ import java.util.List;
  * by including a unified and split version of the words, converting the token to lowercase, and then stemming it.
  * @see TokenProcessor
  */
-public class VocabularyTokenProcessor extends TokenProcessor {
+public class ClassificationTokenProcessor extends TokenProcessor {
 
     @Override
     public List<String> processToken(String token) {
@@ -33,8 +33,7 @@ public class VocabularyTokenProcessor extends TokenProcessor {
         for (String currentToken : splitTerms) {
             // 4. Convert the token to lowercase.
             currentToken = convertToLowercase(currentToken);
-            // 5. Stem the token using an implementation of the Porter2 stemmer.
-            currentToken = stem(currentToken);
+            // skip 5 (stemming)
 
             // continue to remove any special characters from split terms
             if (currentToken.length() > 0 && (isNotAlphanumeric(currentToken.charAt((0))) ||

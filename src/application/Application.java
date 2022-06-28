@@ -248,6 +248,9 @@ public class Application {
         biwordIndexes.put(indexPaths.get("biwordBin"), biwordIndex);
         lds.put(indexPaths.get("docWeightsBin"), currentLds);
 
+        // form the sets of discriminating terms `T*` of all subdirectories
+        BayesianClassification naiveBayes = new BayesianClassification(currentDirectory, corpora, corpusIndexes);
+
         long endTime = System.nanoTime();
         double timeElapsedInSeconds = (double) (endTime - startTime) / 1_000_000_000;
         System.out.printf("""
@@ -525,7 +528,7 @@ public class Application {
                         int documentID = Integer.parseInt(in.nextLine());
 
                         List<String> vocabulary = corpusIndexes.get(rootDirectoryPath).getVocabulary();
-                        List<Double> weightVector = naiveBayes.getVector(subfolder, documentID);
+                        List<Double> weightVector = new ArrayList<>();
 
                         System.out.print("Enter the number of results to be shown (skip for all):\n >> ");
                         int numOfResults = CheckInput.promptNumOfResults(in, vocabulary.size());

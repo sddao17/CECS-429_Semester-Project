@@ -150,8 +150,40 @@ public class KnnClassification implements TextClassification {
             Double finalVal = Math.round(distance * 1000000.0) / 1000000.0;
             candidateDistances.put(doc.getTitle(), finalVal);
         }
-
         return candidateDistances;
+    }
+
+    public Map<String, Double> getCosineSimilarity(String directoryPath, int documentId,String currentDirectory) {
+        Map<String, Double> cosineSimilarity = new HashMap<>();
+        currDirectory = currentDirectory;
+        //get the disputed document in questions vector to calculate the distance
+        Map<String, Double> disputedVector = allWeightVectors.get(directoryPath).get(documentId);
+        String subfolderHamilton = currentDirectory + "/hamilton";
+        String subfolderJay = currentDirectory + "/jay";
+        String subfolderMadison = currentDirectory + "/madison";
+
+        //candidateDistances.put(currentDirectory, calculateDistance(disputedVector.values().stream().toList(), disputedVector.values().stream().toList()));
+        for( Document doc : corpora.get(subfolderHamilton).getDocuments()){
+            int docId = doc.getId();
+            Map<String, Double> currVector = allWeightVectors.get(subfolderHamilton).get(docId);
+            Double simularity = calculateCosine(disputedVector.values().stream().toList(), currVector.values().stream().toList());
+            cosineSimilarity.put(doc.getTitle(), simularity);
+        }
+
+        for( Document doc: corpora.get(subfolderJay).getDocuments()){
+            int docId = doc.getId();
+            Map<String, Double> currVector = allWeightVectors.get(subfolderJay).get(docId);
+            Double simularity = calculateCosine(disputedVector.values().stream().toList(), currVector.values().stream().toList());
+            cosineSimilarity.put(doc.getTitle(), simularity);
+        }
+
+        for ( Document doc: corpora.get(subfolderMadison).getDocuments()){
+            int docId = doc.getId();
+            Map<String, Double> currVector = allWeightVectors.get(subfolderMadison).get(docId);
+            Double simularity = calculateCosine(disputedVector.values().stream().toList(), currVector.values().stream().toList());
+            cosineSimilarity.put(doc.getTitle(), simularity);
+        }
+        return cosineSimilarity;
     }
 
     /**
@@ -163,14 +195,38 @@ public class KnnClassification implements TextClassification {
      */
     public static double calculateDistance(List<Double> xs, List<Double> ys) {
         double sum = 0;
-
         // |x, y| = sqrt( sum of all( (ys - xs)^2 ) )
         for (int i = 0; i < xs.size(); ++i) {
             sum += Math.pow((ys.get(i) - xs.get(i)), 2);
         }
-
         return Math.sqrt(sum);
     }
+
+    public static double calculateCosine(List<Double> xs, List<Double> ys){
+        double sum;
+        double xSum = 0;
+        double ySum = 0;
+        double dotProduct = 0;
+;
+        for(int i = 0; i < xs.size(); ++i) {
+            xSum += Math.pow(xs.get(i), 2);
+        }
+
+        for(int i = 0; i < ys.size(); ++i){
+            ySum += Math.pow(ys.get(i), 2);
+        }
+
+        for(int i = 0; i < xs.size(); ++i){
+            dotProduct += xs.get(i) + ys.get(i);
+        }
+
+        xSum = Math.sqrt(xSum);
+        ySum = Math.sqrt(ySum);
+
+        sum = dotProduct / (xSum * ySum);
+        return sum;
+    }
+
     @Override
     public Map.Entry<String, Double> classifyDocument(String directoryPath, int documentId) {
         Map<String, Double> candidateDistances = getCandidateDistances(directoryPath, documentId, currDirectory);

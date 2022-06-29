@@ -581,6 +581,7 @@ public class Application {
     }
 
     private static void startKNNLoop(Scanner in, String rootDirectoryPath) {
+        initializeAuthoredDocs();
         System.out.println("\nCalculating...");
         long startTime = System.nanoTime();
 
@@ -597,7 +598,7 @@ public class Application {
             input = Menu.showKnnMenu();
 
             switch (input) {
-                // classify a document
+                // classify a document using cosine similarity
                 case 1 -> {
                     getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
                     System.out.print("Enter the directory's subfolder:\n >> ");
@@ -610,30 +611,63 @@ public class Application {
                         System.out.print("Enter the k value:\n >> ");
                         int kValue = Integer.parseInt(in.nextLine());
                         System.out.println( corpora.get(subfolder).getDocument(documentID).getTitle()+ " nearest to: ");
-                        displayKnnResults(knn, subfolder, documentID, kValue);
+                        displayCosineSimilarityResults(knn, subfolder, documentID, kValue);
                     } catch (NullPointerException e) {
                         System.out.println("The path does not exist; please try again.");
                     }
-                } // classify all documents
+                } // classify a document using majority vote
                 case 2 -> {
                     getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
                     System.out.print("Enter the directory's subfolder:\n >> ");
                     String subfolder = currentDirectory + in.nextLine();
-                    System.out.print("Enter the k value:\n >> ");
-                    int kValue = Integer.parseInt(in.nextLine());
 
                     try {
-                        for (Document document : corpora.get(subfolder).getDocuments()) {
-                            System.out.println(document.getTitle()+ " nearest to: ");
-                            displayKnnResults(knn, subfolder, document.getId(), kValue);
-                            System.out.println("");
-                        }
+                        IndexUtility.displayDocuments(corpora.get(subfolder));
+                        System.out.print("Enter the document ID:\n >> ");
+                        int documentID = Integer.parseInt(in.nextLine());
+                        System.out.print("Enter the k value:\n >> ");
+                        int kValue = Integer.parseInt(in.nextLine());
+                        System.out.println( corpora.get(subfolder).getDocument(documentID).getTitle()+ " nearest to: ");
+                        displayMajorityVoteResults(knn, subfolder, documentID, kValue);
                     } catch (NullPointerException e) {
-                        System.out.println("The subfolder does not exist; please try again.");
+                        System.out.println("The path does not exist; please try again.");
                     }
+                } // classify all documents using cosine similarity
+               case 3 -> {
+                   getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
+                   System.out.print("Enter the directory's subfolder:\n >> ");
+                   String subfolder = currentDirectory + in.nextLine();
+                   System.out.print("Enter the k value:\n >> ");
+                   int kValue = Integer.parseInt(in.nextLine());
 
-                } // get a document vector
-                case 3 -> {
+                   try {
+                       for (Document document : corpora.get(subfolder).getDocuments()) {
+                           System.out.println(document.getTitle()+ " nearest to: ");
+                           displayCosineSimilarityResults(knn, subfolder, document.getId(), kValue);
+                           System.out.println("");
+                       }
+                   } catch (NullPointerException e) {
+                       System.out.println("The subfolder does not exist; please try again.");
+                   }
+               } // classify all documents using majority vote
+               case 4 -> {
+                   getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
+                   System.out.print("Enter the directory's subfolder:\n >> ");
+                   String subfolder = currentDirectory + in.nextLine();
+                   System.out.print("Enter the k value:\n >> ");
+                   int kValue = Integer.parseInt(in.nextLine());
+
+                   try {
+                       for (Document document : corpora.get(subfolder).getDocuments()) {
+                           System.out.println(document.getTitle()+ " nearest to: ");
+                           displayMajorityVoteResults(knn, subfolder, document.getId(), kValue);
+                           System.out.println("");
+                       }
+                   } catch (NullPointerException e) {
+                       System.out.println("The subfolder does not exist; please try again.");
+                   }
+               } // get a document vector
+                case 5 -> {
                     try {
                         getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
                         System.out.print("Enter the directory's subfolder:\n >> ");
@@ -657,7 +691,7 @@ public class Application {
                         System.out.println("Invalid input; please try again.");
                     }
                 } // get a vocabulary list
-                case 4 -> {
+                case 6 -> {
                     try {
                         getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
                         System.out.print("Enter the directory's subfolder (skip for all):\n >> ");
@@ -691,49 +725,108 @@ public class Application {
                 corpora.get(subfolder).getDocument(documentID).getTitle() + " is to " + lastFolder + ".");
     }
 
-    public static void displayKnnResults(KnnClassification knn , String subfolder, int documentID, int kValue){
+    public static void displayMajorityVoteResults(KnnClassification knn , String subfolder, int documentID, int kValue){
         counter = 0;
         numList = 0;
+        double hamiltonSum = 0;
+        double jaySum = 0;
+        double madisonSum = 0;
         Map<String, Double> candidateDistances = knn.getCandidateDistances(subfolder, documentID, currentDirectory);
         Collection<Double> values = candidateDistances.values();
         // Creating an ArrayList of values
         ArrayList<Double> listOfValues = new ArrayList<>(values);
         Collections.sort(listOfValues);
         initializeClosetPoints();
-        initializeAuthoredDocs();
 
-        for (Map.Entry<String, Double> entry : candidateDistances.entrySet()){
-            while(!(counter >= kValue)){
-                Double value = listOfValues.get(counter);
-                String key = getKeyByValue(candidateDistances, value);
-                System.out.println((numList += 1) + ": " + key + " (" + value + ") " );
-                counter += 1;
+        while(!(counter >= kValue)){
+            Double value = listOfValues.get(counter);
+            String key = getKeyByValue(candidateDistances, value);
+            System.out.println((numList += 1) + ": " + key + " (" + value + ") " );
+            counter += 1;
 
-                if(hamiltonDocs.contains(key)){
-                    int pointCount = closestPoints.get("Hamilton");
-                    closestPoints.put("Hamilton", pointCount + 1 );
-                }
-                else if(jayDocs.contains(key)){
-                    int pointCount = closestPoints.get("Jay");
-                    closestPoints.put("Jay", pointCount + 1 );
-                }
-                else{
-                    int pointCount = closestPoints.get("Madison");
-                    closestPoints.put("Madison", pointCount + 1 );
-                }
+            if(hamiltonDocs.contains(key)){
+                int pointCount = closestPoints.get("Hamilton");
+                closestPoints.put("Hamilton", pointCount + 1 );
+                hamiltonSum += value;
+            }
+            else if(jayDocs.contains(key)){
+                int pointCount = closestPoints.get("Jay");
+                closestPoints.put("Jay", pointCount + 1 );
+                jaySum += value;
+            }
+            else{
+                int pointCount = closestPoints.get("Madison");
+                closestPoints.put("Madison", pointCount + 1 );
+                madisonSum += value;
             }
         }
 
+        //System.out.println(closestPoints);
         if(closestPoints.get("Hamilton") > closestPoints.get("Madison") && closestPoints.get("Hamilton") > closestPoints.get("Jay") ){
             System.out.println("Document was written by Hamilton");
         }
-        if(closestPoints.get("Madison") > closestPoints.get("Hamilton") && closestPoints.get("Madison") > closestPoints.get("Jay") ){
+        else if(closestPoints.get("Madison") > closestPoints.get("Hamilton") && closestPoints.get("Madison") > closestPoints.get("Jay") ){
             System.out.println("Document was written by Madison");
         }
-        if(closestPoints.get("Jay") > closestPoints.get("Madison") && closestPoints.get("Jay") > closestPoints.get("Hamilton") ){
+        else if(closestPoints.get("Jay") > closestPoints.get("Madison") && closestPoints.get("Jay") > closestPoints.get("Hamilton") ){
             System.out.println("Document was written by Jay");
         }
+        else{
+            if(closestPoints.get("Hamilton") == closestPoints.get("Madison") && closestPoints.get("Madison") == closestPoints.get("Jay")){
+                if(madisonSum > hamiltonSum && madisonSum > jaySum){System.out.println("Document was written by Madison");}
+                else if(jaySum > hamiltonSum && jaySum > madisonSum){System.out.println("Document was written by Jay");}
+                else{System.out.println("Document was written by Hamilton");}
+            }
+            else if(closestPoints.get("Hamilton") == closestPoints.get("Madison")){
+                if(madisonSum > hamiltonSum){ System.out.println("Document was written by Madison");}
+                else{ System.out.println("Document was written by Hamilton");}
+            }
+            else if(closestPoints.get("Hamilton") == closestPoints.get("Jay")){
+                if(jaySum > hamiltonSum){ System.out.println("Document was written by Jay"); }
+                else{ System.out.println("Document was written by Hamilton");}
+            }
+            else if(closestPoints.get("Jay") == closestPoints.get("Madison")){
+                if(madisonSum > jaySum){ System.out.println("Document was written by Madison"); }
+                else{ System.out.println("Document was written by Jay"); }
+            }
+        }
 
+    }
+
+    public static void displayCosineSimilarityResults(KnnClassification knn , String subfolder, int documentID, int kValue){
+        counter = 0;
+        numList = 0;
+        Map<String, Double> candidateDistances = knn.getCandidateDistances(subfolder, documentID, currentDirectory);
+        Map<String, Double> cosineSimilarity = knn.getCosineSimilarity(subfolder,documentID, currentDirectory);
+        Collection<Double> values = candidateDistances.values();
+        // Creating an ArrayList of values
+        ArrayList<Double> listOfValues = new ArrayList<>(values);
+        ArrayList<Double> cosineValues = new ArrayList<>();
+        Collections.sort(listOfValues);
+        initializeClosetPoints();
+
+        while(!(counter >= kValue)){
+            Double value = listOfValues.get(counter);
+            String key = getKeyByValue(candidateDistances, value);
+            Double cosineSimValue = cosineSimilarity.get(key);
+            cosineValues.add(cosineSimValue);
+            System.out.println((numList += 1) + ": " + key + " (" + value + ") " );
+            counter += 1;
+        }
+
+        Collections.sort(cosineValues, Collections.reverseOrder());
+        Double mostSimilarDoc = cosineValues.get(0);
+        String docTitle = getKeyByValue(cosineSimilarity, mostSimilarDoc);
+
+        if(hamiltonDocs.contains(docTitle)){
+            System.out.println("Document was written by Hamilton");
+        }
+        else if (madisonDocs.contains(docTitle)){
+            System.out.println("Document was written by Madison");
+        }
+        else {
+            System.out.println("Document was written by Jay");
+        }
 
     }
 

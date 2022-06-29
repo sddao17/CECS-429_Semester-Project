@@ -802,7 +802,7 @@ public class Application {
         ArrayList<Double> listOfValues = new ArrayList<>(values);
         ArrayList<Double> cosineValues = new ArrayList<>();
         Collections.sort(listOfValues);
-        initializeKnnMaps();
+
 
         while(!(counter >= kValue)){
             Double value = listOfValues.get(counter);

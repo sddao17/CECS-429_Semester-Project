@@ -474,7 +474,87 @@ public class Application {
     }
 
     private static void startBayesianLoop(Scanner in, String rootDirectoryPath) {
-        System.err.println("(not yet implemented)");
+        System.out.println("\nCalculating...");
+        long startTime = System.nanoTime();
+
+        BayesianClassification naiveBayes = new BayesianClassification(rootDirectoryPath, corpora, corpusIndexes);
+        List<String> vocabulary = corpusIndexes.get(rootDirectoryPath).getVocabulary();
+
+        for (String directoryPath : corpora.keySet()) {
+            if (!directoryPath.equals(rootDirectoryPath) && !directoryPath.endsWith("/disputed")) {
+                List<Double> ptics = DiskIndexReader.readPtics(directoryPath);
+                naiveBayes.storeClassifiers(directoryPath, ptics);
+            }
+        }
+
+        long endTime = System.nanoTime();
+        double timeElapsedInSeconds = (double) (endTime - startTime) / 1_000_000_000;
+        System.out.println("Calculations complete." +
+                "\nTime elapsed: " + timeElapsedInSeconds + " seconds");
+
+        int input;
+
+        do {
+            input = Menu.showBayesianMenu();
+
+            switch (input) {
+                // classify a document
+                case 1 -> {
+                    getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
+                    System.out.print("Enter the directory's subfolder:\n >> ");
+                    String subfolder = currentDirectory + in.nextLine();
+
+                    try {
+                        IndexUtility.displayDocuments(corpora.get(subfolder));
+                        System.out.print("Enter the document ID:\n >> ");
+                        int documentID = Integer.parseInt(in.nextLine());
+                        displayBayesianResults(naiveBayes, subfolder, documentID);
+                    } catch (NullPointerException e) {
+                        System.out.println("The path does not exist; please try again.");
+                        e.printStackTrace();
+                    }
+                } // classify all documents
+                case 2 -> {
+                    getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
+                    System.out.print("Enter the directory's subfolder:\n >> ");
+                    String subfolder = currentDirectory + in.nextLine();
+
+                    try {
+                        for (Document document : corpora.get(subfolder).getDocuments()) {
+                            displayBayesianResults(naiveBayes, subfolder, document.getId());
+                        }
+                    } catch (NullPointerException e) {
+                        System.out.println("The subfolder does not exist; please try again.");
+                    }
+
+                } // get the top discriminating terms
+                case 3 -> {
+                    System.out.print("Enter the number of results to be shown (skip for all):\n >> ");
+                    int numOfResults = CheckInput.promptNumOfResults(in, vocabulary.size());
+                    List<Map.Entry<String, Double>> rankedTerms = naiveBayes.getTopDiscriminating(numOfResults);
+
+                    for (int i = 0; i < numOfResults; ++i) {
+                        Map.Entry<String, Double> entry = rankedTerms.get(i);
+                        String term = entry.getKey();
+                        double mutualInfo = entry.getValue();
+
+                        System.out.println((i + 1) + ". " + term + ": " + mutualInfo);
+                    }
+                } // get a vocabulary list
+                case 4 -> {
+                    try {
+                        getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
+                        System.out.print("Enter the directory's subfolder (skip for all):\n >> ");
+                        String subfolder = in.nextLine();
+
+                        naiveBayes.getVocabulary(currentDirectory + subfolder).forEach(term -> System.out.print(term + " "));
+                        System.out.println();
+                    } catch (NullPointerException e) {
+                        System.out.println("The subfolder does not exist; please try again.");
+                    }
+                }
+            }
+        } while (input != 0);
     }
 
     private static void startRocchioLoop(Scanner in, String rootDirectoryPath) {
@@ -705,6 +785,24 @@ public class Application {
                 }
             }
         } while (input != 0);
+    }
+
+    private static void displayBayesianResults(BayesianClassification naiveBayes, String subfolder, int documentID) {
+        Map<String, Double> cmaps = naiveBayes.getCmaps(subfolder, documentID);
+
+        System.out.println();
+        for (Map.Entry<String, Double> entry : cmaps.entrySet()) {
+            String currentFolder = entry.getKey().substring(entry.getKey().lastIndexOf("/"));
+            double currentDistance = entry.getValue();
+            System.out.println("Cmap of " + corpora.get(subfolder).getDocument(documentID).getTitle() +
+                    " to " + currentFolder + " is " + currentDistance + ".");
+        }
+
+        Map.Entry<String, Double> cmapDistance = naiveBayes.classifyDocument(subfolder, documentID);
+        String lastFolder = cmapDistance.getKey().substring(cmapDistance.getKey().lastIndexOf("/"));
+
+        System.out.println("Highest cmap for " +
+                corpora.get(subfolder).getDocument(documentID).getTitle() + " is to " + lastFolder + ".");
     }
 
     private static void displayRocchioResults(RocchioClassification rocchio, String subfolder, int documentID) {

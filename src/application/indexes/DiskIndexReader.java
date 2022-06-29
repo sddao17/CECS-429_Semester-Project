@@ -1,6 +1,9 @@
 
 package application.indexes;
 
+import application.Application;
+import application.classifications.BayesianClassification;
+import application.documents.DirectoryCorpus;
 import org.apache.jdbm.BTree;
 import org.apache.jdbm.DB;
 import org.apache.jdbm.DBMaker;
@@ -130,5 +133,27 @@ public class DiskIndexReader {
         }
 
         return ld;
+    }
+
+    public static List<Double> readPtics(String directoryPath) {
+        List<Double> ptics = new ArrayList<>();
+        String classifierPath = directoryPath + "/index/classifier";
+        DiskIndexWriter.createIndexDirectory(classifierPath);
+        String subfolder = directoryPath.substring(directoryPath.lastIndexOf("/"));
+
+        try (FileInputStream fileStream = new FileInputStream((classifierPath + subfolder + ".bin"));
+             BufferedInputStream bufferStream = new BufferedInputStream(fileStream);
+             DataInputStream dataStream = new DataInputStream(bufferStream)) {
+            // the first integer is the size of the list
+            int pticsSize = dataStream.readInt();
+            // read all `ptic` doubles
+            for (int i = 0; i < pticsSize; ++i) {
+                ptics.add(dataStream.readDouble());
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return ptics;
     }
 }

@@ -1,9 +1,14 @@
 
 package application.indexes;
 
+import application.Application;
+import application.classifications.BayesianClassification;
+import application.documents.DirectoryCorpus;
+
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class DiskIndexWriter {
@@ -204,5 +209,47 @@ public class DiskIndexWriter {
         }
 
         return bytePositions;
+    }
+
+    public static void writeBayesianClassifier(String rootDirectory, Map<String, DirectoryCorpus> corpora,
+                                               Map<String, Index<String, Posting>> corpusIndexes) {
+        // train the Bayesian classifier on the set of terms for each relevant directory
+        List<String> vocabulary = corpusIndexes.get(rootDirectory).getVocabulary();
+        for (String currentDirectoryPath : corpora.keySet()) {
+            if (!currentDirectoryPath.equals(Application.getCurrentDirectory()) &&
+                    !currentDirectoryPath.endsWith("/disputed")) {
+                DirectoryCorpus currentCorpus = corpora.get(currentDirectoryPath);
+                List<Double> ptics = new ArrayList<>();
+
+                for (String term : vocabulary) {
+                    List<Posting> postings = corpusIndexes.get(currentDirectoryPath).getPositionlessPostings(term);
+                    int totalTftd = 0;
+                    for (Posting posting : postings) {
+                        totalTftd += posting.getPositions().size();
+                    }
+
+                    double currentPtic = BayesianClassification.calculatePtic(
+                            totalTftd, currentCorpus.getCorpusSize(), vocabulary.size());
+                    ptics.add(currentPtic);
+                }
+
+                String classifierPath = currentDirectoryPath + "/index/classifier";
+                DiskIndexWriter.createIndexDirectory(classifierPath);
+                String subfolder = currentDirectoryPath.substring(currentDirectoryPath.lastIndexOf("/"));
+
+                try (FileOutputStream fileStream = new FileOutputStream((classifierPath + subfolder + ".bin"));
+                     BufferedOutputStream bufferStream = new BufferedOutputStream(fileStream);
+                     DataOutputStream dataStream = new DataOutputStream(bufferStream)) {
+                    // write the size of the list
+                    dataStream.writeInt(ptics.size());
+                    // write the list of `ptic` doubles
+                    for (double ptic : ptics) {
+                        dataStream.writeDouble(ptic);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 }

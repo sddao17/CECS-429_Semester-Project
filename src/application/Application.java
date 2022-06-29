@@ -145,6 +145,9 @@ public class Application {
             // write the k-grams to disk
             DiskIndexWriter.writeKGrams(indexPaths.get("kGramsBin"), kGramIndex);
             System.out.println("K-Grams written to `" + indexPaths.get("kGramsBin") + "` successfully.");
+
+            // write the Bayesian classifiers to disk
+            DiskIndexWriter.writeBayesianClassifier(indexPaths.get("root"), corpora, corpusIndexes);
         }
 
         // after writing the components to disk, we can terminate the program
@@ -247,16 +250,6 @@ public class Application {
         kGramIndexes.put(indexPaths.get("kGramsBin"), kGramIndex);
         biwordIndexes.put(indexPaths.get("biwordBin"), biwordIndex);
         lds.put(indexPaths.get("docWeightsBin"), currentLds);
-
-        // form the sets of discriminating terms `T*` of all subdirectories
-        BayesianClassification naiveBayes = new BayesianClassification(currentDirectory, corpora, corpusIndexes);
-        /*
-        List<Map.Entry<String, Double>> rankedEntries = naiveBayes.getOrderedMutualInfo();
-        for (int i = 0; i < 10; ++i) {
-            Map.Entry<String, Double> entry = rankedEntries.get(i);
-            System.out.println(entry.getKey() + " -> " + entry.getValue());
-        }
-         */
 
         long endTime = System.nanoTime();
         double timeElapsedInSeconds = (double) (endTime - startTime) / 1_000_000_000;
@@ -481,15 +474,11 @@ public class Application {
 
         BayesianClassification naiveBayes = new BayesianClassification(rootDirectoryPath, corpora, corpusIndexes);
         List<String> vocabulary = corpusIndexes.get(rootDirectoryPath).getVocabulary();
+
         for (String directoryPath : corpora.keySet()) {
             if (!directoryPath.equals(rootDirectoryPath) && !directoryPath.endsWith("/disputed")) {
-                List<Map.Entry<String, Double>> rankedEntries = naiveBayes.getOrderedMutualInfo(directoryPath);
-
-                System.out.println("\n" + directoryPath + ":");
-                for (int i = 0; i < 10; ++i) {
-                    Map.Entry<String, Double> entry = rankedEntries.get(i);
-                    System.out.println(entry.getKey() + " -> " + entry.getValue());
-                }
+                List<Double> ptics = DiskIndexReader.readPtics(directoryPath);
+                naiveBayes.storeClassifiers(directoryPath, ptics);
             }
         }
 
@@ -517,6 +506,7 @@ public class Application {
                         displayBayesianResults(naiveBayes, subfolder, documentID);
                     } catch (NullPointerException e) {
                         System.out.println("The path does not exist; please try again.");
+                        e.printStackTrace();
                     }
                 } // classify all documents
                 case 2 -> {
@@ -752,21 +742,21 @@ public class Application {
         } while (input != 0);
     }
 
-    private static void displayBayesianResults(BayesianClassification rocchio, String subfolder, int documentID) {
-        Map<String, Double> candidateDistances = new HashMap<>();
+    private static void displayBayesianResults(BayesianClassification naiveBayes, String subfolder, int documentID) {
+        Map<String, Double> cmaps = naiveBayes.getCmaps(subfolder, documentID);
 
         System.out.println();
-        for (Map.Entry<String, Double> entry : candidateDistances.entrySet()) {
+        for (Map.Entry<String, Double> entry : cmaps.entrySet()) {
             String currentFolder = entry.getKey().substring(entry.getKey().lastIndexOf("/"));
             double currentDistance = entry.getValue();
-            System.out.println("Dist from " + corpora.get(subfolder).getDocument(documentID).getTitle() +
+            System.out.println("Cmap of " + corpora.get(subfolder).getDocument(documentID).getTitle() +
                     " to " + currentFolder + " is " + currentDistance + ".");
         }
 
-        Map.Entry<String, Double> centroidDistance = rocchio.classifyDocument(subfolder, documentID);
-        String lastFolder = centroidDistance.getKey().substring(centroidDistance.getKey().lastIndexOf("/"));
+        Map.Entry<String, Double> cmapDistance = naiveBayes.classifyDocument(subfolder, documentID);
+        String lastFolder = cmapDistance.getKey().substring(cmapDistance.getKey().lastIndexOf("/"));
 
-        System.out.println("Lowest distance for " +
+        System.out.println("Highest cmap for " +
                 corpora.get(subfolder).getDocument(documentID).getTitle() + " is to " + lastFolder + ".");
     }
 

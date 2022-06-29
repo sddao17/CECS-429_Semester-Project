@@ -2,10 +2,13 @@
 package application.classifications;
 
 import application.documents.DirectoryCorpus;
+import application.documents.Document;
+import application.indexes.DiskIndexReader;
 import application.indexes.Index;
 import application.indexes.Posting;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class BayesianClassification implements TextClassification {
 
@@ -16,6 +19,7 @@ public class BayesianClassification implements TextClassification {
     // directory map of document ids with their term frequency vectors
     private final Map<String, Map<String, int[][]>> vocabularyTables;
     private final Map<String, Map<String, Double>> mutualInfo;
+    private final Map<String, Map<String, Double>> classifiers;
 
     /**
      * Constructs a Rocchio classification instance of a root directory containing subdirectories.
@@ -31,6 +35,7 @@ public class BayesianClassification implements TextClassification {
         allIndexes = inputIndexes;
         vocabularyTables = new HashMap<>();
         mutualInfo = new HashMap<>();
+        classifiers = new HashMap<>();
 
         initializeVectors();
         calculateVocabTables();
@@ -94,7 +99,7 @@ public class BayesianClassification implements TextClassification {
                 DirectoryCorpus currentCorpus = corpora.get(directoryPath);
                 List<Posting> postings = currentIndex.getPositionlessPostings(term);
 
-                // if checking within the same class, update Nx1 values; update N1x values otherwise
+                // if checking within the same class, update Nx1 values; update Nx0 values otherwise
                 if (directoryPath.equals(currentDirectory)) {
                     // setting N11
                     termTable.get(term)[1][1] = postings.size();
@@ -132,21 +137,6 @@ public class BayesianClassification implements TextClassification {
         }
     }
 
-    public List<Map.Entry<String, Double>> getOrderedMutualInfo(String directoryPath) {
-        Map<String, Double> currentEntry = mutualInfo.get(directoryPath);
-
-        PriorityQueue<Map.Entry<String, Double>> priorityQueue = new PriorityQueue<>(
-                Map.Entry.comparingByValue(Comparator.reverseOrder()));
-        priorityQueue.addAll(currentEntry.entrySet());
-
-        List<Map.Entry<String, Double>> rankedEntries = new ArrayList<>();
-        for (int i = 0; i < currentEntry.size(); ++i) {
-            rankedEntries.add(priorityQueue.poll());
-        }
-
-        return rankedEntries;
-    }
-
     public List<Map.Entry<String, Double>> getTopDiscriminating(int k) {
         // add all discriminating terms from all relevant classes to a priority queue
         PriorityQueue<Map.Entry<String, Double>> priorityQueue = new PriorityQueue<>(
@@ -180,6 +170,69 @@ public class BayesianClassification implements TextClassification {
         return rankedEntries;
     }
 
+    public void storeClassifiers(String directoryPath, List<Double> ptics) {
+        List<String> vocabulary = allIndexes.get(rootDirectoryPath).getVocabulary();
+
+        classifiers.put(directoryPath, new HashMap<>());
+        Map<String, Double> currentClassifier = classifiers.get(directoryPath);
+
+        for (int i = 0 ; i < vocabulary.size(); ++i) {
+            currentClassifier.put(vocabulary.get(i), ptics.get(i));
+        }
+    }
+
+    public Map<String, Double> getCmaps(String directoryPath, int documentId) {
+        Map<String, Double> cmaps = new HashMap<>();
+        List<String> vocabulary = getTermsInDocument(directoryPath, documentId);
+        int rootCorpusSize = corpora.get(rootDirectoryPath).getCorpusSize();
+        int disputedCorpusSize = corpora.get(directoryPath).getCorpusSize();
+
+        for (String currentDirectoryPath : corpora.keySet()) {
+            double sum = 0;
+            // skip the root and disputed directory
+            if (!currentDirectoryPath.equals(rootDirectoryPath) && !currentDirectoryPath.endsWith("/disputed")) {
+                for (String term : vocabulary) {
+                    sum += Math.log(classifiers.get(currentDirectoryPath).get(term));
+                }
+
+                // p(c) = number of documents in class `c` / total number of documents
+                double pc = (double) corpora.get(currentDirectoryPath).getCorpusSize() /
+                        (rootCorpusSize - disputedCorpusSize);
+                sum = calculateCmap(pc, sum);
+                //System.out.println(currentDirectoryPath + ": " + pc + ", " + sum);
+                cmaps.put(currentDirectoryPath, sum);
+            }
+        }
+
+        return cmaps;
+    }
+
+    private List<String> getTermsInDocument(String directoryPath, int documentId) {
+        List<String> documentTerms = new ArrayList<>();
+        List<String> vocabulary = allIndexes.get(rootDirectoryPath).getVocabulary();
+        Index<String, Posting> index = allIndexes.get(directoryPath);
+
+        for (String term : vocabulary) {
+            List<Posting> postings = index.getPostings(term);
+
+            if (postingContainsDocumentId(directoryPath, postings, documentId)) {
+                documentTerms.add(term);
+            }
+        }
+        return documentTerms;
+    }
+
+    private boolean postingContainsDocumentId(String directoryPath, List<Posting> postings, int documentId) {
+        DirectoryCorpus corpus = corpora.get(directoryPath);
+        for (Posting currentPosting: postings) {
+            Document currentDocument = corpus.getDocument(currentPosting.getDocumentId());
+            if (currentDocument != null && currentDocument.getId() == documentId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * Classifies the document using Rocchio Classification (according to the centroid of its closest class).
      * @param directoryPath the path of the subdirectory to the document
@@ -188,11 +241,12 @@ public class BayesianClassification implements TextClassification {
      */
     @Override
     public Map.Entry<String, Double> classifyDocument(String directoryPath, int documentId) {
-        Map<String, Double> candidateDistances = new HashMap<>();
+        Map<String, Double> cmaps = getCmaps(directoryPath, documentId);
 
         // once all the distances are calculated, return the directory of the lowest distance
-        PriorityQueue<Map.Entry<String, Double>> priorityQueue = new PriorityQueue<>(Map.Entry.comparingByValue());
-        priorityQueue.addAll(candidateDistances.entrySet());
+        PriorityQueue<Map.Entry<String, Double>> priorityQueue = new PriorityQueue<>(
+                Map.Entry.comparingByValue(Comparator.reverseOrder()));
+        priorityQueue.addAll(cmaps.entrySet());
 
         return priorityQueue.poll();
     }
@@ -230,6 +284,30 @@ public class BayesianClassification implements TextClassification {
 
     private static double calculateLog2(double num) {
         return (Math.log(num) / Math.log(2));
+    }
+
+
+    /**
+     * Calculates the probability of a term appearing in a class; uses Laplace Smoothing to ensure new terms
+     * being inserted into the set do not have a probability of zero.
+     * @param ftc the number of documents that the term `t` appears in the training set
+     * @param trainingSetFtc the number of documents in the training set
+     * @param tSize the size of the discriminating terms set `T*`
+     */
+    public static double calculatePtic(int ftc, int trainingSetFtc, int tSize) {
+        return ( (double) (ftc + 1) / (trainingSetFtc + tSize) );
+    }
+
+    /**
+     * Calculates the classifier of a document given `p(c)` (the probability that the document belongs to the class)
+     * and the list of `p(ti | c)` (the probability of the terms appearing in the class); we use logarithms to prevent
+     * floating point underflow.
+     * @param pc the probability that the document belongs to the class
+     * @param classifierSum the probabilities of the terms appearing in the class
+     * @return the classifier of the document
+     */
+    public static double calculateCmap(double pc, double classifierSum) {
+        return (Math.log(pc) + classifierSum);
     }
 
     public static void main(String[] args) {

@@ -122,7 +122,7 @@ public class BayesianClassification implements TextClassification {
             for (String term : terms) {
                 Map<String, Double> currentVector = mutualInfo.get(directoryPath);
                 int[][] table = currentVocabTable.get(term);
-                double result = calculateMutualInfo(table[1][1], table[0][1],table[1][0], table[0][0]);
+                double result = calculateMutualInfo(table[1][1], table[1][0],table[0][1], table[0][0]);
                 if (Double.isNaN(result)) {
                     result = 0;
                 }
@@ -138,10 +138,43 @@ public class BayesianClassification implements TextClassification {
         PriorityQueue<Map.Entry<String, Double>> priorityQueue = new PriorityQueue<>(
                 Map.Entry.comparingByValue(Comparator.reverseOrder()));
         priorityQueue.addAll(currentEntry.entrySet());
-        List<Map.Entry<String, Double>> rankedEntries = new ArrayList<>();
 
+        List<Map.Entry<String, Double>> rankedEntries = new ArrayList<>();
         for (int i = 0; i < currentEntry.size(); ++i) {
             rankedEntries.add(priorityQueue.poll());
+        }
+
+        return rankedEntries;
+    }
+
+    public List<Map.Entry<String, Double>> getTopDiscriminating(int k) {
+        // add all discriminating terms from all relevant classes to a priority queue
+        PriorityQueue<Map.Entry<String, Double>> priorityQueue = new PriorityQueue<>(
+                Map.Entry.comparingByValue(Comparator.reverseOrder()));
+
+        for (String directoryPath : corpora.keySet()) {
+            // skip the root and disputed directory
+            if (!directoryPath.equals(rootDirectoryPath) && !directoryPath.endsWith("/disputed")) {
+                Map<String, Double> currentEntry = mutualInfo.get(directoryPath);
+                priorityQueue.addAll(currentEntry.entrySet());
+            }
+        }
+        // error handling: if the requested number of results exceeds the max, set it to the max
+        k = Math.min(k, priorityQueue.size());
+        List<Map.Entry<String, Double>> rankedEntries = new ArrayList<>();
+        List<String> addedTerms = new ArrayList<>();
+
+        for (int i = 0; i < k; ++i) {
+            Map.Entry<String, Double> nextEntry = priorityQueue.poll();
+            assert nextEntry != null;
+            String nextTerm = nextEntry.getKey();
+
+            if (!addedTerms.contains(nextTerm)) {
+                rankedEntries.add(nextEntry);
+                addedTerms.add(nextTerm);
+            } else {
+                --i;
+            }
         }
 
         return rankedEntries;

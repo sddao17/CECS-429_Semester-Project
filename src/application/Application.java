@@ -480,6 +480,7 @@ public class Application {
         long startTime = System.nanoTime();
 
         BayesianClassification naiveBayes = new BayesianClassification(rootDirectoryPath, corpora, corpusIndexes);
+        List<String> vocabulary = corpusIndexes.get(rootDirectoryPath).getVocabulary();
         for (String directoryPath : corpora.keySet()) {
             if (!directoryPath.equals(rootDirectoryPath) && !directoryPath.endsWith("/disputed")) {
                 List<Map.Entry<String, Double>> rankedEntries = naiveBayes.getOrderedMutualInfo(directoryPath);
@@ -500,7 +501,7 @@ public class Application {
         int input;
 
         do {
-            input = Menu.showRocchioMenu();
+            input = Menu.showBayesianMenu();
 
             switch (input) {
                 // classify a document
@@ -531,35 +532,21 @@ public class Application {
                         System.out.println("The subfolder does not exist; please try again.");
                     }
 
-                } // get a centroid vector
+                } // get the top discriminating terms
                 case 3 -> {
+                    System.out.print("Enter the number of results to be shown (skip for all):\n >> ");
+                    int numOfResults = CheckInput.promptNumOfResults(in, vocabulary.size());
+                    List<Map.Entry<String, Double>> rankedTerms = naiveBayes.getTopDiscriminating(numOfResults);
 
-                } // get a document weight vector
-                case 4 -> {
-                    try {
-                        getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
-                        System.out.print("Enter the directory's subfolder:\n >> ");
-                        String subfolder = currentDirectory + in.nextLine();
-                        IndexUtility.displayDocuments(corpora.get(subfolder));
+                    for (int i = 0; i < numOfResults; ++i) {
+                        Map.Entry<String, Double> entry = rankedTerms.get(i);
+                        String term = entry.getKey();
+                        double mutualInfo = entry.getValue();
 
-                        System.out.print("Enter the document ID:\n >> ");
-                        int documentID = Integer.parseInt(in.nextLine());
-
-                        List<String> vocabulary = corpusIndexes.get(rootDirectoryPath).getVocabulary();
-                        List<Double> weightVector = new ArrayList<>();
-
-                        System.out.print("Enter the number of results to be shown (skip for all):\n >> ");
-                        int numOfResults = CheckInput.promptNumOfResults(in, vocabulary.size());
-
-                        for (int i = 0; i < numOfResults; ++i) {
-                            System.out.print("(" + vocabulary.get(i) + ": " + weightVector.get(i) +
-                                    (i < numOfResults - 1 ? "), " : ")\n"));
-                        }
-                    } catch (NullPointerException | NumberFormatException e) {
-                        System.out.println("Invalid input; please try again.");
+                        System.out.println((i + 1) + ". " + term + ": " + mutualInfo);
                     }
                 } // get a vocabulary list
-                case 5 -> {
+                case 4 -> {
                     try {
                         getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
                         System.out.print("Enter the directory's subfolder (skip for all):\n >> ");

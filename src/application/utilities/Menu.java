@@ -37,6 +37,19 @@ public class Menu {
         return CheckInput.checkIntRange(0, 3);
     }
 
+    public static int showBayesianMenu() {
+        System.out.printf("""
+                %nSelect an option:
+                1. Classify a document
+                2. Classify all documents
+                3. Get the top discriminating terms
+                4. Get a vocabulary list
+                0. Quit
+                 >>\040""");
+
+        return CheckInput.checkIntRange(0, 4);
+    }
+
     public static int showRocchioMenu() {
         System.out.printf("""
                 %nSelect an option:

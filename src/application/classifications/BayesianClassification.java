@@ -309,9 +309,4 @@ public class BayesianClassification implements TextClassification {
     public static double calculateCmap(double pc, double classifierSum) {
         return (Math.log(pc) + classifierSum);
     }
-
-    public static void main(String[] args) {
-        System.out.println(calculateLog2(1024));
-        System.out.println(calculateMutualInfo(49, 27652, 141, 774106));
-    }
 }

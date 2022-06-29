@@ -508,7 +508,7 @@ public class Application {
                     } catch (NullPointerException e) {
                         System.out.println("The path does not exist; please try again.");
                     }
-                } // classify all documents
+                } // classify a document using majority vote
                 case 2 -> {
                     getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
                     System.out.print("Enter the directory's subfolder:\n >> ");
@@ -684,8 +684,8 @@ public class Application {
                         int numOfResults = CheckInput.promptNumOfResults(in, vocabulary.size());
 
                         for (int i = 0; i < numOfResults; ++i) {
-                            System.out.print("(" + vocabulary.get(i) + ": " + weightVector.get(i) +
-                                    (i < numOfResults - 1 ? "), " : ")\n"));
+                            System.out.print( weightVector.get(i) +
+                                    (i < numOfResults - 1 ? ", " : "\n"));
                         }
                     } catch (NullPointerException | NumberFormatException e) {
                         System.out.println("Invalid input; please try again.");
@@ -732,11 +732,14 @@ public class Application {
         double jaySum = 0;
         double madisonSum = 0;
         Map<String, Double> candidateDistances = knn.getCandidateDistances(subfolder, documentID, currentDirectory);
+        Map<String, Double> euclidianSums = new HashMap<>();
         Collection<Double> values = candidateDistances.values();
+        Collection<Double> euclidian;
         // Creating an ArrayList of values
         ArrayList<Double> listOfValues = new ArrayList<>(values);
+        ArrayList<Double> euclidianTotals = new ArrayList<>();
         Collections.sort(listOfValues);
-        initializeClosetPoints();
+        initializeKnnMaps();
 
         while(!(counter >= kValue)){
             Double value = listOfValues.get(counter);
@@ -748,20 +751,31 @@ public class Application {
                 int pointCount = closestPoints.get("Hamilton");
                 closestPoints.put("Hamilton", pointCount + 1 );
                 hamiltonSum += value;
+
+                if(!euclidianSums.containsKey("Hamilton")){ euclidianSums.put("Hamilton", hamiltonSum);}
+                else { euclidianSums.put("Hamilton", hamiltonSum);}
+
             }
             else if(jayDocs.contains(key)){
                 int pointCount = closestPoints.get("Jay");
                 closestPoints.put("Jay", pointCount + 1 );
                 jaySum += value;
+
+                if(!euclidianSums.containsKey("Jay")){ euclidianSums.put("Jay", jaySum);}
+                else { euclidianSums.put("Jay", jaySum); }
             }
             else{
                 int pointCount = closestPoints.get("Madison");
                 closestPoints.put("Madison", pointCount + 1 );
                 madisonSum += value;
+                if(!euclidianSums.containsKey("Madison")){ euclidianSums.put("Madison", madisonSum);}
+                else { euclidianSums.put("Madison", madisonSum); }
             }
         }
+        euclidian = euclidianSums.values();
+        euclidianTotals.addAll(euclidian);
+        Collections.sort(euclidianTotals);
 
-        //System.out.println(closestPoints);
         if(closestPoints.get("Hamilton") > closestPoints.get("Madison") && closestPoints.get("Hamilton") > closestPoints.get("Jay") ){
             System.out.println("Document was written by Hamilton");
         }
@@ -772,25 +786,10 @@ public class Application {
             System.out.println("Document was written by Jay");
         }
         else{
-            if(closestPoints.get("Hamilton") == closestPoints.get("Madison") && closestPoints.get("Madison") == closestPoints.get("Jay")){
-                if(madisonSum > hamiltonSum && madisonSum > jaySum){System.out.println("Document was written by Madison");}
-                else if(jaySum > hamiltonSum && jaySum > madisonSum){System.out.println("Document was written by Jay");}
-                else{System.out.println("Document was written by Hamilton");}
-            }
-            else if(closestPoints.get("Hamilton") == closestPoints.get("Madison")){
-                if(madisonSum > hamiltonSum){ System.out.println("Document was written by Madison");}
-                else{ System.out.println("Document was written by Hamilton");}
-            }
-            else if(closestPoints.get("Hamilton") == closestPoints.get("Jay")){
-                if(jaySum > hamiltonSum){ System.out.println("Document was written by Jay"); }
-                else{ System.out.println("Document was written by Hamilton");}
-            }
-            else if(closestPoints.get("Jay") == closestPoints.get("Madison")){
-                if(madisonSum > jaySum){ System.out.println("Document was written by Madison"); }
-                else{ System.out.println("Document was written by Jay"); }
-            }
+            Double finalSum = euclidianTotals.get(0);
+            String author = getKeyByValue(euclidianSums, finalSum);
+            System.out.println("Document was written by " + author);
         }
-
     }
 
     public static void displayCosineSimilarityResults(KnnClassification knn , String subfolder, int documentID, int kValue){
@@ -803,7 +802,7 @@ public class Application {
         ArrayList<Double> listOfValues = new ArrayList<>(values);
         ArrayList<Double> cosineValues = new ArrayList<>();
         Collections.sort(listOfValues);
-        initializeClosetPoints();
+        initializeKnnMaps();
 
         while(!(counter >= kValue)){
             Double value = listOfValues.get(counter);
@@ -851,7 +850,7 @@ public class Application {
     }
 
     //initializes hashmap to keep totals of which author has the closet points to the disputed doc
-    public static void initializeClosetPoints(){
+    public static void initializeKnnMaps(){
         closestPoints.put("Madison", 0);
         closestPoints.put("Hamilton", 0);
         closestPoints.put("Jay", 0);

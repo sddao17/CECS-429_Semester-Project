@@ -153,6 +153,9 @@ public class Application {
             // write the k-grams to disk
             DiskIndexWriter.writeKGrams(indexPaths.get("kGramsBin"), kGramIndex);
             System.out.println("K-Grams written to `" + indexPaths.get("kGramsBin") + "` successfully.");
+
+            // write the Bayesian classifiers to disk
+            DiskIndexWriter.writeBayesianClassifier(indexPaths.get("root"), corpora, corpusIndexes);
         }
 
         // after writing the components to disk, we can terminate the program

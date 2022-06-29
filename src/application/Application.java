@@ -2,6 +2,7 @@
 package application;
 
 import application.UI.CorpusSelection;
+import application.classifications.BayesianClassification;
 import application.classifications.KnnClassification;
 import application.classifications.RocchioClassification;
 import application.documents.*;
@@ -12,7 +13,6 @@ import application.utilities.CheckInput;
 import application.utilities.Menu;
 import application.utilities.IndexUtility;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -46,7 +46,7 @@ public class Application {
     private static final Map<String, Index<String, Posting>> biwordIndexes = new HashMap<>();
     private static final Map<String, KGramIndex> kGramIndexes = new HashMap<>();
     private static final Map<String, List<Double>> lds = new HashMap<>();
-    private static  Map<String, Integer> closestPoints = new HashMap<>();
+    private static final Map<String, Integer> closestPoints = new HashMap<>();
     private static DocumentWeightScorer documentScorer;
 
     public static boolean enabledLogs = false;
@@ -511,7 +511,10 @@ public class Application {
                         IndexUtility.displayDocuments(corpora.get(subfolder));
                         System.out.print("Enter the document ID:\n >> ");
                         int documentID = Integer.parseInt(in.nextLine());
-                        displayBayesianResults(naiveBayes, subfolder, documentID);
+                        System.out.print("Enter the number of discriminating terms (skip for all):\n >> ");
+                        int numOfTerms = CheckInput.promptNumOfResults(in, vocabulary.size());
+
+                        displayBayesianResults(naiveBayes, subfolder, documentID, numOfTerms);
                     } catch (NullPointerException e) {
                         System.out.println("The path does not exist; please try again.");
                         e.printStackTrace();
@@ -521,10 +524,12 @@ public class Application {
                     getAllDirectoryPaths().forEach(path -> System.out.println(path.substring(path.lastIndexOf("/"))));
                     System.out.print("Enter the directory's subfolder:\n >> ");
                     String subfolder = currentDirectory + in.nextLine();
+                    System.out.print("Enter the number of discriminating terms (skip for all):\n >> ");
+                    int numOfTerms = CheckInput.promptNumOfResults(in, vocabulary.size());
 
                     try {
                         for (Document document : corpora.get(subfolder).getDocuments()) {
-                            displayBayesianResults(naiveBayes, subfolder, document.getId());
+                            displayBayesianResults(naiveBayes, subfolder, document.getId(), numOfTerms);
                         }
                     } catch (NullPointerException e) {
                         System.out.println("The subfolder does not exist; please try again.");
@@ -727,7 +732,7 @@ public class Application {
                        for (Document document : corpora.get(subfolder).getDocuments()) {
                            System.out.println(document.getTitle()+ " nearest to: ");
                            displayCosineSimilarityResults(knn, subfolder, document.getId(), kValue);
-                           System.out.println("");
+                           System.out.println();
                        }
                    } catch (NullPointerException e) {
                        System.out.println("The subfolder does not exist; please try again.");
@@ -744,7 +749,7 @@ public class Application {
                        for (Document document : corpora.get(subfolder).getDocuments()) {
                            System.out.println(document.getTitle()+ " nearest to: ");
                            displayMajorityVoteResults(knn, subfolder, document.getId(), kValue);
-                           System.out.println("");
+                           System.out.println();
                        }
                    } catch (NullPointerException e) {
                        System.out.println("The subfolder does not exist; please try again.");
@@ -767,8 +772,8 @@ public class Application {
                         int numOfResults = CheckInput.promptNumOfResults(in, vocabulary.size());
 
                         for (int i = 0; i < numOfResults; ++i) {
-                            System.out.print( weightVector.get(i) +
-                                    (i < numOfResults - 1 ? ", " : "\n"));
+                            System.out.print("(" + vocabulary.get(i) + ": " + weightVector.get(i) +
+                                    (i < numOfResults - 1 ? "), " : ")\n"));
                         }
                     } catch (NullPointerException | NumberFormatException e) {
                         System.out.println("Invalid input; please try again.");
@@ -790,8 +795,9 @@ public class Application {
         } while (input != 0);
     }
 
-    private static void displayBayesianResults(BayesianClassification naiveBayes, String subfolder, int documentID) {
-        Map<String, Double> cmaps = naiveBayes.getCmaps(subfolder, documentID);
+    private static void displayBayesianResults(BayesianClassification naiveBayes, String subfolder, int documentID,
+                                               int numOfTerms) {
+        Map<String, Double> cmaps = naiveBayes.getCmaps(subfolder, documentID, numOfTerms);
 
         System.out.println();
         for (Map.Entry<String, Double> entry : cmaps.entrySet()) {
@@ -833,12 +839,11 @@ public class Application {
         double jaySum = 0;
         double madisonSum = 0;
         Map<String, Double> candidateDistances = knn.getCandidateDistances(subfolder, documentID, currentDirectory);
-        Map<String, Double> euclidianSums = new HashMap<>();
+        Map<String, Double> euclideanSums = new HashMap<>();
         Collection<Double> values = candidateDistances.values();
-        Collection<Double> euclidian;
+        Collection<Double> euclidean;
         // Creating an ArrayList of values
         ArrayList<Double> listOfValues = new ArrayList<>(values);
-        ArrayList<Double> euclidianTotals = new ArrayList<>();
         Collections.sort(listOfValues);
         initializeKnnMaps();
 
@@ -853,8 +858,8 @@ public class Application {
                 closestPoints.put("Hamilton", pointCount + 1 );
                 hamiltonSum += value;
 
-                if(!euclidianSums.containsKey("Hamilton")){ euclidianSums.put("Hamilton", hamiltonSum);}
-                else { euclidianSums.put("Hamilton", hamiltonSum);}
+                if(!euclideanSums.containsKey("Hamilton")){ euclideanSums.put("Hamilton", hamiltonSum);}
+                else { euclideanSums.put("Hamilton", hamiltonSum);}
 
             }
             else if(jayDocs.contains(key)){
@@ -862,20 +867,20 @@ public class Application {
                 closestPoints.put("Jay", pointCount + 1 );
                 jaySum += value;
 
-                if(!euclidianSums.containsKey("Jay")){ euclidianSums.put("Jay", jaySum);}
-                else { euclidianSums.put("Jay", jaySum); }
+                if(!euclideanSums.containsKey("Jay")){ euclideanSums.put("Jay", jaySum);}
+                else { euclideanSums.put("Jay", jaySum); }
             }
             else{
                 int pointCount = closestPoints.get("Madison");
                 closestPoints.put("Madison", pointCount + 1 );
                 madisonSum += value;
-                if(!euclidianSums.containsKey("Madison")){ euclidianSums.put("Madison", madisonSum);}
-                else { euclidianSums.put("Madison", madisonSum); }
+                if(!euclideanSums.containsKey("Madison")){ euclideanSums.put("Madison", madisonSum);}
+                else { euclideanSums.put("Madison", madisonSum); }
             }
         }
-        euclidian = euclidianSums.values();
-        euclidianTotals.addAll(euclidian);
-        Collections.sort(euclidianTotals);
+        euclidean = euclideanSums.values();
+        ArrayList<Double> euclideanTotals = new ArrayList<>(euclidean);
+        Collections.sort(euclideanTotals);
 
         if(closestPoints.get("Hamilton") > closestPoints.get("Madison") && closestPoints.get("Hamilton") > closestPoints.get("Jay") ){
             System.out.println("Document was written by Hamilton");
@@ -887,13 +892,13 @@ public class Application {
             System.out.println("Document was written by Jay");
         }
         else{
-            Double finalSum = euclidianTotals.get(0);
-            String author = getKeyByValue(euclidianSums, finalSum);
+            Double finalSum = euclideanTotals.get(0);
+            String author = getKeyByValue(euclideanSums, finalSum);
             System.out.println("Document was written by " + author);
         }
     }
 
-    public static void displayCosineSimilarityResults(KnnClassification knn , String subfolder, int documentID, int kValue){
+    public static void displayCosineSimilarityResults(KnnClassification knn , String subfolder, int documentID, int kValue) {
         counter = 0;
         numList = 0;
         Map<String, Double> candidateDistances = knn.getCandidateDistances(subfolder, documentID, currentDirectory);
@@ -905,7 +910,7 @@ public class Application {
         Collections.sort(listOfValues);
 
 
-        while(!(counter >= kValue)){
+        while (!(counter >= kValue)) {
             Double value = listOfValues.get(counter);
             String key = getKeyByValue(candidateDistances, value);
             Double cosineSimValue = cosineSimilarity.get(key);
@@ -914,11 +919,11 @@ public class Application {
             counter += 1;
         }
 
-        Collections.sort(cosineValues, Collections.reverseOrder());
+        cosineValues.sort(Collections.reverseOrder());
         Double mostSimilarDoc = cosineValues.get(0);
         String docTitle = getKeyByValue(cosineSimilarity, mostSimilarDoc);
 
-        if(hamiltonDocs.contains(docTitle)){
+        if (hamiltonDocs.contains(docTitle)) {
             System.out.println("Document was written by Hamilton");
         }
         else if (madisonDocs.contains(docTitle)){
@@ -928,17 +933,6 @@ public class Application {
             System.out.println("Document was written by Jay");
         }
 
-    }
-
-    private static void closeOpenFiles() {
-        // close all open file resources case-by-case
-        for (Closeable stream : closeables) {
-            try {
-                stream.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (NullPointerException ignored) {}
-        }
     }
 
     public static <K, V> K getKeyByValue(Map<K, V> map, V value) {
@@ -962,14 +956,25 @@ public class Application {
         String subfolderJay = currentDirectory + "/jay";
         String subfolderMadison = currentDirectory + "/madison";
 
-        for (Document doc: corpora.get(subfolderHamilton).getDocuments()){
+        for (Document doc: corpora.get(subfolderHamilton).getDocuments()) {
             hamiltonDocs.add(doc.getTitle());
         }
-        for (Document doc: corpora.get(subfolderJay).getDocuments()){
+        for (Document doc: corpora.get(subfolderJay).getDocuments()) {
             jayDocs.add(doc.getTitle());
         }
-        for (Document doc: corpora.get(subfolderMadison).getDocuments()){
+        for (Document doc: corpora.get(subfolderMadison).getDocuments()) {
             madisonDocs.add(doc.getTitle());
+        }
+    }
+
+    private static void closeOpenFiles() {
+        // close all open file resources case-by-case
+        for (Closeable stream : closeables) {
+            try {
+                stream.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (NullPointerException ignored) {}
         }
     }
 

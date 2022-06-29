@@ -2,6 +2,7 @@
 package application.indexes;
 
 import application.Application;
+import application.classifications.BayesianClassification;
 import application.documents.DirectoryCorpus;
 
 import java.io.*;

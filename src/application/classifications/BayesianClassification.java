@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class BayesianClassification implements TextClassification {
 
+    private int discriminatingTerms;
     private final String rootDirectoryPath;
     // for each directory folder, get their respective indexes / vocabularies and map them to their directory paths
     private final Map<String, DirectoryCorpus> corpora;
@@ -30,6 +31,7 @@ public class BayesianClassification implements TextClassification {
      */
     public BayesianClassification(String inputRootDirectory, Map<String, DirectoryCorpus> inputCorpora,
                                   Map<String, Index<String, Posting>> inputIndexes) {
+        discriminatingTerms = 0;
         rootDirectoryPath = inputRootDirectory;
         corpora = inputCorpora;
         allIndexes = inputIndexes;
@@ -181,25 +183,29 @@ public class BayesianClassification implements TextClassification {
         }
     }
 
-    public Map<String, Double> getCmaps(String directoryPath, int documentId) {
+    public Map<String, Double> getCmaps(String directoryPath, int documentId, int numOfTerms) {
+        discriminatingTerms = numOfTerms;
         Map<String, Double> cmaps = new HashMap<>();
         List<String> vocabulary = getTermsInDocument(directoryPath, documentId);
         int rootCorpusSize = corpora.get(rootDirectoryPath).getCorpusSize();
         int disputedCorpusSize = corpora.get(directoryPath).getCorpusSize();
+        numOfTerms = Math.min(numOfTerms, vocabulary.size());
 
         for (String currentDirectoryPath : corpora.keySet()) {
             double sum = 0;
             // skip the root and disputed directory
             if (!currentDirectoryPath.equals(rootDirectoryPath) && !currentDirectoryPath.endsWith("/disputed")) {
-                for (String term : vocabulary) {
-                    sum += Math.log(classifiers.get(currentDirectoryPath).get(term));
+                for (int i = 0; i < numOfTerms; ++i) {
+                    String term = vocabulary.get(i);
+
+                    sum += classifiers.get(currentDirectoryPath).get(term);
                 }
 
                 // p(c) = number of documents in class `c` / total number of documents
                 double pc = (double) corpora.get(currentDirectoryPath).getCorpusSize() /
                         (rootCorpusSize - disputedCorpusSize);
                 sum = calculateCmap(pc, sum);
-                //System.out.println(currentDirectoryPath + ": " + pc + ", " + sum);
+
                 cmaps.put(currentDirectoryPath, sum);
             }
         }
@@ -241,7 +247,7 @@ public class BayesianClassification implements TextClassification {
      */
     @Override
     public Map.Entry<String, Double> classifyDocument(String directoryPath, int documentId) {
-        Map<String, Double> cmaps = getCmaps(directoryPath, documentId);
+        Map<String, Double> cmaps = getCmaps(directoryPath, documentId, discriminatingTerms);
 
         // once all the distances are calculated, return the directory of the lowest distance
         PriorityQueue<Map.Entry<String, Double>> priorityQueue = new PriorityQueue<>(

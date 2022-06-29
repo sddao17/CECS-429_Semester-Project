@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class BayesianClassification implements TextClassification {
 
-    private int discriminatingTerms;
+    int discriminatingTerms = 0;
     private final String rootDirectoryPath;
     // for each directory folder, get their respective indexes / vocabularies and map them to their directory paths
     private final Map<String, DirectoryCorpus> corpora;
@@ -198,14 +198,14 @@ public class BayesianClassification implements TextClassification {
                 for (int i = 0; i < numOfTerms; ++i) {
                     String term = vocabulary.get(i);
 
-                    sum += classifiers.get(currentDirectoryPath).get(term);
+                    sum += Math.log(classifiers.get(currentDirectoryPath).get(term));
                 }
 
                 // p(c) = number of documents in class `c` / total number of documents
                 double pc = (double) corpora.get(currentDirectoryPath).getCorpusSize() /
                         (rootCorpusSize - disputedCorpusSize);
                 sum = calculateCmap(pc, sum);
-
+                //System.out.println(currentDirectoryPath + ": " + pc + ", " + sum);
                 cmaps.put(currentDirectoryPath, sum);
             }
         }
